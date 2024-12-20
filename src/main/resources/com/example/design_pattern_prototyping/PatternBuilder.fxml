@@ -15,8 +15,11 @@
             <HBox spacing="10.0">
                 <Label text="Upload YAML Configuration File" />
                 <Button text="Choose File" onAction="#handleFileUpload"/>
+            </HBox>
+            <HBox spacing="10.0">
                 <Button text="Deploy Cluster" onAction="#deployCluster"/>
-                <Button text="Delete Application" onAction="#deleteNamespace"/>
+                <Button text="Delete Application" onAction="#deleteApplication"/>
+                <Button text="Delete Pattern" onAction="#deletePattern"/>
             </HBox>
 
             <!-- Step 2: Select Design Pattern -->

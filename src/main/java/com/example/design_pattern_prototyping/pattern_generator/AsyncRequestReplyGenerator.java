@@ -9,6 +9,11 @@ import java.util.Map;
 public class AsyncRequestReplyGenerator implements PatternGenerator {
 
     @Override
+    public String getYamlFilePath() {
+        return "src/main/resources/patterns/GatewayOffloading/ingress.yml";
+    }
+
+    @Override
     public void generatePattern(String filePath, Map<String, String> parameters) {
         try {
             // Load ingress YAML content as a string
@@ -81,6 +86,7 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
         }
     }
 
+    @Override
     public void deployPattern() {
         try {
             // Step 1: Add Helm repositories and update them

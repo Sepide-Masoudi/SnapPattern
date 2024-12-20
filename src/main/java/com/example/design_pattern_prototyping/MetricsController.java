@@ -14,14 +14,16 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.util.Map;
 // TODO Add UI Alerts for Deployment status and metrics retrieval like in workloads Tab
+
 public class MetricsController {
 
+    private static final String NAMESPACE = "user|pattern";
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
     @FXML private VBox metricsSetupBox;
     @FXML private Label statusLabel;
     @FXML private Button deployMetricsButton;
-    @FXML private TextField namespaceField;
+
     private final DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
     private MetricsVisualizer metricsVisualizer;
@@ -36,7 +38,7 @@ public class MetricsController {
         this.queryMetrics = new QueryMetrics();
         this.metricsVisualizer = new MetricsVisualizer();
     }
-
+    //TODO If Monotoring Stack Deployment failed statusLabel should return this.
     public void deployMetrics() {
         deployMetricsButton.setDisable(true); // Disable the button during setup
         statusLabel.setText("Setting up monitoring stack...");
@@ -49,7 +51,7 @@ public class MetricsController {
                 javafx.application.Platform.runLater(() -> {
                     statusLabel.setText("Monitoring stack set up successfully.");
                     metricsSetupBox.setVisible(true);
-                    metricsSetupBox.setManaged(true); // Include VBox in layout
+                    metricsSetupBox.setManaged(true);
                 });
             } catch (Exception e) {
                 javafx.application.Platform.runLater(() -> statusLabel.setText("Error setting up monitoring stack."));
@@ -59,16 +61,13 @@ public class MetricsController {
             }
         }).start();
     }
-
+    //Query Metrics and Generate Plots and Results File
     @FXML
     private void generateMetrics() {
-        // Retrieve user inputs
-        String namespace = namespaceField.getText().trim();
-
         new Thread(() -> {
             try {
                 // get metrics using QueryMetrics
-                Map<String, String> metrics = queryMetrics.queryAllMetrics(namespace);
+                Map<String, String> metrics = queryMetrics.queryAllMetrics(NAMESPACE);
                 System.out.println("Fetched metrics: " + metrics);
 
                 // Send metrics to Python via REST API

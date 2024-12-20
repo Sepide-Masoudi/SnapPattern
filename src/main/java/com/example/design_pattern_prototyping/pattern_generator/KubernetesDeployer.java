@@ -14,17 +14,17 @@ public class KubernetesDeployer {
             boolean isRunning = reader.lines().anyMatch(line -> line.contains("Running"));
             process.waitFor();
 
+            // Already running is also a successful state for deployment
             if (!isRunning) {
                 System.out.println("Starting Minikube...");
                 ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start");
                 Process startProcess = startBuilder.start();
                 startProcess.waitFor();
                 System.out.println("Minikube started successfully.");
-                return true;
             } else {
                 System.out.println("Minikube is already running.");
-                return true; // Already running is also a successful state for deployment
             }
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Failed to start Minikube.");
@@ -81,7 +81,7 @@ public class KubernetesDeployer {
         }
     }
     // Method to delete the "user" namespace
-    public static void deleteNamespace() {
+    public static void deleteUserNamespace() {
         try {
             System.out.println("Deleting namespace 'user'...");
             ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", "user");
@@ -100,6 +100,37 @@ public class KubernetesDeployer {
             System.out.println("Failed to delete namespace 'user'.");
         }
     }
+    // Method to delete the "pattern" and "proxy" namespaces
+    public static void deletePatternNamespace() {
+        String[] namespaces = {"pattern", "proxy"};
+
+        for (String namespace : namespaces) {
+            try {
+                System.out.println("Deleting namespace '" + namespace + "'...");
+
+                ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", namespace);
+                Process process = deleteNamespace.start();
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                }
+
+                process.waitFor();
+
+                if (process.exitValue() == 0) {
+                    System.out.println("Namespace '" + namespace + "' deleted successfully.");
+                } else {
+                    System.out.println("Failed to delete namespace '" + namespace + "'. Please check logs.");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("An error occurred while trying to delete namespace '" + namespace + "'.");
+            }
+        }
+    }
+
     public static void applyYamlFile(String filePath) {
         try {
             ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");

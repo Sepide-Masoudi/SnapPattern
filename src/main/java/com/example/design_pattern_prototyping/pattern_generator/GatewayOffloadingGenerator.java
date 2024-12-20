@@ -9,6 +9,11 @@ import java.util.Map;
 public class GatewayOffloadingGenerator implements PatternGenerator {
 
     @Override
+    public String getYamlFilePath() {
+        return "src/main/resources/patterns/GatewayOffloading/nginx-ingress.yml";
+    }
+
+    @Override
     public void generatePattern(String filePath, Map<String, String> parameters) {
         try {
             // Load the ingress YAML template

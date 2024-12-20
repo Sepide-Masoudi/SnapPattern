@@ -5,15 +5,19 @@ import java.util.Map;
 
 public class PatternGeneratorFactory {
 
-    private static final Map<String, AsyncRequestReplyGenerator> generators = new HashMap<>();
+    private static final Map<String, PatternGenerator> generators = new HashMap<>();
 
     static {
         generators.put("Async Request Reply", new AsyncRequestReplyGenerator());
-        //generators.put("New Pattern 1", new NewPattern1Generator());
+        generators.put("Gateway Offloading", new GatewayOffloadingGenerator());
         // Add other patterns as needed
     }
 
-    public static AsyncRequestReplyGenerator getGenerator(String patternName) {
-        return generators.get(patternName);
+    public static PatternGenerator getGenerator(String patternName) {
+        PatternGenerator generator = generators.get(patternName);
+        if (generator == null) {
+            throw new IllegalArgumentException("No generator found for pattern: " + patternName);
+        }
+        return generator;
     }
 }

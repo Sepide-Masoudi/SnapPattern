@@ -1,9 +1,6 @@
 package com.example.design_pattern_prototyping;
 
-import com.example.design_pattern_prototyping.pattern_generator.AsyncRequestReplyGenerator;
-import com.example.design_pattern_prototyping.pattern_generator.GatewayOffloadingGenerator;
-import com.example.design_pattern_prototyping.pattern_generator.KubernetesDeployer;
-import com.example.design_pattern_prototyping.pattern_generator.PatternGeneratorFactory;
+import com.example.design_pattern_prototyping.pattern_generator.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
@@ -47,8 +44,9 @@ public class PatternBuilderController {
         }
     }
 
+    //Delete the user namespace and all services within
     @FXML
-    public void deleteNamespace() {
+    public void deleteApplication() {
         System.out.println("Deleting user application namespace...");
 
         new Thread(() -> {
@@ -56,7 +54,27 @@ public class PatternBuilderController {
                 boolean minikubeStarted = KubernetesDeployer.startMinikube();
 
                 if (minikubeStarted) {
-                    KubernetesDeployer.deleteNamespace();
+                    KubernetesDeployer.deleteUserNamespace();
+                    KubernetesDeployer.deletePatternNamespace();
+                } else {
+                    System.out.println("Failed to start Minikube. Deletion aborted.");
+                }
+            } catch (Exception e) {
+                System.out.println("Error during namespace deletion: " + e.getMessage());
+            }
+        }).start();
+    }
+    //Delete the Pattern namespaces and all services within
+    @FXML
+    public void deletePattern() {
+        System.out.println("Deleting user Pattern namespaces...");
+
+        new Thread(() -> {
+            try {
+                boolean minikubeStarted = KubernetesDeployer.startMinikube();
+
+                if (minikubeStarted) {
+                    KubernetesDeployer.deletePatternNamespace();
                 } else {
                     System.out.println("Failed to start Minikube. Deletion aborted.");
                 }
@@ -66,6 +84,7 @@ public class PatternBuilderController {
         }).start();
     }
 
+    //Deploy YAML Configuration for user application
     @FXML
     public void deployCluster() {
         if (yamlFile != null) {
@@ -113,14 +132,23 @@ public class PatternBuilderController {
 
     @FXML
     public void buildPattern() {
+        //Pattern selection
         String selectedPattern = patternDropdown.getValue();
         Map<String, String> parameters = new HashMap<>();
-        String yamlFilePath = "src/main/resources/patterns/" + selectedPattern.replaceAll(" ", "") + "/nginx-ingress.yml";
 
         try {
-            if ("Async Request Reply".equals(selectedPattern)) {
-                AsyncRequestReplyGenerator generator = PatternGeneratorFactory.getGenerator(selectedPattern);
+            // Get Pattern Generator Subclass
+            PatternGenerator generator = PatternGeneratorFactory.getGenerator(selectedPattern);
+            if (generator == null) {
+                System.out.println("Unsupported pattern: " + selectedPattern);
+                return;
+            }
 
+            // Get the YAML file path specific to the generator
+            String yamlFilePath = generator.getYamlFilePath();
+
+            //Pattern specific Parameters
+            if ("Async Request Reply".equals(selectedPattern)) {
                 parameters.put("SEND_SERVICE_NAME", sendingServiceName.getText());
                 parameters.put("SEND_SERVICE_ENDPOINT", sendingServiceEndpoint.getText());
                 parameters.put("SEND_SERVICE_PORT", sendingServicePort.getText());
@@ -128,25 +156,17 @@ public class PatternBuilderController {
                 parameters.put("RECEIVE_SERVICE_ENDPOINT", receivingServiceEndpoint.getText());
                 parameters.put("RECEIVE_SERVICE_PORT", receivingServicePort.getText());
 
-                generator.generatePattern(yamlFilePath, parameters);
-                generator.deployPattern();
-
             } else if ("Gateway Offloading".equals(selectedPattern)) {
-                GatewayOffloadingGenerator generator = new GatewayOffloadingGenerator();
-
                 parameters.put("SERVICE_HOST", serviceHost.getText());
                 parameters.put("SERVICE_ENDPOINT", serviceEndpoint.getText());
                 parameters.put("SERVICE_NAME", serviceName.getText());
-
-                generator.generatePattern(yamlFilePath, parameters);
-                generator.deployPattern();
-
-            } else {
-                System.out.println("Unsupported pattern: " + selectedPattern);
             }
 
-            System.out.println("Pattern " + selectedPattern + " built and deployed successfully.");
+            // Generate and deploy the pattern
+            generator.generatePattern(yamlFilePath, parameters);
+            generator.deployPattern();
 
+            System.out.println("Pattern " + selectedPattern + " built and deployed successfully.");
         } catch (Exception e) {
             System.err.println("Error during pattern generation or deployment: " + e.getMessage());
             e.printStackTrace();

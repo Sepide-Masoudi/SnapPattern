@@ -14,20 +14,10 @@
                 <Button fx:id="deployMetricsButton" text="Deploy Monitoring Stack" onAction="#deployMetrics"/>
             </HBox>
 
+            <Label fx:id="statusLabel" style="-fx-text-fill: gray; -fx-padding: 5.0;"/>
+
             <!-- Step 2: Input Fields -->
             <VBox spacing="10.0" fx:id="metricsSetupBox">
-                <HBox spacing="10.0">
-                    <Label text="Namespace:"/>
-                    <TextField fx:id="namespaceField" promptText="Enter namespace"/>
-                </HBox>
-                <HBox spacing="10.0">
-                    <Label text="Node Name:"/>
-                    <TextField fx:id="nodeNameField" promptText="Enter node name"/>
-                </HBox>
-                <HBox spacing="10.0">
-                    <Label text="Pod Name:"/>
-                    <TextField fx:id="podNameField" promptText="Enter pod name"/>
-                </HBox>
 
                 <!-- Fetch Metrics Button -->
                 <HBox spacing="10.0">
