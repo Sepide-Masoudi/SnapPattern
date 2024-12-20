@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-config
+  namespace: proxy
+data:
+  nginx.conf: |
+    ${PROXY-CONFIG}

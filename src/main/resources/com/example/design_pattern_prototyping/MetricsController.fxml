@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.design_pattern_prototyping.MetricsController">
+    <top>
+        <Label text="Monitoring Dashboard" style="-fx-font-size: 18px; -fx-padding: 10.0;"/>
+    </top>
+
+    <center>
+        <VBox spacing="15.0" style="-fx-padding: 20.0;">
+            <!-- Step 1: Deploy Monitoring Stack -->
+            <HBox spacing="10.0">
+                <Button fx:id="deployMetricsButton" text="Deploy Monitoring Stack" onAction="#deployMetrics"/>
+            </HBox>
+
+            <!-- Step 2: Input Fields -->
+            <VBox spacing="10.0" fx:id="metricsSetupBox">
+                <HBox spacing="10.0">
+                    <Label text="Namespace:"/>
+                    <TextField fx:id="namespaceField" promptText="Enter namespace"/>
+                </HBox>
+                <HBox spacing="10.0">
+                    <Label text="Node Name:"/>
+                    <TextField fx:id="nodeNameField" promptText="Enter node name"/>
+                </HBox>
+                <HBox spacing="10.0">
+                    <Label text="Pod Name:"/>
+                    <TextField fx:id="podNameField" promptText="Enter pod name"/>
+                </HBox>
+
+                <!-- Fetch Metrics Button -->
+                <HBox spacing="10.0">
+                    <Button fx:id="getMetricsButton" text="Get Metrics" onAction="#generateMetrics"/>
+                </HBox>
+                <HBox spacing="10.0">
+                    <Button fx:id="viewPlotsButton" text="View Plots" onAction="#viewPlots"/>
+                </HBox>
+
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

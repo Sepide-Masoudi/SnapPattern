@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.design_pattern_prototyping.MainController">
+    <left>
+        <TabPane side="LEFT">
+            <!-- Pattern Builder Tab -->
+            <Tab text="Pattern Builder" closable="false">
+                <fx:include source="PatternBuilder.fxml"/>
+            </Tab>
+            <!-- Workload Manager Tab -->
+            <Tab text="Workload Manager" closable="false">
+                <fx:include source="WorkloadController.fxml"/>
+            </Tab>
+            <!-- Monitoring Tab -->
+            <Tab text="Monitoring" closable="false">
+                <fx:include source="MetricsController.fxml"/>
+            </Tab>
+        </TabPane>
+    </left>
+</BorderPane>

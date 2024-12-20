@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: proxy # own namespace for additional impl. to original
+  annotations:
+    konghq.com/strip-path: "true"
+    konghq.com/protocols: "http, https"
+spec:
+  rules:
+  - host: ${SERVICE-NAME}  # Set host
+    http:
+      paths:
+      - path: ${SERVICE-ENDPOINT}  # Set path for async requests
+        pathType: Prefix
+        backend:
+          service:
+            name: proxy-service  # Proxy name
+            port:
+              number: 80  # Proxy port
+      # Ability to add more rules
