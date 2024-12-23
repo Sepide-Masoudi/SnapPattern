@@ -4,4 +4,6 @@ import java.util.Map;
 
 public interface PatternGenerator {
     void generatePattern(String filePath, Map<String, String> parameters);
+    String getYamlFilePath();
+    void deployPattern();
 }

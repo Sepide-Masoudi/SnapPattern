@@ -47,7 +47,7 @@ public class PatternBuilderController {
     //Delete the user namespace and all services within
     @FXML
     public void deleteApplication() {
-        System.out.println("Deleting user application namespace...");
+        System.out.println("Deleting user application...");
 
         new Thread(() -> {
             try {
@@ -67,7 +67,7 @@ public class PatternBuilderController {
     //Delete the Pattern namespaces and all services within
     @FXML
     public void deletePattern() {
-        System.out.println("Deleting user Pattern namespaces...");
+        System.out.println("Deleting Pattern...");
 
         new Thread(() -> {
             try {

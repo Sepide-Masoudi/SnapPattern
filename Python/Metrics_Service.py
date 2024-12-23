@@ -49,6 +49,5 @@ def generate_plots(metrics):
             print(f"Error generating plot for {metric_name}: {e}")
 
 
-
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
