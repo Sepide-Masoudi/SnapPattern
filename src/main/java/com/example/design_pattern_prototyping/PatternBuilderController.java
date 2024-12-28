@@ -35,6 +35,85 @@ public class PatternBuilderController {
     private File yamlFile;
 
     @FXML
+    public void startKubernetes() {
+        System.out.println("Starting Kubernetes...");
+
+        new Thread(() -> {
+            try {
+                boolean minikubeStarted = KubernetesDeployer.startMinikube();
+                if (minikubeStarted) {
+                    System.out.println("Minikube started successfully.");
+                    javafx.application.Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Minikube Start");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Minikube started successfully!");
+                        alert.showAndWait();
+                    });
+                } else {
+                    System.out.println("Failed to start Minikube.");
+                    javafx.application.Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("Minikube Start");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Failed to start Minikube. Check console for details.");
+                        alert.showAndWait();
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("Error starting Minikube: " + e.getMessage());
+                e.printStackTrace();
+                javafx.application.Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Minikube Start");
+                    alert.setHeaderText(null);
+                    alert.setContentText("An error occurred while starting Minikube: " + e.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }).start();
+    }
+
+    @FXML
+    public void stopKubernetes() {
+        System.out.println("Stopping Kubernetes...");
+
+        new Thread(() -> {
+            try {
+                boolean minikubeStopped = KubernetesDeployer.stopMinikube();
+                if (minikubeStopped) {
+                    javafx.application.Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Minikube Stop");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Minikube stopped successfully!");
+                        alert.showAndWait();
+                    });
+                } else {
+                    javafx.application.Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("Minikube Stop");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Failed to stop Minikube. Check console for details.");
+                        alert.showAndWait();
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("Error stopping Minikube: " + e.getMessage());
+                e.printStackTrace();
+                javafx.application.Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Minikube Stop");
+                    alert.setHeaderText(null);
+                    alert.setContentText("An error occurred while stopping Minikube: " + e.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }).start();
+    }
+
+
+    @FXML
     public void handleFileUpload() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("YAML Files", "*.yaml"));

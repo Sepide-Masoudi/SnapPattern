@@ -11,6 +11,10 @@
 
     <center>
         <VBox spacing="20.0" style="-fx-padding: 20.0;">
+            <HBox spacing="10.0">
+                <Button text="Start Kubernetes" onAction="#startKubernetes"/>
+                <Button text="Stop Kubernetes" onAction="#stopKubernetes"/>
+            </HBox>
             <!-- Step 1: Upload YAML -->
             <HBox spacing="10.0">
                 <Label text="Upload YAML Configuration File" />
