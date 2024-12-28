@@ -13,10 +13,14 @@
             <HBox spacing="10.0">
                 <Label text="Upload Workload File:"/>
                 <TextField fx:id="filePathField" editable="false" style="-fx-background-color: #f0f0f0;"/>
-                <Button text="Choose File" onAction="#handleFileUpload"/>
                 <Button text="Upload File" onAction="#uploadFile"/>
             </HBox>
-
+            <!-- Select Workload File -->
+            <HBox spacing="10.0">
+                <Label text="Select Workload File:"/>
+                <ComboBox fx:id="fileDropdown"/>
+            </HBox>
+            <!-- Set Workload intensity and run -->
             <HBox spacing="10.0">
                 <Label text="Select Workload Level:"/>
                 <ComboBox fx:id="workloadLevelComboBox"/>
