@@ -20,10 +20,18 @@
                 <Label text="Select Workload File:"/>
                 <ComboBox fx:id="fileDropdown"/>
             </HBox>
-            <!-- Set Workload intensity and run -->
+            <!-- Set WebUI Hostname -->
+            <HBox spacing="10.0">
+                <Label text="WebUI Hostname:"/>
+                <TextField fx:id="hostnameField" promptText="10.1.1.1"/>
+            </HBox>
+            <!-- Set Workload intensity -->
             <HBox spacing="10.0">
                 <Label text="Select Workload Level:"/>
                 <ComboBox fx:id="workloadLevelComboBox"/>
+            </HBox>
+            <!-- Run workload -->
+            <HBox spacing="10.0">
                 <Button text="Run Workload" onAction="#runWorkload"/>
             </HBox>
         </VBox>

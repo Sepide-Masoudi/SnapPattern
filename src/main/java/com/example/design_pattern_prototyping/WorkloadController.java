@@ -1,5 +1,6 @@
 package com.example.design_pattern_prototyping;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
@@ -20,6 +21,9 @@ public class WorkloadController {
     @FXML
     private ComboBox<String> workloadLevelComboBox;
     private File selectedFile;
+    @FXML
+    private TextField hostnameField;
+
 
     @FXML
     public void uploadFile() {
@@ -84,100 +88,108 @@ public class WorkloadController {
         String selectedFileName = fileDropdown.getValue();
 
         if (selectedFileName != null && !selectedFileName.isEmpty()) {
-            Path filePath = Paths.get("src/main/resources/workloads", selectedFileName);
-            File selectedFile = filePath.toFile();
+            String hostname = hostnameField.getText();
 
-            if (selectedFile.exists()) {
-                System.out.println("Running workload with file: " + selectedFile.getAbsolutePath());
-                String workloadLevel = workloadLevelComboBox.getValue();
-                System.out.println("Selected workload level: " + workloadLevel);
-
-                int numUsers, rampUp, duration;
-                switch (workloadLevel) {
-                    case "High":
-                        numUsers = 200;
-                        rampUp = 20;
-                        duration = 120;
-                        break;
-                    case "Medium":
-                        numUsers = 50;
-                        rampUp = 10;
-                        duration = 60;
-                        break;
-                    case "Low":
-                    default:
-                        numUsers = 10;
-                        rampUp = 5;
-                        duration = 30;
-                        break;
-                }
-                System.out.println("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
-                //TODO Switch absolute for relative Paths here
-                String jmeterPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\apache-jmeter-5.6.3\\bin\\ApacheJMeter.jar";
-                File jmeterFile = new File(jmeterPath);
-
-                String logDirectoryPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\src\\main\\resources\\workloads";
-                File logDirectory = new File(logDirectoryPath);
-                String logFilePath = new File(logDirectory, "workload_results_" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
-
-                if (!jmeterFile.exists()) {
-                    System.out.println("JMeter JAR file not found: " + jmeterFile.getAbsolutePath());
-                    showAlert("Error", "JMeter JAR file not found. Please check the path.", Alert.AlertType.ERROR);
-                    return;
-                }
-
-                new Thread(() -> {
-                    try {
-                        ProcessBuilder processBuilder = new ProcessBuilder(
-                                "java",
-                                "-jar",
-                                jmeterFile.getAbsolutePath(),
-                                "-t", selectedFile.getAbsolutePath(),
-                                "-Jhostname=10.1.1.1",
-                                "-Jport=8080",
-                                "-JnumUser=" + numUsers,
-                                "-JrampUp=" + rampUp,
-                                "-Jduration=" + duration,
-                                "-l", logFilePath,
-                                "-n"
-                        );
-                        processBuilder.redirectErrorStream(true);
-
-                        Process process = processBuilder.start();
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            System.out.println(line);
-                        }
-                        System.out.println("Process started. Waiting for it to complete...");
-
-                        int exitCode = process.waitFor();
-                        System.out.println("Process exited with code: " + exitCode);
-
-                        // Update UI on the JavaFX Application Thread
-                        javafx.application.Platform.runLater(() -> {
-                            if (exitCode == 0) {
-                                System.out.println("Workload executed successfully.");
-                                showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                            } else {
-                                System.out.println("Workload execution failed. Exit code: " + exitCode);
-                                showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
-                            }
-                        });
-                    } catch (IOException | InterruptedException e) {
-                        System.out.println("Error during workload execution: " + e.getMessage());
-                        javafx.application.Platform.runLater(() -> {
-                            showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR);
-                        });
-                    }
-                }).start();
-            } else {
-                System.out.println("Selected file does not exist: " + selectedFile.getAbsolutePath());
-                showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
+            if (hostname == null || hostname.isEmpty()) {
+                showAlert("Error", "Hostname cannot be empty. Please enter a valid hostname.", Alert.AlertType.WARNING);
+                return;
             }
-        } else {
-            System.out.println("No file selected to run workload.");
-            showAlert("Error", "No file selected. Please choose a file from the dropdown to run.", Alert.AlertType.WARNING);
+
+            if (selectedFileName != null && !selectedFileName.isEmpty()) {
+                Path filePath = Paths.get("src/main/resources/workloads", selectedFileName);
+                File selectedFile = filePath.toFile();
+
+                if (selectedFile.exists()) {
+                    System.out.println("Running workload with file: " + selectedFile.getAbsolutePath());
+                    String workloadLevel = workloadLevelComboBox.getValue();
+                    System.out.println("Selected workload level: " + workloadLevel);
+
+                    int numUsers, rampUp, duration;
+                    switch (workloadLevel) {
+                        case "High":
+                            numUsers = 200;
+                            rampUp = 20;
+                            duration = 120;
+                            break;
+                        case "Medium":
+                            numUsers = 50;
+                            rampUp = 10;
+                            duration = 60;
+                            break;
+                        case "Low":
+                        default:
+                            numUsers = 10;
+                            rampUp = 5;
+                            duration = 30;
+                            break;
+                    }
+                    System.out.println("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
+                    //TODO Switch absolute for relative Paths here
+                    String jmeterPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\apache-jmeter-5.6.3\\bin\\ApacheJMeter.jar";
+                    File jmeterFile = new File(jmeterPath);
+
+                    String logDirectoryPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\src\\main\\resources\\workloads";
+                    File logDirectory = new File(logDirectoryPath);
+                    String logFilePath = new File(logDirectory, "workload_results_" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
+
+                    if (!jmeterFile.exists()) {
+                        System.out.println("JMeter JAR file not found: " + jmeterFile.getAbsolutePath());
+                        showAlert("Error", "JMeter JAR file not found. Please check the path.", Alert.AlertType.ERROR);
+                        return;
+                    }
+
+                    new Thread(() -> {
+                        try {
+                            ProcessBuilder processBuilder = new ProcessBuilder(
+                                    "java",
+                                    "-jar",
+                                    jmeterFile.getAbsolutePath(),
+                                    "-t", selectedFile.getAbsolutePath(),
+                                    "-Jhostname=" + hostname,
+                                    "-Jport=8080",
+                                    "-JnumUser=" + numUsers,
+                                    "-JrampUp=" + rampUp,
+                                    "-Jduration=" + duration,
+                                    "-l", logFilePath,
+                                    "-n"
+                            );
+                            processBuilder.redirectErrorStream(true);
+
+                            Process process = processBuilder.start();
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                System.out.println(line);
+                            }
+                            System.out.println("Process started. Waiting for it to complete...");
+
+                            int exitCode = process.waitFor();
+                            System.out.println("Process exited with code: " + exitCode);
+
+                            Platform.runLater(() -> {
+                                if (exitCode == 0) {
+                                    System.out.println("Workload executed successfully.");
+                                    showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                                } else {
+                                    System.out.println("Workload execution failed. Exit code: " + exitCode);
+                                    showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
+                                }
+                            });
+                        } catch (IOException | InterruptedException e) {
+                            System.out.println("Error during workload execution: " + e.getMessage());
+                            Platform.runLater(() -> {
+                                showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR);
+                            });
+                        }
+                    }).start();
+                } else {
+                    System.out.println("Selected file does not exist: " + selectedFile.getAbsolutePath());
+                    showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
+                }
+            } else {
+                System.out.println("No file selected to run workload.");
+                showAlert("Error", "No file selected. Please choose a file from the dropdown to run.", Alert.AlertType.WARNING);
+            }
         }
     }
 
