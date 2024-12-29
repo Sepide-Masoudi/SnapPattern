@@ -4,13 +4,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 //TODO Replace HttpURLConnection library like Apache HttpClient
 // and add retries, and timeouts.
 public class PrometheusClient {
     public String queryPrometheus(String query) throws Exception {
         String url = "http://localhost:9090/api/v1/query?query=" +
-                java.net.URLEncoder.encode(query, "UTF-8");
+                java.net.URLEncoder.encode(query, StandardCharsets.UTF_8);
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
         con.setRequestMethod("GET");

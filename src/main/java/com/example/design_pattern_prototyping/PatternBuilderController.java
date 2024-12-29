@@ -218,10 +218,6 @@ public class PatternBuilderController {
         try {
             // Get Pattern Generator Subclass
             PatternGenerator generator = PatternGeneratorFactory.getGenerator(selectedPattern);
-            if (generator == null) {
-                System.out.println("Unsupported pattern: " + selectedPattern);
-                return;
-            }
 
             // Get the YAML file path specific to the generator
             String yamlFilePath = generator.getYamlFilePath();

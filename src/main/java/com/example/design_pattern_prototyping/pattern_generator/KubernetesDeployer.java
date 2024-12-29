@@ -45,22 +45,20 @@ public class KubernetesDeployer {
             ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start");
             Process startProcess = startBuilder.start();
 
-            // Capture output and error streams
-            StringBuilder output = new StringBuilder();
-            StringBuilder error = new StringBuilder();
             // Info messages
             Thread outputThread = new Thread(() -> {
                 try (BufferedReader outputReader = new BufferedReader(new InputStreamReader(startProcess.getInputStream()))) {
                     String line;
                     while ((line = outputReader.readLine()) != null) {
-                        output.append(line).append(System.lineSeparator());
                         System.out.println("[START OUTPUT] " + line);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
+
             // Error messages
+            StringBuilder error = new StringBuilder();
             Thread errorThread = new Thread(() -> {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(startProcess.getErrorStream()))) {
                     String line;
@@ -84,12 +82,12 @@ public class KubernetesDeployer {
             int exitValue = startProcess.exitValue();
             if (exitValue != 0) {
                 System.err.println("Critical error starting Minikube. Exit Code: " + exitValue);
-                System.err.println("Error Details: " + error.toString());
+                System.err.println("Error Details: " + error);
                 return false;
             }
 
             if (error.length() > 0) {
-                System.err.println("Warning during Minikube startup: " + error.toString());
+                System.err.println("Warning during Minikube startup: " + error);
             }
 
             System.out.println("Minikube started successfully.");

@@ -27,7 +27,7 @@
             </HBox>
 
             <!-- Step 2: Select Design Pattern -->
-            <HBox spacing="10.0" visible="true" fx:id="step2Box">
+            <HBox spacing="10.0" fx:id="step2Box">
                 <Label text="Select Design Pattern" />
                 <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
                     <items>
@@ -42,7 +42,7 @@
             </HBox>
 
             <!-- Step 3: Pattern-Specific Config -->
-            <VBox spacing="10.0" visible="true" fx:id="patternFieldsBox">
+            <VBox spacing="10.0" fx:id="patternFieldsBox">
                 <Label text="Configure Pattern" />
 
                 <!-- Async Request Reply Config -->

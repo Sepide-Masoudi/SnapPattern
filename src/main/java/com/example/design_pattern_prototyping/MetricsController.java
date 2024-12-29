@@ -26,7 +26,6 @@ public class MetricsController {
 
     private final DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
-    private MetricsVisualizer metricsVisualizer;
 
     public MetricsController() {
         this.deployMonitoringStack = new DeployMonitoringStack();
@@ -36,8 +35,8 @@ public class MetricsController {
     public void initialize() {
         // Initialize QueryMetrics and MetricsVisualizer
         this.queryMetrics = new QueryMetrics();
-        this.metricsVisualizer = new MetricsVisualizer();
     }
+
     //TODO If Monotoring Stack Deployment failed statusLabel should return this.
     public void deployMetrics() {
         deployMetricsButton.setDisable(true); // Disable the button during setup
@@ -62,6 +61,7 @@ public class MetricsController {
         }).start();
     }
     //Query Metrics and Generate Plots and Results File
+
     @FXML
     private void generateMetrics() {
         new Thread(() -> {
