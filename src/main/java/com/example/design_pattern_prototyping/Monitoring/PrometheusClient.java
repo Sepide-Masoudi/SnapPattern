@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 // and add retries, and timeouts.
 public class PrometheusClient {
     public String queryPrometheus(String query) throws Exception {
-        String url = "http://localhost:9090/api/v1/query?query=" +
+        String url = "http://127.0.0.1:54409/api/v1/query?query=" +
                 java.net.URLEncoder.encode(query, StandardCharsets.UTF_8);
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();

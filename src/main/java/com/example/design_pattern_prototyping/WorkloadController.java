@@ -127,7 +127,7 @@ public class WorkloadController {
 
                 String logDirectoryPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\src\\main\\resources\\workloads";
                 File logDirectory = new File(logDirectoryPath);
-                String logFilePath = new File(logDirectory, "workload_results_" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
+                String logFilePath = new File(logDirectory, "workload_results_1" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
 
                 if (!jmeterFile.exists()) {
                     System.out.println("JMeter JAR file not found: " + jmeterFile.getAbsolutePath());
@@ -143,7 +143,7 @@ public class WorkloadController {
                                 jmeterFile.getAbsolutePath(),
                                 "-t", selectedFile.getAbsolutePath(),
                                 "-Jhostname=" + hostname,
-                                "-Jport=8080",
+                                "-Jport=58221",
                                 "-JnumUser=" + numUsers,
                                 "-JrampUp=" + rampUp,
                                 "-Jduration=" + duration,

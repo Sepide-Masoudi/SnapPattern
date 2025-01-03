@@ -4,6 +4,8 @@ module com.example.design_pattern_prototyping {
     requires org.yaml.snakeyaml;
     requires java.net.http;
     requires org.json;
+    requires com.fasterxml.jackson.databind;
+
 
     opens com.example.design_pattern_prototyping to javafx.fxml;
     exports com.example.design_pattern_prototyping;
