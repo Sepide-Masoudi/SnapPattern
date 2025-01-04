@@ -19,7 +19,7 @@ public class MetricsVisualizer {
             System.out.println(entry.getKey() + " : " + entry.getValue());
         }
     }
-    //TODO Replace HttpURLConnection library like Apache HttpClient
+    // TODO Replace HttpURLConnection library like Apache HttpClient
     // and add retries, and timeouts.
     public static void sendMetricsToPython(Map<String, String> metrics) {
         try {
@@ -53,7 +53,7 @@ public class MetricsVisualizer {
             e.printStackTrace();
         }
     }
-    //TODO test how these results are formated, maybe use the JSON or requires conversion
+    // TODO test how these results are formated, maybe use the JSON or requires conversion
     public void saveMetricsToCSV(Map<String, String> metrics) {
         String fileName = "metrics.csv";
         try (FileWriter writer = new FileWriter(fileName)) {

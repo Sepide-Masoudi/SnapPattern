@@ -66,13 +66,14 @@ public class MetricsController {
     private void generateMetrics() {
         new Thread(() -> {
             try {
-                // get metrics using QueryMetrics
                 Map<String, String> metrics = queryMetrics.queryAllMetrics(NAMESPACE);
-                System.out.println("Fetched metrics: " + metrics);
 
-                // Send metrics to Python via REST API
-                MetricsVisualizer.sendMetricsToPython(metrics);
-
+                if (metrics.containsKey("error")) {
+                    System.err.println("Error fetching metrics: " + metrics.get("error"));
+                } else {
+                    System.out.println("Sending metrics to MetricsService: " + metrics);
+                    MetricsVisualizer.sendMetricsToPython(metrics);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

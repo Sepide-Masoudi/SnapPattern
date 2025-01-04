@@ -143,7 +143,7 @@ public class WorkloadController {
                                 jmeterFile.getAbsolutePath(),
                                 "-t", selectedFile.getAbsolutePath(),
                                 "-Jhostname=" + hostname,
-                                "-Jport=58221",
+                                "-Jport=8080",
                                 "-JnumUser=" + numUsers,
                                 "-JrampUp=" + rampUp,
                                 "-Jduration=" + duration,

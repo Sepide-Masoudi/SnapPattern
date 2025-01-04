@@ -23,34 +23,37 @@ public class DeployMonitoringStack {
             runCommand("kubectl", "create", "namespace", "monitoring");
             runCommand("kubectl", "create", "namespace", "istio-system");
 
-            // Step 4: Install Tools
+            // Step 4: Install or upgrade Tools
             System.out.println("Installing Prometheus...");
-            runCommand("helm", "install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring");
+            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring");
 
             System.out.println("Installing Kepler...");
-            runCommand("helm", "install", "kepler", "kepler/kepler",
+            runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
                     "--namespace", "monitoring",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
 
             System.out.println("Installing Grafana...");
-            runCommand("helm", "install", "grafana", "grafana/grafana",
+            runCommand("helm", "upgrade", "-install", "grafana", "grafana/grafana",
                     "--namespace", "monitoring",
                     "--set", "adminUser=admin",
                     "--set", "adminPassword=admin");
 
             System.out.println("Installing Istio-base...");
-            runCommand("helm", "install", "istio-base", "istio/base", "--namespace", "istio-system");
+            runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
 
             System.out.println("Installing Istiod...");
-            runCommand("helm", "install", "istiod", "istio/istiod",
+            runCommand("helm", "upgrade", "-install", "istiod", "istio/istiod",
                     "--namespace", "istio-system",
                     "--set", "meshConfig.defaultConfig.tracing.sampling=100",
-                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger:9411");
+                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger:9411",
+                    "--set", "telemetry.enabled=true",
+                    "--set", "values.global.proxy.envoyStatsMatcher.includeAll=true");
 
             System.out.println("Labeling namespace for Istio injection...");
             runCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
-            // NOTE: How to fetch Endpints dynamically with Kubernetes Commands
+
+            // TODO NOTE: How to fetch Endpints dynamically with Kubernetes Commands
             System.out.println("Installing Jaeger...");
             runCommand("helm", "install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
