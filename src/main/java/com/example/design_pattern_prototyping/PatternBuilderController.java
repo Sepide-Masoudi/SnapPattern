@@ -4,8 +4,6 @@ import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
 import com.example.design_pattern_prototyping.pattern_generator.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;

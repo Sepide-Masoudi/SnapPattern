@@ -27,7 +27,7 @@
             </HBox>
 
             <!-- Step 2: Select Design Pattern -->
-            <HBox spacing="10.0" fx:id="step2Box">
+            <HBox spacing="10.0">
                 <Label text="Select Design Pattern" />
                 <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
                     <items>
