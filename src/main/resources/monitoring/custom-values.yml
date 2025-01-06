@@ -1,0 +1,38 @@
+# custom-values.yaml
+prometheus:
+  service:
+    type: NodePort
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: 'kepler'
+        static_configs:
+          - targets: ['kepler.monitoring.svc.cluster.local:9102']
+      - job_name: 'user-namespace-services'
+        kubernetes_sd_configs:
+          - role: service
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: user
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: instance
+          - target_label: __metrics_path__
+            replacement: /metrics
+      - job_name: 'pattern-namespace-services'
+        kubernetes_sd_configs:
+          - role: service
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: pattern
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: instance
+          - target_label: __metrics_path__
+            replacement: /metrics
+grafana:
+  service:
+    type: NodePort
+  adminUser: "admin"
+  adminPassword: "admin"
