@@ -45,7 +45,7 @@
                 <Label text="Configure Pattern" />
 
                 <!-- StackPane to layer pattern-specific fields -->
-                <StackPane fx:id="patternStackPane">
+                <StackPane>
                     <!-- Async Request Reply Config -->
                     <VBox spacing="10.0" fx:id="asyncRequestReplyFields" visible="false">
                         <Label text="Async Request Reply Configuration" style="-fx-font-weight: bold;"/>

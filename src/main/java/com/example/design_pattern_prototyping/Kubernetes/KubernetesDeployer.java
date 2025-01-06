@@ -86,7 +86,7 @@ public class KubernetesDeployer {
                 return false;
             }
 
-            if (error.length() > 0) {
+            if (!error.isEmpty()) {
                 System.err.println("Warning during Minikube startup: " + error);
             }
 

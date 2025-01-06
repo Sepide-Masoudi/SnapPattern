@@ -5,6 +5,7 @@ import com.example.design_pattern_prototyping.pattern_generator.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -16,7 +17,6 @@ import java.io.File;
 
 public class PatternBuilderController {
 
-    @FXML private HBox step2Box;
     @FXML private VBox patternFieldsBox;
     @FXML private ComboBox<String> patternDropdown;
     @FXML private VBox asyncRequestReplyFields;
