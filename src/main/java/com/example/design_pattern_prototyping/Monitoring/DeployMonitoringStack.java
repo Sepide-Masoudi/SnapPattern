@@ -1,8 +1,12 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DeployMonitoringStack {
+
+    private static final Logger logger = Logger.getLogger(DeployMonitoringStack.class.getName());
 
     public void deployMonitoringStack() {
         try {
@@ -27,22 +31,22 @@ public class DeployMonitoringStack {
             System.out.println("Installing Prometheus...");
             runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring");
 
-            System.out.println("Installing Kepler...");
+            logger.info("Installing Kepler...");
             runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
                     "--namespace", "monitoring",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
 
-            System.out.println("Installing Grafana...");
+            logger.info("Installing Grafana...");
             runCommand("helm", "upgrade", "-install", "grafana", "grafana/grafana",
                     "--namespace", "monitoring",
                     "--set", "adminUser=admin",
                     "--set", "adminPassword=admin");
 
-            System.out.println("Installing Istio-base...");
+            logger.info("Installing Istio-base...");
             runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
 
-            System.out.println("Installing Istiod...");
+            logger.info("Installing Istiod...");
             runCommand("helm", "upgrade", "-install", "istiod", "istio/istiod",
                     "--namespace", "istio-system",
                     "--set", "meshConfig.defaultConfig.tracing.sampling=100",
@@ -50,7 +54,7 @@ public class DeployMonitoringStack {
                     "--set", "telemetry.enabled=true",
                     "--set", "values.global.proxy.envoyStatsMatcher.includeAll=true");
 
-            System.out.println("Labeling namespace for Istio injection...");
+            logger.info("Labeling namespace for Istio injection...");
             runCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
 
             // TODO NOTE: How to fetch Endpints dynamically with Kubernetes Commands
@@ -62,11 +66,10 @@ public class DeployMonitoringStack {
                     "--set", "query.enabled=true",
                     "--set", "ui.enabled=true");
 
-            System.out.println("Monitoring stack deployed successfully.");
+            logger.info("Monitoring stack deployed successfully.");
 
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Error deploying the monitoring stack: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error deploying the monitoring stack", e);
         }
     }
 
@@ -76,10 +79,10 @@ public class DeployMonitoringStack {
             processBuilder.inheritIO();
             int exitCode = processBuilder.start().waitFor();
             if (exitCode != 0) {
-                System.out.println("Command failed: " + String.join(" ", command));
+                logger.warning("Command failed: " + String.join(" ", command));
             }
         } catch (IOException | InterruptedException e) {
-            System.out.println("Error executing command: " + String.join(" ", command) + " -> " + e.getMessage());
+            logger.log(Level.SEVERE, "Error executing command: " + String.join(" ", command), e);
         }
     }
 }

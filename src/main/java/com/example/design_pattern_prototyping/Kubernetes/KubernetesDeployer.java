@@ -2,12 +2,16 @@ package com.example.design_pattern_prototyping.Kubernetes;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class KubernetesDeployer {
 
+    private static final Logger logger = Logger.getLogger(KubernetesDeployer.class.getName());
+
     public static boolean statusMinikube() {
         try {
-            System.out.println("Checking Minikube status...");
+            logger.info("Checking Minikube status...");
             ProcessBuilder builder = new ProcessBuilder("minikube", "status");
             Process process = builder.start();
 
@@ -20,54 +24,49 @@ public class KubernetesDeployer {
             // Wait for the process to finish
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                System.err.println("Error: Minikube status command exited with code " + exitCode);
+                logger.warning("Error: Minikube status command exited with code " + exitCode);
                 return false;
             }
 
             // Check if the output contains "Running"
             boolean isRunning = output.contains("Running");
-            System.out.println("Minikube status:\n" + output);
+            logger.info("Minikube status:\n" + output);
             return isRunning;
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Failed to check Minikube status.");
+            logger.log(Level.SEVERE, "Failed to check Minikube status.", e);
             return false;
         }
     }
 
     public static boolean startMinikube() {
-        try{
+        try {
             if (statusMinikube()) {
-                System.out.println("Minikube is already running.");
-                return true; // Minikube is already running
-                }
-            System.out.println("Starting Minikube...");
+                logger.info("Minikube is already running.");
+                return true;
+            }
+            logger.info("Starting Minikube...");
             ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start");
             Process startProcess = startBuilder.start();
 
-            // Info messages
             Thread outputThread = new Thread(() -> {
                 try (BufferedReader outputReader = new BufferedReader(new InputStreamReader(startProcess.getInputStream()))) {
                     String line;
                     while ((line = outputReader.readLine()) != null) {
-                        System.out.println("[START OUTPUT] " + line);
+                        logger.info("[START OUTPUT] " + line);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.log(Level.SEVERE, "Error reading start output", e);
                 }
             });
 
-            // Error messages
-            StringBuilder error = new StringBuilder();
             Thread errorThread = new Thread(() -> {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(startProcess.getErrorStream()))) {
                     String line;
                     while ((line = errorReader.readLine()) != null) {
-                        error.append(line).append(System.lineSeparator());
-                        System.err.println("[START ERROR] " + line);
+                        logger.warning("[START ERROR] " + line);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.log(Level.SEVERE, "Error reading start error output", e);
                 }
             });
 
@@ -78,125 +77,81 @@ public class KubernetesDeployer {
             outputThread.join();
             errorThread.join();
 
-            // Check the exit value of the process
             int exitValue = startProcess.exitValue();
             if (exitValue != 0) {
-                System.err.println("Critical error starting Minikube. Exit Code: " + exitValue);
-                System.err.println("Error Details: " + error);
+                logger.severe("Critical error starting Minikube. Exit Code: " + exitValue);
                 return false;
             }
 
-            if (!error.isEmpty()) {
-                System.err.println("Warning during Minikube startup: " + error);
-            }
-
-            System.out.println("Minikube started successfully.");
+            logger.info("Minikube started successfully.");
             return true;
-
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Failed to start Minikube.");
+            logger.log(Level.SEVERE, "Failed to start Minikube.", e);
             return false;
         }
     }
 
-    // Method to stop Minikube
     public static boolean stopMinikube() {
         try {
-            System.out.println("Stopping Minikube...");
+            logger.info("Stopping Minikube...");
             ProcessBuilder stopBuilder = new ProcessBuilder("minikube", "stop");
             Process stopProcess = stopBuilder.start();
             stopProcess.waitFor();
 
-            System.out.println("Minikube stopped successfully.");
+            logger.info("Minikube stopped successfully.");
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed to stop Minikube.");
+            logger.log(Level.SEVERE, "Failed to stop Minikube.", e);
             return false;
         }
     }
-    // Method to create the "user" namespace
+
     public static void createNamespace() {
         try {
+            logger.info("Creating namespace 'user'...");
             ProcessBuilder namespace = new ProcessBuilder("kubectl", "create", "namespace", "user");
             Process process = namespace.start();
 
-            BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            BufferedReader stdOutput = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            try (BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                 BufferedReader stdOutput = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
 
-            String line;
-            boolean namespaceExists = false;
-            while ((line = stdError.readLine()) != null) {
-                System.err.println("ERROR: " + line);
-                if (line.contains("already exists")) {
-                    namespaceExists = true;
+                String line;
+                boolean namespaceExists = false;
+                while ((line = stdError.readLine()) != null) {
+                    logger.warning("ERROR: " + line);
+                    if (line.contains("already exists")) {
+                        namespaceExists = true;
+                    }
+                }
+                while ((line = stdOutput.readLine()) != null) {
+                    logger.info("OUTPUT: " + line);
+                }
+
+                process.waitFor();
+
+                if (!namespaceExists) {
+                    logger.info("Namespace 'user' created successfully.");
+                } else {
+                    logger.info("Namespace 'user' already exists.");
                 }
             }
-            while ((line = stdOutput.readLine()) != null) {
-                System.out.println("OUTPUT: " + line);
-            }
-            process.waitFor();
-
-            if (!namespaceExists) {
-                System.out.println("Namespace 'user' created successfully.");
-            } else {
-                System.out.println("Namespace 'user' already exists.");
-            }
-
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed to create namespace.");
+            logger.log(Level.SEVERE, "Failed to create namespace 'user'.", e);
         }
     }
 
-    // Method to delete the "user" namespace
     public static void deleteUserNamespace() {
         try {
-            System.out.println("Deleting namespace 'user'...");
+            logger.info("Deleting namespace 'user'...");
             ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", "user");
             Process process = deleteNamespace.start();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String line;
-            boolean namespaceNotFound = false;
-
-            while ((line = reader.readLine()) != null) {
-                System.err.println("[ERROR] " + line);
-                if (line.contains("not found")) {
-                    namespaceNotFound = true;
-                }
-            }
-
-            process.waitFor();
-
-            if (namespaceNotFound) {
-                System.out.println("Namespace 'user' does not exist.");
-            } else {
-                System.out.println("Namespace 'user' deleted successfully.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed to delete namespace 'user'.");
-        }
-    }
-
-    // Method to delete the "pattern" and "proxy" namespaces
-    public static void deletePatternNamespace() {
-        String[] namespaces = {"pattern", "proxy"};
-
-        for (String namespace : namespaces) {
-            try {
-                System.out.println("Deleting namespace '" + namespace + "'...");
-                ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", namespace);
-                Process process = deleteNamespace.start();
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
                 boolean namespaceNotFound = false;
 
                 while ((line = reader.readLine()) != null) {
-                    System.err.println("[ERROR] " + line);
+                    logger.warning("[ERROR] " + line);
                     if (line.contains("not found")) {
                         namespaceNotFound = true;
                     }
@@ -205,34 +160,67 @@ public class KubernetesDeployer {
                 process.waitFor();
 
                 if (namespaceNotFound) {
-                    System.out.println("Namespace '" + namespace + "' does not exist.");
+                    logger.info("Namespace 'user' does not exist.");
                 } else {
-                    System.out.println("Namespace '" + namespace + "' deleted successfully.");
+                    logger.info("Namespace 'user' deleted successfully.");
+                }
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to delete namespace 'user'.", e);
+        }
+    }
+
+    public static void deletePatternNamespace() {
+        String[] namespaces = {"pattern", "proxy"};
+
+        for (String namespace : namespaces) {
+            try {
+                logger.info("Deleting namespace '" + namespace + "'...");
+                ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", namespace);
+                Process process = deleteNamespace.start();
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    boolean namespaceNotFound = false;
+
+                    while ((line = reader.readLine()) != null) {
+                        logger.warning("[ERROR] " + line);
+                        if (line.contains("not found")) {
+                            namespaceNotFound = true;
+                        }
+                    }
+
+                    process.waitFor();
+
+                    if (namespaceNotFound) {
+                        logger.info("Namespace '" + namespace + "' does not exist.");
+                    } else {
+                        logger.info("Namespace '" + namespace + "' deleted successfully.");
+                    }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                System.out.println("An error occurred while trying to delete namespace '" + namespace + "'.");
+                logger.log(Level.SEVERE, "An error occurred while trying to delete namespace '" + namespace + "'.", e);
             }
         }
     }
 
     public static void applyYamlFile(String filePath) {
         try {
+            logger.info("Applying configuration from file: " + filePath);
             ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");
             Process process = apply.start();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info(line);
+                }
             }
+
             process.waitFor();
-
-            System.out.println("Configuration applied successfully.");
-
+            logger.info("Configuration applied successfully.");
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Failed to apply configuration.");
+            logger.log(Level.SEVERE, "Failed to apply configuration.", e);
         }
     }
 }

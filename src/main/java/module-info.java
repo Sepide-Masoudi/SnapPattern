@@ -5,6 +5,7 @@ module com.example.design_pattern_prototyping {
     requires java.net.http;
     requires org.json;
     requires com.fasterxml.jackson.databind;
+    requires java.logging;
 
 
     opens com.example.design_pattern_prototyping to javafx.fxml;

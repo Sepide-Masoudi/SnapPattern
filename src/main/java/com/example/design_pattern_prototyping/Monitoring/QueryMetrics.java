@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class QueryMetrics {
+
+    private static final Logger logger = Logger.getLogger(QueryMetrics.class.getName());
 
     private final PrometheusClient prometheusClient;
     private final ObjectMapper objectMapper;
@@ -32,16 +36,15 @@ public class QueryMetrics {
     }
 
     private String queryAndExtract(String promql) throws Exception {
-        System.out.println("Executing PromQL: " + promql); // Log PromQL query
+        logger.info("Executing PromQL: " + promql);
         String response = prometheusClient.queryPrometheus(promql);
-        System.out.println("Response: " + response); // Log raw response
+        logger.info("Response: " + response);
         return extractMetricValue(response);
     }
 
     public Map<String, String> queryAllMetrics(String namespace) {
         Map<String, String> metrics = new HashMap<>();
         try {
-            // Kepler-specific metrics
             metrics.put("cpuUsage", queryAndExtract("rate(kepler_container_cpu_usage_total[5m])"));
             metrics.put("memoryUsage", queryAndExtract("kepler_container_memory_usage_bytes"));
             metrics.put("nodeEnergyConsumption", queryAndExtract("rate(kepler_node_energy_joules_total[5m])"));
@@ -49,7 +52,7 @@ public class QueryMetrics {
             metrics.put("energyEfficiency", queryAndExtract(
                     "rate(kepler_container_energy_joules_total[5m]) / rate(kepler_container_cpu_usage_total[5m])"));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to query metrics", e);
             metrics.put("error", "Failed to query metrics: " + e.getMessage());
         }
         return metrics;
