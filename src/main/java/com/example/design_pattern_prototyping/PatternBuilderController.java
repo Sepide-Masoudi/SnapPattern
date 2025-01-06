@@ -1,5 +1,6 @@
 package com.example.design_pattern_prototyping;
 
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
 import com.example.design_pattern_prototyping.pattern_generator.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -42,7 +43,6 @@ public class PatternBuilderController {
             try {
                 boolean minikubeStarted = KubernetesDeployer.startMinikube();
                 if (minikubeStarted) {
-                    System.out.println("Minikube started successfully.");
                     javafx.application.Platform.runLater(() -> {
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
                         alert.setTitle("Minikube Start");
@@ -51,7 +51,6 @@ public class PatternBuilderController {
                         alert.showAndWait();
                     });
                 } else {
-                    System.out.println("Failed to start Minikube.");
                     javafx.application.Platform.runLater(() -> {
                         Alert alert = new Alert(Alert.AlertType.ERROR);
                         alert.setTitle("Minikube Start");
@@ -165,7 +164,7 @@ public class PatternBuilderController {
 
     //Deploy YAML Configuration for user application
     @FXML
-    public void deployCluster() {
+    public void deployApplication() {
         if (yamlFile != null) {
             System.out.println("Deploying cluster with configuration: " + yamlFile.getAbsolutePath());
 
@@ -179,8 +178,6 @@ public class PatternBuilderController {
                         System.out.println("Namespace created successfully.");
                         KubernetesDeployer.applyYamlFile(yamlFile.getAbsolutePath());
                         System.out.println("YAML file deployed successfully.");
-
-                        javafx.application.Platform.runLater(() -> step2Box.setVisible(true));
                     } else {
                         System.out.println("Failed to start Minikube. Deployment aborted.");
                     }
@@ -196,13 +193,13 @@ public class PatternBuilderController {
     @FXML
     public void handlePatternSelection() {
         String selectedPattern = patternDropdown.getValue();
+        patternFieldsBox.setVisible(true);
         if ("Async Request Reply".equals(selectedPattern)) {
             asyncRequestReplyFields.setVisible(true);
             gatewayOffloadingFields.setVisible(false);
         } else if ("Gateway Offloading".equals(selectedPattern)) {
             asyncRequestReplyFields.setVisible(false);
             gatewayOffloadingFields.setVisible(true);
-            patternFieldsBox.setVisible(true);
         } else {
             asyncRequestReplyFields.setVisible(false);
             gatewayOffloadingFields.setVisible(false);

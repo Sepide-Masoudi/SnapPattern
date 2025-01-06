@@ -104,21 +104,22 @@ public class WorkloadController {
 
                 int numUsers, rampUp, duration;
                 switch (workloadLevel) {
-                    case "High" -> {
+                    case "High":
                         numUsers = 200;
                         rampUp = 20;
                         duration = 120;
-                    }
-                    case "Medium" -> {
+                        break;
+                    case "Medium":
                         numUsers = 50;
                         rampUp = 10;
                         duration = 60;
-                    }
-                    case "Low", default -> {
+                        break;
+                    case "Low":
+                    default:
                         numUsers = 10;
                         rampUp = 5;
                         duration = 30;
-                    }
+                        break;
                 }
                 System.out.println("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
                 //TODO Switch absolute for relative Paths here

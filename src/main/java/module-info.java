@@ -11,4 +11,6 @@ module com.example.design_pattern_prototyping {
     exports com.example.design_pattern_prototyping;
     exports com.example.design_pattern_prototyping.pattern_generator;
     opens com.example.design_pattern_prototyping.pattern_generator to javafx.fxml;
+    exports com.example.design_pattern_prototyping.Kubernetes;
+    opens com.example.design_pattern_prototyping.Kubernetes to javafx.fxml;
 }

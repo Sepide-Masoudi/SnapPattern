@@ -1,4 +1,4 @@
-package com.example.design_pattern_prototyping.pattern_generator;
+package com.example.design_pattern_prototyping.Kubernetes;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

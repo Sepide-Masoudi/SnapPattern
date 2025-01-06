@@ -37,7 +37,7 @@ public class MetricsController {
         this.queryMetrics = new QueryMetrics();
     }
 
-    //TODO If Monitoring Stack Deployment failed statusLabel should return this.
+    //TODO If Monitoring Stack Deployment failed statusLabel/Logs should return this.
     public void deployMetrics() {
         deployMetricsButton.setDisable(true); // Disable the button during setup
         statusLabel.setText("Setting up monitoring stack...");
