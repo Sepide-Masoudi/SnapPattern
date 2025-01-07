@@ -8,10 +8,10 @@ public class DeployMonitoringStack {
 
     private static final Logger logger = Logger.getLogger(DeployMonitoringStack.class.getName());
 
-    public void deployMonitoringStack() {
+    public boolean deployMonitoringStack() {
         try {
             // Step 1: Add Helm repositories
-            System.out.println("Adding Helm repositories...");
+            logger.info("Adding Helm repositories...");
             runCommand("helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts");
             runCommand("helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart");
             runCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts");
@@ -19,16 +19,16 @@ public class DeployMonitoringStack {
             runCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
 
             // Step 2: Update Helm repositories
-            System.out.println("Updating Helm repositories...");
+            logger.info("Updating Helm repositories...");
             runCommand("helm", "repo", "update");
 
             // Step 3: Create namespaces
-            System.out.println("Creating namespaces...");
-            runCommand("kubectl", "create", "namespace", "monitoring");
-            runCommand("kubectl", "create", "namespace", "istio-system");
+            logger.info("Creating namespaces...");
+            createNamespaceIfNotExists("monitoring");
+            createNamespaceIfNotExists("istio-system");
 
-            // Step 4: Install or upgrade Tools
-            System.out.println("Installing Prometheus...");
+            // Step 4: Install or upgrade tools
+            logger.info("Installing Prometheus...");
             runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring");
 
             logger.info("Installing Kepler...");
@@ -59,7 +59,7 @@ public class DeployMonitoringStack {
 
             // TODO NOTE: How to fetch Endpints dynamically with Kubernetes Commands
             System.out.println("Installing Jaeger...");
-            runCommand("helm", "install", "jaeger", "jaegertracing/jaeger",
+            runCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
                     "--set", "agent.enabled=false",
                     "--set", "collector.enabled=true",
@@ -67,22 +67,37 @@ public class DeployMonitoringStack {
                     "--set", "ui.enabled=true");
 
             logger.info("Monitoring stack deployed successfully.");
-
+            return true;
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error deploying the monitoring stack", e);
+            return false;
         }
     }
 
-    private void runCommand(String... command) {
+    private void createNamespaceIfNotExists(String namespace) {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.inheritIO();
-            int exitCode = processBuilder.start().waitFor();
-            if (exitCode != 0) {
-                logger.warning("Command failed: " + String.join(" ", command));
+            // Check if the namespace already exists
+            ProcessBuilder processBuilder = new ProcessBuilder("kubectl", "get", "namespace", namespace);
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                logger.info("Namespace '" + namespace + "' already exists. Skipping creation.");
+            } else {
+                logger.info("Namespace '" + namespace + "' does not exist. Creating...");
+                runCommand("kubectl", "create", "namespace", namespace);
             }
         } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error executing command: " + String.join(" ", command), e);
+            logger.log(Level.SEVERE, "Error checking/creating namespace: " + namespace, e);
+        }
+    }
+
+    private void runCommand(String... command) throws IOException, InterruptedException {
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.inheritIO();
+        int exitCode = processBuilder.start().waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
         }
     }
 }

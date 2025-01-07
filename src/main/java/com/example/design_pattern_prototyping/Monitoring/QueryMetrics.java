@@ -24,7 +24,7 @@ public class QueryMetrics {
         JsonNode rootNode = objectMapper.readTree(jsonResponse);
         if ("success".equals(rootNode.path("status").asText())) {
             JsonNode results = rootNode.path("data").path("result");
-            if (results.isArray() && results.size() > 0) {
+            if (results.isArray() && !results.isEmpty()) {
                 // Extract the first result's value array (timestamp and metric value)
                 JsonNode valueArray = results.get(0).path("value");
                 if (valueArray.isArray() && valueArray.size() == 2) {

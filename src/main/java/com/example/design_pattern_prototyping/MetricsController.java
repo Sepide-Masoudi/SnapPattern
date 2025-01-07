@@ -41,28 +41,32 @@ public class MetricsController {
         this.queryMetrics = new QueryMetrics();
     }
 
-    //TODO If Monitoring Stack Deployment failed statusLabel/Logs should return this.
+    @FXML
     public void deployMetrics() {
         deployMetricsButton.setDisable(true); // Disable the button during setup
-        statusLabel.setText("Setting up monitoring stack...");
+        statusLabel.setText("Deploying monitoring stack...");
         logger.info("Starting deployment of monitoring stack...");
 
-        // Run setup in a background thread
         new Thread(() -> {
+            boolean success = false;
             try {
-                deployMonitoringStack.deployMonitoringStack();
-                javafx.application.Platform.runLater(() -> {
-                    statusLabel.setText("Monitoring stack set up successfully.");
+                success = deployMonitoringStack.deployMonitoringStack();
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Unexpected error during monitoring stack deployment", e);
+            }
+
+            final boolean deploymentSuccess = success;
+            javafx.application.Platform.runLater(() -> {
+                if (deploymentSuccess) {
+                    statusLabel.setText("Monitoring stack deployed successfully.");
                     metricsSetupBox.setVisible(true);
                     metricsSetupBox.setManaged(true);
                     logger.info("Monitoring stack deployed successfully.");
-                });
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Error setting up monitoring stack", e);
-                javafx.application.Platform.runLater(() -> statusLabel.setText("Error setting up monitoring stack."));
-            } finally {
-                javafx.application.Platform.runLater(() -> deployMetricsButton.setDisable(false));
-            }
+                } else {
+                    statusLabel.setText("Error deploying monitoring stack.");
+                }
+                deployMetricsButton.setDisable(false);
+            });
         }).start();
     }
 
