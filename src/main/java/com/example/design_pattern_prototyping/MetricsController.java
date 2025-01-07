@@ -1,8 +1,6 @@
 package com.example.design_pattern_prototyping;
 
-import com.example.design_pattern_prototyping.Monitoring.DeployMonitoringStack;
-import com.example.design_pattern_prototyping.Monitoring.QueryMetrics;
-import com.example.design_pattern_prototyping.Monitoring.MetricsVisualizer;
+import com.example.design_pattern_prototyping.Monitoring.*;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -15,19 +13,20 @@ import java.io.File;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-// TODO Add UI Alerts for Deployment status and metrics retrieval like in workloads Tab
 
 public class MetricsController {
 
     private static final String NAMESPACE = "user|pattern";
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
 
+    @FXML public Button restartPortForwardingButton;
+    @FXML public Button stopPortForwardingButton;
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
-    @FXML private VBox metricsSetupBox;
-    @FXML private Label statusLabel;
-    @FXML private Button deployMetricsButton;
-
+    @FXML public Button deployMetricsButton;
+    @FXML public VBox metricsSetupBox;
+    @FXML public Label statusLabel;
+    @FXML public Button loadDashboard;
     private final DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
 
@@ -39,6 +38,20 @@ public class MetricsController {
     public void initialize() {
         logger.info("Initializing MetricsController...");
         this.queryMetrics = new QueryMetrics();
+    }
+
+    @FXML
+    private void restartPortForwarding() {
+        logger.info("Restarting port forwarding...");
+        PrometheusClient.startPortForwarding();
+        GrafanaClient.startPortForwarding();
+    }
+
+    @FXML
+    private void stopPortForwarding() {
+        logger.info("Stopping port forwarding...");
+        PrometheusClient.stopPortForwarding();
+        GrafanaClient.stopPortForwarding();
     }
 
     @FXML
@@ -62,6 +75,10 @@ public class MetricsController {
                     metricsSetupBox.setVisible(true);
                     metricsSetupBox.setManaged(true);
                     logger.info("Monitoring stack deployed successfully.");
+
+                    // Start port forwarding for Prometheus and Grafana
+                    PrometheusClient.startPortForwarding();
+                    GrafanaClient.startPortForwarding();
                 } else {
                     statusLabel.setText("Error deploying monitoring stack.");
                 }
@@ -116,12 +133,7 @@ public class MetricsController {
             Label noPlotsLabel = new Label("No plots found in the results folder.");
             plotLayout.getChildren().add(noPlotsLabel);
             logger.warning("No plot files were found in the 'Python/results' folder.");
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("No Plots Found");
-            alert.setHeaderText(null);
-            alert.setContentText("There are no plot files in the results folder. Please generate metrics to view plots.");
-            alert.showAndWait();
+            showAlert("No Plots Found", "There are no plot files in the results folder. Please generate metrics to view plots.", Alert.AlertType.INFORMATION);
         }
 
         ScrollPane scrollPane = new ScrollPane(plotLayout);
@@ -130,4 +142,22 @@ public class MetricsController {
         plotViewerStage.setScene(plotScene);
         plotViewerStage.show();
     }
+    @FXML
+    private void loadGrafanaDashboard() {
+        try {
+            GrafanaClient.startGrafanaDashboard();
+        } catch (Exception e) {
+            showAlert("Error", "Unable to open Grafana Dashboard. Please make sure port forwarding is active and try again.", Alert.AlertType.ERROR);
+        }
+    }
+
+    private void showAlert(String title, String message, Alert.AlertType alertType) {
+        System.out.println("Showing alert - " + title + ": " + message);
+        Alert alert = new Alert(alertType);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
 }

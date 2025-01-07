@@ -8,26 +8,41 @@
     </top>
 
     <center>
-        <VBox spacing="15.0" style="-fx-padding: 20.0;">
-            <!-- Step 1: Deploy Monitoring Stack -->
-            <HBox spacing="10.0">
-                <Button fx:id="deployMetricsButton" text="Deploy Monitoring Stack" onAction="#deployMetrics"/>
-            </HBox>
+        <TabPane>
+            <!-- Monitoring Setup Tab -->
+            <Tab text="Monitoring Setup" closable="false">
+                <VBox spacing="15.0" style="-fx-padding: 20.0;">
+                    <!-- Deploy Monitoring Stack -->
+                    <HBox spacing="10.0">
+                        <Button fx:id="deployMetricsButton" text="Deploy Monitoring Stack" onAction="#deployMetrics"/>
+                    </HBox>
 
-            <Label fx:id="statusLabel" style="-fx-text-fill: gray; -fx-padding: 5.0;"/>
+                    <Label fx:id="statusLabel" style="-fx-text-fill: gray; -fx-padding: 5.0;"/>
 
-            <!-- Step 2: Input Fields -->
-            <VBox spacing="10.0" fx:id="metricsSetupBox">
+                    <!-- Fetch Metrics Button -->
+                    <VBox spacing="10.0" fx:id="metricsSetupBox">
+                        <HBox spacing="10.0">
+                            <Button fx:id="getMetricsButton" text="Get Metrics" onAction="#generateMetrics"/>
+                        </HBox>
+                        <HBox spacing="10.0">
+                            <Button fx:id="viewPlotsButton" text="View Plots" onAction="#viewPlots"/>
+                        </HBox>
 
-                <!-- Fetch Metrics Button -->
-                <HBox spacing="10.0">
-                    <Button fx:id="getMetricsButton" text="Get Metrics" onAction="#generateMetrics"/>
-                </HBox>
-                <HBox spacing="10.0">
-                    <Button fx:id="viewPlotsButton" text="View Plots" onAction="#viewPlots"/>
-                </HBox>
+                        <!-- Port Forwarding Controls -->
+                        <HBox spacing="10.0">
+                            <Button fx:id="restartPortForwardingButton" text="Restart Port Forwarding" onAction="#restartPortForwarding"/>
+                            <Button fx:id="stopPortForwardingButton" text="Stop Port Forwarding" onAction="#stopPortForwarding"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </Tab>
 
-            </VBox>
-        </VBox>
+            <!-- Grafana Dashboard Tab -->
+            <Tab text="Grafana Dashboard" closable="false">
+                <VBox spacing="15.0" style="-fx-padding: 20.0;">
+                    <Button fx:id="loadDashboard" text="Load Grafana Dashboard" onAction="#loadGrafanaDashboard"/>
+                </VBox>
+            </Tab>
+        </TabPane>
     </center>
 </BorderPane>
