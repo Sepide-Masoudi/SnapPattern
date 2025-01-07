@@ -122,13 +122,13 @@ public class WorkloadController {
                         break;
                 }
                 System.out.println("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
-                //TODO Switch absolute for relative Paths here
-                String jmeterPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\apache-jmeter-5.6.3\\bin\\ApacheJMeter.jar";
-                File jmeterFile = new File(jmeterPath);
 
-                String logDirectoryPath = "C:\\Users\\markh\\Documents\\4_Master\\Design_Pattern_Prototyping\\src\\main\\resources\\workloads";
-                File logDirectory = new File(logDirectoryPath);
-                String logFilePath = new File(logDirectory, "workload_results_1" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
+                Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
+                File jmeterFile = jmeterPath.toFile();
+
+                Path logDirectoryPath = Paths.get("src/main/resources/workloads");
+                File logDirectory = logDirectoryPath.toFile();
+                String logFilePath = new File(logDirectory, "workload_results" + workloadLevel.toLowerCase() + ".log").getAbsolutePath();
 
                 if (!jmeterFile.exists()) {
                     System.out.println("JMeter JAR file not found: " + jmeterFile.getAbsolutePath());

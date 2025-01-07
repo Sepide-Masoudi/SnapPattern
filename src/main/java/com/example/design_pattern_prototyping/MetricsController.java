@@ -95,30 +95,34 @@ public class MetricsController {
         VBox plotLayout = new VBox(10);
         plotLayout.setStyle("-fx-padding: 10; -fx-alignment: center; -fx-background-color: #f0f0f0;");
 
-        File folder = new File("../../../../../Python/results");
-        if (folder.exists() && folder.isDirectory()) {
-            File[] plotFiles = folder.listFiles((dir, name) -> name.endsWith(".png"));
-            if (plotFiles != null && plotFiles.length > 0) {
-                for (File plotFile : plotFiles) {
-                    Image image = new Image(plotFile.toURI().toString());
-                    ImageView imageView = new ImageView(image);
-                    imageView.setFitWidth(600);
-                    imageView.setPreserveRatio(true);
-                    plotLayout.getChildren().add(imageView);
-                }
-                logger.info("Plots loaded successfully.");
-            } else {
-                Label noPlotsLabel = new Label("No plots found in the results folder.");
-                plotLayout.getChildren().add(noPlotsLabel);
-                logger.warning("No plots found in the results folder.");
+        File folder = new File("Python/results");
+
+        File[] plotFiles = folder.listFiles((dir, name) -> name.endsWith(".png"));
+
+        if (plotFiles != null && plotFiles.length > 0) {
+            for (File plotFile : plotFiles) {
+                Image image = new Image(plotFile.toURI().toString());
+                ImageView imageView = new ImageView(image);
+                imageView.setFitWidth(600);
+                imageView.setPreserveRatio(true);
+                plotLayout.getChildren().add(imageView);
             }
+            logger.info("Plots loaded successfully. Total plots: " + plotFiles.length);
         } else {
-            Label errorLabel = new Label("Results folder not found.");
-            plotLayout.getChildren().add(errorLabel);
-            logger.severe("Results folder not found.");
+            Label noPlotsLabel = new Label("No plots found in the results folder.");
+            plotLayout.getChildren().add(noPlotsLabel);
+            logger.warning("No plot files were found in the 'Python/results' folder.");
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("No Plots Found");
+            alert.setHeaderText(null);
+            alert.setContentText("There are no plot files in the results folder. Please generate metrics to view plots.");
+            alert.showAndWait();
         }
 
-        Scene plotScene = new Scene(plotLayout, 800, 600);
+        ScrollPane scrollPane = new ScrollPane(plotLayout);
+        scrollPane.setFitToWidth(true);
+        Scene plotScene = new Scene(scrollPane, 800, 600);
         plotViewerStage.setScene(plotScene);
         plotViewerStage.show();
     }
