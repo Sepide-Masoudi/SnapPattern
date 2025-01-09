@@ -1,11 +1,21 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import io.kubernetes.client.PortForward;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.Configuration;
+import io.kubernetes.client.util.Config;
+import io.kubernetes.client.util.Streams;
+
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.Socket;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,28 +24,45 @@ import java.util.logging.Logger;
 // TODO Add Logging for Port Forwarding
 public class PrometheusClient {
     private static final Logger logger = Logger.getLogger(PrometheusClient.class.getName());
-    private static Process prometheusProcess;
+    private static final int LOCAL_PORT = 9090;
+    private static final int TARGET_PORT = 9090;
 
     public static void startPortForwarding() {
-        stopPortForwarding();
         new Thread(() -> {
             try {
-                prometheusProcess = new ProcessBuilder(
-                        "kubectl", "port-forward", "service/prometheus", "9090:9090", "-n", "monitoring"
-                ).start();
-                logger.info("Prometheus port forwarding started on http://localhost:9090");
-                prometheusProcess.waitFor();
-            } catch (InterruptedException | IOException e) {
+                // Set up the Kubernetes API client
+                ApiClient client = Config.defaultClient();
+                Configuration.setDefaultApiClient(client);
+
+                // Set the PortForward object and target port
+                PortForward forward = new PortForward();
+                List<Integer> ports = new ArrayList<>();
+                ports.add(TARGET_PORT);
+
+                // Fetch the pod name from environment variables (POD_NAME)
+                String podName = System.getenv("POD_NAME");
+
+                if (podName == null || podName.isEmpty()) {
+                    logger.severe("POD_NAME environment variable is not set.");
+                    return;
+                }
+
+                // Forward the port on the specified pod in the "monitoring" namespace
+                PortForward.PortForwardResult result = forward.forward("monitoring", podName, ports);
+
+                logger.info("Port forwarding started for Prometheus pod: " + podName);
+
+                // Set up the local server socket to handle connections
+                try (Socket socket = new Socket("127.0.0.1", LOCAL_PORT)) {
+                    logger.info("Connected to Prometheus port!");
+                    Streams.copy(result.getInputStream(TARGET_PORT), socket.getOutputStream());
+                    Streams.copy(socket.getInputStream(), result.getOutboundStream(TARGET_PORT));
+                }
+
+            } catch (IOException | ApiException e) {
                 logger.log(Level.SEVERE, "Error starting Prometheus port forwarding", e);
             }
         }).start();
-    }
-
-    public static void stopPortForwarding() {
-        if (prometheusProcess != null && prometheusProcess.isAlive()) {
-            prometheusProcess.destroy();
-            logger.info("Prometheus port forwarding stopped.");
-        }
     }
 
     public String queryPrometheus(String query) throws Exception {

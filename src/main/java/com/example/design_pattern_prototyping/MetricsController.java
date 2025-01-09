@@ -48,13 +48,6 @@ public class MetricsController {
     }
 
     @FXML
-    private void stopPortForwarding() {
-        logger.info("Stopping port forwarding...");
-        PrometheusClient.stopPortForwarding();
-        GrafanaClient.stopPortForwarding();
-    }
-
-    @FXML
     public void deployMetrics() {
         deployMetricsButton.setDisable(true); // Disable the button during setup
         statusLabel.setText("Deploying monitoring stack...");
@@ -144,10 +137,20 @@ public class MetricsController {
     }
     @FXML
     private void loadGrafanaDashboard() {
-        try {
-            GrafanaClient.startGrafanaDashboard();
-        } catch (Exception e) {
-            showAlert("Error", "Unable to open Grafana Dashboard. Please make sure port forwarding is active and try again.", Alert.AlertType.ERROR);
+        logger.info("Attempting to load Grafana dashboard...");
+        if (GrafanaClient.isPortForwardingActive()) {
+            try {
+                javafx.application.Platform.runLater(() -> {
+                    Stage dashboardStage = new Stage();
+                    new GrafanaClient().start(dashboardStage);
+                });
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to load Grafana dashboard", e);
+                showAlert("Error", "Unable to open Grafana Dashboard. Please make sure port forwarding is active and try again.", Alert.AlertType.ERROR);
+            }
+        } else {
+            logger.warning("Port forwarding is not active. Please restart port forwarding.");
+            showAlert("Port Forwarding Inactive", "Port forwarding is not active. Please restart port forwarding and try again.", Alert.AlertType.WARNING);
         }
     }
 

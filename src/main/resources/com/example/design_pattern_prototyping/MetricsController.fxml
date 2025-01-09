@@ -31,7 +31,6 @@
                         <!-- Port Forwarding Controls -->
                         <HBox spacing="10.0">
                             <Button fx:id="restartPortForwardingButton" text="Restart Port Forwarding" onAction="#restartPortForwarding"/>
-                            <Button fx:id="stopPortForwardingButton" text="Stop Port Forwarding" onAction="#stopPortForwarding"/>
                         </HBox>
                     </VBox>
                 </VBox>

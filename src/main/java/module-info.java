@@ -1,11 +1,14 @@
 module com.example.design_pattern_prototyping {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.web;
     requires org.yaml.snakeyaml;
     requires java.net.http;
     requires org.json;
     requires com.fasterxml.jackson.databind;
     requires java.logging;
+    requires io.kubernetes.client.java;
+    requires io.kubernetes.client.java.api;
 
 
     opens com.example.design_pattern_prototyping to javafx.fxml;

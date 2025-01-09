@@ -6,7 +6,7 @@ import json
 app = Flask(__name__)
 
 # Folder to save plots
-RESULTS_FOLDER = "results"
+RESULTS_FOLDER = "Python/results"
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 
