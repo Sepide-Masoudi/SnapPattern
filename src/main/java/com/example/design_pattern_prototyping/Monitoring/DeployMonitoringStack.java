@@ -1,5 +1,6 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,9 +28,12 @@ public class DeployMonitoringStack {
             createNamespaceIfNotExists("monitoring");
             createNamespaceIfNotExists("istio-system");
 
+            // Create Grafana ConfigMap
+            createConfigMap();
+
             // Step 4: Install or upgrade tools
             logger.info("Installing Prometheus...");
-            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring");
+            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "istio-enabled-values-yml");
 
             logger.info("Installing Kepler...");
             runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
@@ -90,6 +94,22 @@ public class DeployMonitoringStack {
         } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error checking/creating namespace: " + namespace, e);
         }
+    }
+
+    private void createConfigMap() throws IOException, InterruptedException {
+        String dashboardJsonPath = "src/main/resources/monitoring/Kepler-Exporter.json";
+        String configMapName = "grafana-dashboard-config";
+
+        File jsonFile = new File(dashboardJsonPath);
+        if (!jsonFile.exists()) {
+            throw new IOException("Dashboard JSON file not found at: " + dashboardJsonPath);
+        }
+
+        logger.info("Creating ConfigMap for Grafana dashboard...");
+        runCommand("kubectl", "create", "configmap", configMapName, "-n", "monitoring", "--from-file=" + jsonFile.getAbsolutePath());
+
+        logger.info("Labeling the ConfigMap as a Grafana dashboard...");
+        runCommand("kubectl", "label", "configmap", configMapName, "-n", "monitoring", "grafana_dashboard=1");
     }
 
     private void runCommand(String... command) throws IOException, InterruptedException {

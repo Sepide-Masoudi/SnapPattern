@@ -36,3 +36,17 @@ grafana:
     type: NodePort
   adminUser: "admin"
   adminPassword: "admin"
+  provisioning:
+    dashboards:
+      enabled: true
+      folder: "General"
+      files:
+        - /etc/grafana/provisioning/dashboards/Kepler-Exporter.json
+  extraVolumes:
+    - name: dashboard-volume
+      configMap:
+        name: grafana-dashboard-config
+  extraVolumeMounts:
+    - name: dashboard-volume
+      mountPath: /etc/grafana/provisioning/dashboards
+      readOnly: true
