@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 import matplotlib.pyplot as plt
 import os
-import json
 
 app = Flask(__name__)
 

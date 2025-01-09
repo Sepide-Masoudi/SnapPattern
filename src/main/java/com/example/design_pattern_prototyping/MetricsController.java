@@ -20,7 +20,6 @@ public class MetricsController {
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
 
     @FXML public Button restartPortForwardingButton;
-    @FXML public Button stopPortForwardingButton;
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
     @FXML public Button deployMetricsButton;
