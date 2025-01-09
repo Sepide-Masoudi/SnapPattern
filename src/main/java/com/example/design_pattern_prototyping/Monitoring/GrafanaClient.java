@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 public class GrafanaClient {
     private static final Logger logger = Logger.getLogger(GrafanaClient.class.getName());
-    private static final String GRAFANA_DASHBOARD_URL = "http://127.0.0.1:3000/d/abc123/my-dashboard?orgId=1";
+    private static final String GRAFANA_DASHBOARD_URL = "http://127.0.0.1:3000/d/NhnADUW4zIBM/kepler-exporter-dashboard?orgId=1";
     private static final int LOCAL_PORT = 3000;
     private static final int TARGET_PORT = 3000;
 
