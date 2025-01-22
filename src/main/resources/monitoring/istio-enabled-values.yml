@@ -1,8 +1,10 @@
-# custom-values.yaml
 prometheus:
   service:
     type: NodePort
   prometheusSpec:
+    extraEnv:
+      - name: PROMETHEUS_SERVICE_NAME
+        value: "prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local"
     additionalScrapeConfigs:
       - job_name: 'istio-mesh'
         kubernetes_sd_configs:
@@ -20,22 +22,3 @@ prometheus:
             target_label: __address__
             regex: (.+):(\d+)
             replacement: $1:15090  # Envoy's metrics port
-grafana:
-  service:
-    type: NodePort
-  adminUser: "admin"
-  adminPassword: "admin"
-  provisioning:
-    dashboards:
-      enabled: true
-      folder: "General"
-      files:
-        - /etc/grafana/provisioning/dashboards/Kepler-Exporter.json
-  extraVolumes:
-    - name: dashboard-volume
-      configMap:
-        name: grafana-dashboard-config
-  extraVolumeMounts:
-    - name: dashboard-volume
-      mountPath: /etc/grafana/provisioning/dashboards
-      readOnly: true

@@ -33,7 +33,7 @@ public class DeployMonitoringStack {
 
             // Step 4: Install or upgrade tools
             logger.info("Installing Prometheus...");
-            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "istio-enabled-values-yml");
+            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "src/main/resources/monitoring/istio-enabled-values.yml");
 
             logger.info("Installing Kepler...");
             runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
@@ -59,16 +59,18 @@ public class DeployMonitoringStack {
                     "--set", "values.global.proxy.envoyStatsMatcher.includeAll=true");
 
             logger.info("Labeling namespace for Istio injection...");
-            runCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
+            try {
+                runCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
+                logger.info("Successfully labeled the 'user' namespace with istio-injection=enabled.");
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
+            }
 
             // TODO NOTE: How to fetch Endpints dynamically with Kubernetes Commands
             System.out.println("Installing Jaeger...");
             runCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
-                    "--set", "agent.enabled=false",
-                    "--set", "collector.enabled=true",
-                    "--set", "query.enabled=true",
-                    "--set", "ui.enabled=true");
+                    "-f", "src/main/resources/monitoring/jaeger.yaml");
 
             logger.info("Monitoring stack deployed successfully.");
             return true;
@@ -97,19 +99,19 @@ public class DeployMonitoringStack {
     }
 
     private void createConfigMap() throws IOException, InterruptedException {
-        String dashboardJsonPath = "src/main/resources/monitoring/Kepler-Exporter.json";
-        String configMapName = "grafana-dashboard-config";
-
-        File jsonFile = new File(dashboardJsonPath);
-        if (!jsonFile.exists()) {
-            throw new IOException("Dashboard JSON file not found at: " + dashboardJsonPath);
+        logger.info("Checking if ConfigMap already exists...");
+        try {
+            runCommand("kubectl", "delete", "configmap", "grafana-dashboard-config", "-n", "monitoring");
+            logger.info("ConfigMap deleted. Recreating it...");
+        } catch (IOException e) {
+            logger.info("ConfigMap does not exist. Proceeding to create it...");
         }
 
-        logger.info("Creating ConfigMap for Grafana dashboard...");
-        runCommand("kubectl", "create", "configmap", configMapName, "-n", "monitoring", "--from-file=" + jsonFile.getAbsolutePath());
+        runCommand("kubectl", "create", "configmap", "grafana-dashboard-config", "-n", "monitoring",
+                "--from-file=src/main/resources/monitoring/Kepler-Exporter.json");
 
         logger.info("Labeling the ConfigMap as a Grafana dashboard...");
-        runCommand("kubectl", "label", "configmap", configMapName, "-n", "monitoring", "grafana_dashboard=1");
+        runCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", "monitoring", "grafana_dashboard=1", "--overwrite");
     }
 
     private void runCommand(String... command) throws IOException, InterruptedException {

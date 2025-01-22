@@ -83,4 +83,8 @@
             </VBox>
         </VBox>
     </center>
+
+    <bottom>
+        <Label fx:id="statusLabel" style="-fx-text-fill: gray; -fx-padding: 5.0;" />
+    </bottom>
 </BorderPane>

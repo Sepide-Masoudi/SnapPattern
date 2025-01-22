@@ -18,6 +18,7 @@ public class PatternBuilderController {
 
     private static final Logger logger = Logger.getLogger(PatternBuilderController.class.getName());
 
+    @FXML private Label statusLabel;
     @FXML private VBox patternFieldsBox;
     @FXML private ComboBox<String> patternDropdown;
     @FXML private VBox asyncRequestReplyFields;
@@ -33,12 +34,19 @@ public class PatternBuilderController {
     @FXML private TextField serviceHost;
     @FXML private TextField serviceEndpoint;
     @FXML private TextField serviceName;
-
     private File yamlFile;
+
+    @FXML
+    public void initialize() {
+        // Register this controller with the mediator
+        ControllerMediatorImpl.getInstance().registerPatternBuilderController(this);
+        logger.info("PatternBuilderController initialized.");
+    }
 
     @FXML
     public void startKubernetes() {
         logger.info("User requested to start Kubernetes...");
+        statusLabel.setText("Starting Kubernetes...");
 
         new Thread(() -> {
             try {
@@ -61,6 +69,7 @@ public class PatternBuilderController {
     @FXML
     public void stopKubernetes() {
         logger.info("User requested to stop Kubernetes...");
+        statusLabel.setText("Stopping Kubernetes...");
 
         new Thread(() -> {
             try {
@@ -87,12 +96,16 @@ public class PatternBuilderController {
         yamlFile = fileChooser.showOpenDialog(new Stage());
         if (yamlFile != null) {
             logger.info("YAML file selected: " + yamlFile.getAbsolutePath());
+            statusLabel.setText("YAML file selected: " + yamlFile.getName());
+        } else {
+            statusLabel.setText("No YAML file selected.");
         }
     }
 
     @FXML
     public void deleteApplication() {
         logger.info("User requested to delete the application...");
+        statusLabel.setText("Deleting application...");
 
         new Thread(() -> {
             try {
@@ -100,29 +113,36 @@ public class PatternBuilderController {
                 if (minikubeStarted) {
                     KubernetesDeployer.deleteUserNamespace();
                     KubernetesDeployer.deletePatternNamespace();
+                    logger.info("Application services deleted successfully...");
+                    javafx.application.Platform.runLater(() -> statusLabel.setText("Application deleted successfully."));
                 } else {
                     logger.warning("Failed to start Minikube. Deletion aborted.");
+                    javafx.application.Platform.runLater(() -> statusLabel.setText("Failed to start Kubernetes. Deletion aborted."));
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error during application deletion", e);
+                javafx.application.Platform.runLater(() -> statusLabel.setText("Error occurred during application deletion."));
             }
         }).start();
     }
-
     @FXML
     public void deletePattern() {
         logger.info("User requested to delete the pattern...");
+        statusLabel.setText("Deleting current pattern...");
 
         new Thread(() -> {
             try {
                 boolean minikubeStarted = KubernetesDeployer.startMinikube();
                 if (minikubeStarted) {
                     KubernetesDeployer.deletePatternNamespace();
+                    javafx.application.Platform.runLater(() -> statusLabel.setText("Pattern deleted successfully."));
                 } else {
                     logger.warning("Failed to start Minikube. Deletion aborted.");
+                    javafx.application.Platform.runLater(() -> statusLabel.setText("Failed to start Kubernetes. Deletion aborted."));
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error during pattern deletion", e);
+                javafx.application.Platform.runLater(() -> statusLabel.setText("Error occurred during pattern deletion."));
             }
         }).start();
     }
@@ -131,6 +151,7 @@ public class PatternBuilderController {
     public void deployApplication() {
         if (yamlFile != null) {
             logger.info("User requested to deploy the application with configuration: " + yamlFile.getAbsolutePath());
+            statusLabel.setText("Deploying applicaion configuration...");
 
             new Thread(() -> {
                 try {
@@ -138,11 +159,14 @@ public class PatternBuilderController {
                     if (minikubeStarted) {
                         KubernetesDeployer.createNamespace();
                         KubernetesDeployer.applyYamlFile(yamlFile.getAbsolutePath());
+                        javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {
                         logger.warning("Failed to start Minikube. Deployment aborted.");
+                        javafx.application.Platform.runLater(() -> statusLabel.setText("Failed to start Kubernetes. Deployment aborted."));
                     }
                 } catch (Exception e) {
                     logger.log(Level.SEVERE, "Error during application deployment", e);
+                    javafx.application.Platform.runLater(() -> statusLabel.setText("Error occurred during pattern deletion."));
                 }
             }).start();
         } else {
@@ -173,6 +197,8 @@ public class PatternBuilderController {
     public void buildPattern() {
         String selectedPattern = patternDropdown.getValue();
         logger.info("User requested to build pattern: " + selectedPattern);
+        statusLabel.setText("Deploying pattern: " + selectedPattern);
+
         Map<String, String> parameters = new HashMap<>();
 
         try {
@@ -186,7 +212,6 @@ public class PatternBuilderController {
                 parameters.put("RECEIVE_SERVICE_NAME", receivingServiceName.getText());
                 parameters.put("RECEIVE_SERVICE_ENDPOINT", receivingServiceEndpoint.getText());
                 parameters.put("RECEIVE_SERVICE_PORT", receivingServicePort.getText());
-
             } else if ("Gateway Offloading".equals(selectedPattern)) {
                 parameters.put("SERVICE_HOST", serviceHost.getText());
                 parameters.put("SERVICE_ENDPOINT", serviceEndpoint.getText());
@@ -196,12 +221,17 @@ public class PatternBuilderController {
             generator.generatePattern(yamlFilePath, parameters);
             generator.deployPattern();
 
-            logger.info("Pattern " + selectedPattern + " built and deployed successfully.");
-            showAlert(Alert.AlertType.INFORMATION, "Build Pattern", "Pattern " + selectedPattern + " built and deployed successfully.");
+            logger.info("Pattern " + selectedPattern + " deployed successfully.");
+            javafx.application.Platform.runLater(() -> statusLabel.setText("Pattern " + selectedPattern + " deployed successfully."));
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error during pattern generation or deployment", e);
+            javafx.application.Platform.runLater(() -> statusLabel.setText("Error occurred while building the pattern."));
             showAlert(Alert.AlertType.ERROR, "Build Pattern", "An error occurred while building the pattern: " + e.getMessage());
         }
+    }
+
+    public String getSelectedPattern(){
+        return patternDropdown.getValue();
     }
 
     private void showAlert(Alert.AlertType alertType, String title, String content) {

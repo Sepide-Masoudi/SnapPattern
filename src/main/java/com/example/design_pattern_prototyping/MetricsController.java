@@ -17,6 +17,8 @@ import java.util.logging.Logger;
 public class MetricsController {
 
     private static final String NAMESPACE = "user|pattern";
+    private static final String USER_NAMESPACE = "user";
+    private static final String PATTERN_NAMESPACE = "pattern";
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
 
     @FXML public Button restartPortForwardingButton;
@@ -26,17 +28,18 @@ public class MetricsController {
     @FXML public VBox metricsSetupBox;
     @FXML public Label statusLabel;
     @FXML public Button loadDashboard;
-    private final DeployMonitoringStack deployMonitoringStack;
+    private DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
-
-    public MetricsController() {
-        this.deployMonitoringStack = new DeployMonitoringStack();
-    }
+    private JaegerClient jaegerClient;
 
     @FXML
     public void initialize() {
-        logger.info("Initializing MetricsController...");
+        // Register this controller with the mediator
+        ControllerMediatorImpl.getInstance().registerMetricsController(this);
         this.queryMetrics = new QueryMetrics();
+        this.deployMonitoringStack = new DeployMonitoringStack();
+        this.jaegerClient = new JaegerClient();
+        logger.info("MetricsController initialized.");
     }
 
     @FXML
@@ -44,6 +47,7 @@ public class MetricsController {
         logger.info("Restarting port forwarding...");
         PrometheusClient.startPortForwarding();
         GrafanaClient.startPortForwarding();
+        JaegerClient.startJaegerPortForwarding();
     }
 
     @FXML
@@ -69,8 +73,9 @@ public class MetricsController {
                     logger.info("Monitoring stack deployed successfully.");
 
                     // Start port forwarding for Prometheus and Grafana
-                    PrometheusClient.startPortForwarding();
-                    GrafanaClient.startPortForwarding();
+                    //PrometheusClient.startPortForwarding();
+                    //GrafanaClient.startPortForwarding();
+                    //JaegerClient.startJaegerPortForwarding();
                 } else {
                     statusLabel.setText("Error deploying monitoring stack.");
                 }
@@ -79,7 +84,7 @@ public class MetricsController {
         }).start();
     }
 
-    //Query Metrics and Generate Plots and Results File
+    // Query Metrics and Generate Plots and Results File
     @FXML
     private void generateMetrics() {
         logger.info("Generating metrics...");
@@ -91,8 +96,22 @@ public class MetricsController {
                     logger.warning("Error fetching metrics: " + metrics.get("error"));
                 } else {
                     logger.info("Metrics fetched successfully: " + metrics);
-                    MetricsVisualizer.sendMetricsToPython(metrics);
+
+                    ControllerMediator mediator = ControllerMediatorImpl.getInstance();
+                    String workloadLevel = mediator.getSelectedWorkloadLevel();
+                    String pattern = mediator.getSelectedPattern();
+                    MetricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
+
+                    String excelFilePath = "Python/results/metrics.xlsx";
+                    MetricsVisualizer.sendMetricsToPython(excelFilePath);
                 }
+                // Collect trace data for the "user" namespace
+                logger.info("Collecting trace data for namespace: " + USER_NAMESPACE);
+                jaegerClient.collectTraceData(USER_NAMESPACE, "Python/results/user-trace-data.json");
+
+                // Collect trace data for the "pattern" namespace
+                logger.info("Collecting trace data for namespace: " + PATTERN_NAMESPACE);
+                jaegerClient.collectTraceData(PATTERN_NAMESPACE, "Python/results/pattern-trace-data.json");
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
             }
@@ -134,6 +153,7 @@ public class MetricsController {
         plotViewerStage.setScene(plotScene);
         plotViewerStage.show();
     }
+
     @FXML
     private void loadGrafanaDashboard() {
         logger.info("Attempting to load Grafana dashboard...");
@@ -161,5 +181,4 @@ public class MetricsController {
         alert.setContentText(message);
         alert.showAndWait();
     }
-
 }

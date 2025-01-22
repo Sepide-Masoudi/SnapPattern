@@ -1,70 +1,105 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStream;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import org.json.JSONObject;
-
+// TODO Recieve Metric Plots back from the Python service to display in Window
 public class MetricsVisualizer {
 
-    // TODO Recieve Metric Plots back from the Python service to display in Window
-    public void displayMetrics(Map<String, String> metrics) {
-        System.out.println("Metrics:");
-        for (Map.Entry<String, String> entry : metrics.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue());
-        }
-    }
-    // TODO Replace HttpURLConnection library like Apache HttpClient
-    // and add retries, and timeouts.
-    public static void sendMetricsToPython(Map<String, String> metrics) {
-        try {
-            // Create JSON object using org.json library
-            JSONObject jsonMetrics = new JSONObject();
-            for (Map.Entry<String, String> entry : metrics.entrySet()) {
-                jsonMetrics.put(entry.getKey(), entry.getValue());
-            }
+    private static final Logger logger = Logger.getLogger(MetricsVisualizer.class.getName());
 
-            // Send HTTP POST request
-            URL url = new URL("http://127.0.0.1:5000/metrics");
+    public static void sendMetricsToPython(String excelFilePath) {
+        try {
+            URL url = new URL("http://127.0.0.1:5000/generate_metrics");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json; utf-8");
             connection.setDoOutput(true);
 
-            // Write JSON data to request body
+            // Create JSON payload with the file path
+            String jsonPayload = String.format("{\"file_path\": \"%s\"}", excelFilePath.replace("\\", "/"));
+
+            // Write JSON payload to request body
             try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = jsonMetrics.toString().getBytes(StandardCharsets.UTF_8);
+                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
 
-            // Handle response
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                System.out.println("Metrics sent successfully.");
+                logger.info("File path sent to Python service successfully.");
             } else {
-                System.err.println("Failed to send metrics. HTTP Code: " + responseCode);
+                logger.warning("Failed to send file path to Python service. HTTP Code: " + responseCode);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to send file path to Python service: " + e);
         }
     }
-    // TODO test how these results are formated, maybe use the JSON or requires conversion
-    public void saveMetricsToCSV(Map<String, String> metrics) {
-        String fileName = "metrics.csv";
-        try (FileWriter writer = new FileWriter(fileName)) {
-            writer.write("Metric,Value\n");
 
-            for (Map.Entry<String, String> entry : metrics.entrySet()) {
-                writer.write(entry.getKey() + "," + entry.getValue() + "\n");
+    public static void exportMetricsExcel(Map<String, String> metrics, String workload, String pattern) {
+        String path = "Python/results";
+        String fileName = path + "/metrics.xlsx";
+        Path filePath = Paths.get(fileName);
+        try (Workbook workbook = (Files.exists(filePath)
+                ? new XSSFWorkbook(Files.newInputStream(filePath))
+                : new XSSFWorkbook());
+             FileOutputStream outputStream = new FileOutputStream(fileName)) {
+
+            Sheet sheet = workbook.getSheet("Metrics");
+            if (sheet == null) {
+                sheet = workbook.createSheet("Metrics");
+
+                // Create header row
+                Row headerRow = sheet.createRow(0);
+                headerRow.createCell(0).setCellValue("Pattern");
+                headerRow.createCell(1).setCellValue("Workload Level");
+                headerRow.createCell(2).setCellValue("Timestamp");
+
+                // Add metric names to the header row dynamically
+                int columnIndex = 3;
+                for (String metricName : metrics.keySet()) {
+                    headerRow.createCell(columnIndex++).setCellValue(metricName);
+                }
             }
-            System.out.println("Metrics saved to " + fileName);
+
+            // Find the next empty row
+            int nextRowNum = sheet.getLastRowNum() + 1;
+            if (sheet.getRow(nextRowNum) != null) {
+                nextRowNum++;
+            }
+            Row valuesRow = sheet.createRow(nextRowNum);
+
+            valuesRow.createCell(0).setCellValue(pattern); // Selected pattern implementation
+            valuesRow.createCell(1).setCellValue(workload); // Selected workload level
+            valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+            int columnIndex = 3;
+            for (String metricValue : metrics.values()) {
+                valuesRow.createCell(columnIndex++).setCellValue(metricValue);
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < sheet.getRow(0).getLastCellNum(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(outputStream);
+            logger.info("Metrics exported to " + fileName);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to export metrics: " + e);
         }
     }
 }

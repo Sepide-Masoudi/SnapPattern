@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import os
 
@@ -8,44 +10,62 @@ app = Flask(__name__)
 RESULTS_FOLDER = "Python/results"
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
+EXCEL_FILE = os.path.join(RESULTS_FOLDER, "metrics.xlsx")
 
-@app.route('/metrics', methods=['POST'])
-def receive_metrics():
+
+@app.route('/generate_metrics', methods=['POST'])
+def generate_metrics():
     try:
-        # Parse the incoming JSON data
-        metrics = request.json
-        print("Received metrics:", metrics)
+        # Parse incoming request
+        data = request.json
+        file_path = data.get('file_path')
+        if not file_path or not os.path.exists(file_path):
+            return jsonify({"error": "Invalid or missing file_path"}), 400
 
-        # Generate and display plots
-        generate_plots(metrics)
+        # Read Excel file
+        df = pd.read_excel(file_path)
 
-        return jsonify({"message": "Metrics processed and plots created."}), 200
+        # Generate plots for each metric
+        generate_plots(df)
+
+        return jsonify({"message": "Plots generated successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-def generate_plots(metrics):
-    for metric_name, metric_value in metrics.items():
-        try:
-            # Assuming metrics values are strings that can be converted to floats
-            values = [float(v) for v in metric_value.split(",")] if "," in metric_value else [float(metric_value)]
+def generate_plots(df):
+    metric_columns = df.columns[3:]
 
-            # Create a simple bar chart
-            plt.figure(figsize=(8, 5))
-            plt.bar(range(len(values)), values, color="skyblue", edgecolor="black")
-            plt.title(f"{metric_name}")
-            plt.xlabel("Index" if len(values) > 1 else "Metric")
-            plt.ylabel(metric_name)
+    for metric_name in metric_columns:
+        try:
+            # Pivot the data for grouped bar plotting
+            pivot_table = df.pivot_table(
+                index="Pattern",
+                columns="Workload Level",
+                values=metric_name,
+                aggfunc=np.mean
+            )
+
+            # Plot grouped bar chart
+            plt.figure(figsize=(10, 6))
+            pivot_table.plot(kind="bar", width=0.7, edgecolor="black", colormap="viridis")
+
+            plt.title(f"{metric_name} by Pattern and Workload Level", fontsize=14)
+            plt.xlabel("Pattern", fontsize=12)
+            plt.ylabel(metric_name, fontsize=12)
+            plt.xticks(rotation=45, ha="right", fontsize=10)
+            plt.legend(title="Workload Level", fontsize=10)
             plt.grid(axis="y", linestyle="--", alpha=0.7)
 
             # Save the plot
-            plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}.png")
+            plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}_grouped.png")
+            plt.tight_layout()
             plt.savefig(plot_path)
             plt.close()
 
-            print(f"Plot saved for {metric_name} at {plot_path}")
+            print(f"Grouped bar plot saved for {metric_name} at {plot_path}")
         except Exception as e:
-            print(f"Error generating plot for {metric_name}: {e}")
+            print(f"Error generating grouped bar plot for {metric_name}: {e}")
 
 
 if __name__ == '__main__':

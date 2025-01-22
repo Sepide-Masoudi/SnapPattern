@@ -9,6 +9,9 @@ module com.example.design_pattern_prototyping {
     requires java.logging;
     requires io.kubernetes.client.java;
     requires io.kubernetes.client.java.api;
+    requires org.apache.poi.poi;
+    requires org.apache.poi.ooxml;
+    requires org.bouncycastle.pkix;
 
 
     opens com.example.design_pattern_prototyping to javafx.fxml;

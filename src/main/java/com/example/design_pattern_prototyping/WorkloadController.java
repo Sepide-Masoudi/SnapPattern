@@ -24,6 +24,32 @@ public class WorkloadController {
     @FXML
     private TextField hostnameField;
 
+    @FXML
+    public void initialize() {
+        // Register this controller with the mediator
+        ControllerMediatorImpl.getInstance().registerWorkloadController(this);
+
+        workloadLevelComboBox.getItems().addAll("Low", "Medium", "High");
+        workloadLevelComboBox.setValue("Low");
+        System.out.println("ComboBox initialized with default value: Low");
+
+        Path workloadDir = Paths.get("src/main/resources/workloads");
+
+        try (Stream<Path> stream = Files.list(workloadDir)) { // Use try-with-resources
+            stream.filter(Files::isRegularFile)
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .filter(fileName -> fileName.endsWith(".jmx"))
+                    .forEach(fileDropdown.getItems()::add);
+
+            if (!fileDropdown.getItems().isEmpty()) {
+                fileDropdown.setValue(fileDropdown.getItems().get(0)); // Set the first file as default selection
+            }
+        } catch (IOException e) {
+            showAlert("Error", "Failed to initialize file dropdown: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+        System.out.println("WorkloadController initialized.");
+    }
 
     @FXML
     public void uploadFile() {
@@ -56,29 +82,6 @@ public class WorkloadController {
         } else {
             System.out.println("No file selected for upload.");
             showAlert("Error", "No file selected. Please choose a file to upload.", Alert.AlertType.WARNING);
-        }
-    }
-
-    @FXML
-    public void initialize() {
-        workloadLevelComboBox.getItems().addAll("Low", "Medium", "High");
-        workloadLevelComboBox.setValue("Low");
-        System.out.println("ComboBox initialized with default value: Low");
-
-        Path workloadDir = Paths.get("src/main/resources/workloads");
-
-        try (Stream<Path> stream = Files.list(workloadDir)) { // Use try-with-resources
-            stream.filter(Files::isRegularFile)
-                    .map(Path::getFileName)
-                    .map(Path::toString)
-                    .filter(fileName -> fileName.endsWith(".jmx"))
-                    .forEach(fileDropdown.getItems()::add);
-
-            if (!fileDropdown.getItems().isEmpty()) {
-                fileDropdown.setValue(fileDropdown.getItems().get(0)); // Set the first file as default selection
-            }
-        } catch (IOException e) {
-            showAlert("Error", "Failed to initialize file dropdown: " + e.getMessage(), Alert.AlertType.ERROR);
         }
     }
 
@@ -183,6 +186,10 @@ public class WorkloadController {
                 showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
             }
         }
+    }
+
+    public String getSelectedWorkloadLevel() {
+        return workloadLevelComboBox.getValue();
     }
 
     private void showAlert(String title, String message, Alert.AlertType alertType) {
