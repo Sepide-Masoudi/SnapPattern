@@ -1,5 +1,6 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,21 +34,16 @@ public class DeployMonitoringStack {
             // Step 4: Install or upgrade tools
             logger.info("Installing Prometheus...");
             runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "src/main/resources/monitoring/istio-enabled-values.yml");
-            runCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/ServiceMonitor.yml");
-            runCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/PodMonitor.yml");
 
             logger.info("Installing Kepler...");
             runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
-                    "-f", "src/main/resources/monitoring/kepler-values.yml",
                     "--namespace", "monitoring",
-                    "--set", "securityContext.privileged=true",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
 
             logger.info("Installing Grafana...");
             runCommand("helm", "upgrade", "-install", "grafana", "grafana/grafana",
                     "--namespace", "monitoring",
-                    "-f", "src/main/resources/monitoring/grafana-values.yml",
                     "--set", "adminUser=admin",
                     "--set", "adminPassword=admin");
 
@@ -60,7 +56,6 @@ public class DeployMonitoringStack {
                     "--set", "meshConfig.defaultConfig.tracing.sampling=100",
                     "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger:9411",
                     "--set", "telemetry.enabled=true",
-                    "--set", "values.prometheus.enabled=true",
                     "--set", "values.global.proxy.envoyStatsMatcher.includeAll=true");
 
             logger.info("Labeling namespace for Istio injection...");
