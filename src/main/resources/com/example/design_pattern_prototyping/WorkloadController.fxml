@@ -22,7 +22,7 @@
             <!-- Set WebUI Hostname -->
             <HBox spacing="10.0">
                 <Label text="WebUI Hostname:"/>
-                <TextField fx:id="hostnameField" promptText="127.0.0.1"/>
+                <TextField fx:id="hostnameField" text="127.0.0.1" promptText="127.0.0.1"/>
             </HBox>
             <!-- Set Workload intensity -->
             <HBox spacing="10.0">
