@@ -1,0 +1,24 @@
+grafana:
+  sidecar:
+    dashboards:
+      enabled: true
+      label: "grafana_dashboard"
+      folder: "/var/lib/grafana/dashboards"
+
+  provisioning:
+    dashboards:
+      enabled: true
+      defaultFolderName: "General"
+      searchNamespace: monitoring
+      configMaps:
+        - grafana-dashboard-config
+
+  extraVolumes:
+    - name: dashboard-volume
+      configMap:
+        name: grafana-dashboard-config
+
+  extraVolumeMounts:
+    - name: dashboard-volume
+      mountPath: /var/lib/grafana/dashboards
+      readOnly: true

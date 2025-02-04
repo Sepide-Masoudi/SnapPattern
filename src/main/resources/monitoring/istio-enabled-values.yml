@@ -2,23 +2,26 @@ prometheus:
   service:
     type: NodePort
   prometheusSpec:
-    extraEnv:
-      - name: PROMETHEUS_SERVICE_NAME
-        value: "prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local"
+    serviceMonitorSelector:
+      matchLabels:
+        release: prometheus
+    podMonitorSelector:
+      matchLabels:
+        release: prometheus
     additionalScrapeConfigs:
       - job_name: 'istio-mesh'
         kubernetes_sd_configs:
           - role: pod
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_istio_io_rev]
+          - source_labels: [__meta_kubernetes_pod_label_istio]
             action: keep
-            regex: .+  # Include only Istio-injected pods
+            regex: pilot
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             action: replace
             target_label: __metrics_path__
-            replacement: /stats/prometheus  # Default metrics path for Istio sidecars
+            replacement: /metrics
           - source_labels: [__address__]
             action: replace
             target_label: __address__
             regex: (.+):(\d+)
-            replacement: $1:15090  # Envoy's metrics port
+            replacement: $1:15014
