@@ -9,6 +9,7 @@ import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -20,7 +21,10 @@ public class GrafanaClient {
     private static final int LOCAL_PORT = 3000;
     private static final int TARGET_PORT = 3000;
 
-    public static void startPortForwarding() {
+    private static Process grafanaProcess;
+
+    /**
+    public static void startPortForwarding2() {
         try {
             // Initialize the Kubernetes API client
             ApiClient client = Config.defaultClient();
@@ -32,6 +36,36 @@ public class GrafanaClient {
         } catch (Exception e) {
             logger.severe("Failed to initialize port forwarding: " + e.getMessage());
         }
+    }**/
+
+    public static void startPortForwarding() {
+        new Thread(() -> {
+            try {
+                // Start the port-forwarding process and keep a reference to it
+                grafanaProcess = new ProcessBuilder(
+                        "kubectl", "port-forward", "svc/prometheus-grafana", "3000:80", "-n", "monitoring"
+                ).start();
+                logger.info("Grafana port forwarding started on http://localhost:3000");
+
+                // Wait for the process to complete (blocking call)
+                grafanaProcess.waitFor();
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Error starting Grafana port forwarding", e);
+            }
+        }).start();
+
+        // Register a shutdown hook to terminate the process if it’s still running
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (grafanaProcess != null && grafanaProcess.isAlive()) {
+                logger.info("Terminating Grafana port forwarding...");
+                grafanaProcess.destroy();
+                try {
+                    grafanaProcess.waitFor();  // Wait for the process to terminate
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }));
     }
 
     public static boolean isPortForwardingActive() {

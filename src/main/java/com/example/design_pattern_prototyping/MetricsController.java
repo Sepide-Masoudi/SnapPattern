@@ -21,7 +21,7 @@ public class MetricsController {
     private static final String PATTERN_NAMESPACE = "pattern";
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
 
-    @FXML public Button restartPortForwardingButton;
+    @FXML public Button exposeServicesButton;
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
     @FXML public Button deployMetricsButton;
@@ -43,11 +43,11 @@ public class MetricsController {
     }
 
     @FXML
-    private void restartPortForwarding() {
-        logger.info("Restarting port forwarding...");
+    private void exposeMonitoringServices() {
+        logger.info("Starting port forwarding for monitoring services...");
         PrometheusClient.startPortForwarding();
         GrafanaClient.startPortForwarding();
-        JaegerClient.startJaegerPortForwarding();
+        JaegerClient.startPortForwarding();
     }
 
     @FXML
@@ -75,7 +75,7 @@ public class MetricsController {
                     // Start port forwarding for Prometheus and Grafana
                     //PrometheusClient.startPortForwarding();
                     //GrafanaClient.startPortForwarding();
-                    //JaegerClient.startJaegerPortForwarding();
+                    //JaegerClient.startPortForwarding();
                 } else {
                     statusLabel.setText("Error deploying monitoring stack.");
                 }

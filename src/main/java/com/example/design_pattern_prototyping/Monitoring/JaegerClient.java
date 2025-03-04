@@ -7,6 +7,7 @@ import io.kubernetes.client.util.Config;
 
 import java.io.BufferedReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -22,7 +23,9 @@ public class JaegerClient {
     private static final String SERVICE_NAME = "jaeger";
     private static final int LOCAL_PORT = 16686; // Port on localhost
     private static final int TARGET_PORT = 16686; // Port on the Jaeger pod
+    private static Process jaegerProcess;
 
+    /**
     public static void startJaegerPortForwarding() {
         try {
             // Initialize the Kubernetes API client
@@ -35,6 +38,36 @@ public class JaegerClient {
         } catch (Exception e) {
             logger.severe("Failed to initialize Jaeger port forwarding: " + e.getMessage());
         }
+    }**/
+
+    public static void startPortForwarding() {
+        new Thread(() -> {
+            try {
+                // Start the port-forwarding process and keep a reference to it
+                jaegerProcess = new ProcessBuilder(
+                        "kubectl", "port-forward", "svc/jaeger-query", "16686:16686", "-n", "monitoring"
+                ).start();
+                logger.info("Jaeger port forwarding started on http://localhost:16686");
+
+                // Wait for the process to complete (blocking call)
+                jaegerProcess.waitFor();
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Error starting Jaeger port forwarding", e);
+            }
+        }).start();
+
+        // Register a shutdown hook to terminate the process if it’s still running
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (jaegerProcess != null && jaegerProcess.isAlive()) {
+                logger.info("Terminating Jaeger port forwarding...");
+                jaegerProcess.destroy();
+                try {
+                    jaegerProcess.waitFor();  // Wait for the process to terminate
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }));
     }
 
     private String fetchTracesByService(String serviceName) throws Exception {

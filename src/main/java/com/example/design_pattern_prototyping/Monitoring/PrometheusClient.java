@@ -4,6 +4,7 @@ import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.util.Config;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -21,8 +22,10 @@ public class PrometheusClient {
     private static final String SERVICE_NAME = "prometheus-kube-prometheus-prometheus";
     private static final int LOCAL_PORT = 9090;
     private static final int TARGET_PORT = 9090;
+    private static Process prometheusProcess;
 
-    public static void startPortForwarding() {
+    /**
+    public static void startPortForwarding2() {
         try {
             // Initialize the Kubernetes API client
             ApiClient client = Config.defaultClient();
@@ -34,6 +37,33 @@ public class PrometheusClient {
         } catch (Exception e) {
             logger.severe("Failed to initialize port forwarding: " + e.getMessage());
         }
+    }**/
+
+    public static void startPortForwarding() {
+        new Thread(() -> {
+            try {
+                prometheusProcess = new ProcessBuilder(
+                        "kubectl", "port-forward", "svc/prometheus-kube-prometheus-prometheus", "9090:9090", "-n", "monitoring"
+                ).start();
+                logger.info("Prometheus port forwarding started on http://localhost:9090");
+
+                prometheusProcess.waitFor();
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Error starting Prometheus port forwarding", e);
+            }
+        }).start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (prometheusProcess != null && prometheusProcess.isAlive()) {
+                logger.info("Terminating Prometheus port forwarding...");
+                prometheusProcess.destroy();
+                try {
+                    prometheusProcess.waitFor();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }));
     }
 
     public String queryPrometheus(String query) throws Exception {

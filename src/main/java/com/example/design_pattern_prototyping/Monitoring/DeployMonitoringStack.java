@@ -44,12 +44,14 @@ public class DeployMonitoringStack {
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
 
-            logger.info("Installing Grafana...");
+            /**
+             * logger.info("Installing Grafana...");
             runCommand("helm", "upgrade", "-install", "grafana", "grafana/grafana",
                     "--namespace", "monitoring",
                     "-f", "src/main/resources/monitoring/grafana-values.yml",
                     "--set", "adminUser=admin",
                     "--set", "adminPassword=admin");
+             **/
 
             logger.info("Installing Istio-base...");
             runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
