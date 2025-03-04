@@ -21,7 +21,7 @@
             </HBox>
             <!-- Set WebUI Hostname -->
             <HBox spacing="10.0">
-                <Label text="WebUI Hostname:"/>
+                <Label text="Hostnamme (IP):"/>
                 <TextField fx:id="hostnameField" text="127.0.0.1" promptText="127.0.0.1"/>
             </HBox>
             <!-- Set Workload intensity -->
@@ -32,6 +32,7 @@
             <!-- Run workload -->
             <HBox spacing="10.0">
                 <Button text="Run Workload" onAction="#runWorkload"/>
+                <Button fx:id="abortButton" text="Abort" onAction="#abortWorkload" disable="true"/>
             </HBox>
         </VBox>
     </center>

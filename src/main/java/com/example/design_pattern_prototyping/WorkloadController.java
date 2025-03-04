@@ -3,6 +3,7 @@ package com.example.design_pattern_prototyping;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
@@ -13,6 +14,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 public class WorkloadController {
@@ -23,6 +28,12 @@ public class WorkloadController {
     private ComboBox<String> workloadLevelComboBox;
     @FXML
     private TextField hostnameField;
+    @FXML
+    private Button abortButton;
+    private Process currentProcess = null;
+    private final AtomicBoolean isAborted = new AtomicBoolean(false);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
 
     @FXML
     public void initialize() {
@@ -48,6 +59,7 @@ public class WorkloadController {
         } catch (IOException e) {
             showAlert("Error", "Failed to initialize file dropdown: " + e.getMessage(), Alert.AlertType.ERROR);
         }
+        abortButton.setDisable(true);
         System.out.println("WorkloadController initialized.");
     }
 
@@ -88,10 +100,8 @@ public class WorkloadController {
     @FXML
     public void runWorkload() {
         String selectedFileName = fileDropdown.getValue();
-
         if (selectedFileName != null && !selectedFileName.isEmpty()) {
             String hostname = hostnameField.getText();
-
             if (hostname == null || hostname.isEmpty()) {
                 showAlert("Error", "Hostname cannot be empty. Please enter a valid hostname.", Alert.AlertType.WARNING);
                 return;
@@ -139,6 +149,9 @@ public class WorkloadController {
                     return;
                 }
 
+                isAborted.set(false);
+                abortButton.setDisable(false);  // Enable abort button
+
                 new Thread(() -> {
                     try {
                         ProcessBuilder processBuilder = new ProcessBuilder(
@@ -155,22 +168,35 @@ public class WorkloadController {
                                 "-n"
                         );
                         processBuilder.redirectErrorStream(true);
+                        currentProcess = processBuilder.start();
 
-                        Process process = processBuilder.start();
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            System.out.println(line);
+                        // Schedule task to stop the process after 15 minutes
+                        scheduler.schedule(() -> {
+                            if (currentProcess != null && currentProcess.isAlive()) {
+                                System.out.println("Stopping workload after 15 minutes...");
+                                currentProcess.destroy();
+                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 15 minutes.", Alert.AlertType.INFORMATION));
+                                abortButton.setDisable(true);  // Disable abort button
+                            }
+                        }, 5, TimeUnit.MINUTES);
+
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                System.out.println(line);
+                            }
                         }
-                        System.out.println("Process started. Waiting for it to complete...");
 
-                        int exitCode = process.waitFor();
-                        System.out.println("Process exited with code: " + exitCode);
+                        int exitCode = currentProcess.waitFor();
+                        currentProcess = null;
 
                         Platform.runLater(() -> {
-                            if (exitCode == 0) {
+                            abortButton.setDisable(true);
+                            if (exitCode == 0 && !isAborted.get()) {
                                 System.out.println("Workload executed successfully.");
                                 showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                            } else if (isAborted.get()) {
+                                System.out.println("Workload was aborted by user.");
                             } else {
                                 System.out.println("Workload execution failed. Exit code: " + exitCode);
                                 showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
@@ -185,6 +211,16 @@ public class WorkloadController {
                 System.out.println("Selected file does not exist: " + selectedFile.getAbsolutePath());
                 showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
             }
+        }
+    }
+
+    @FXML
+    public void abortWorkload() {
+        if (currentProcess != null && currentProcess.isAlive()) {
+            currentProcess.destroy();
+            isAborted.set(true);
+            abortButton.setDisable(true);
+            showAlert("Aborted", "Workload execution aborted successfully!", Alert.AlertType.INFORMATION);
         }
     }
 
