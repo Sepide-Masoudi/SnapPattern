@@ -32,6 +32,7 @@ public class WorkloadController {
     private Button abortButton;
     private Process currentProcess = null;
     private final AtomicBoolean isAborted = new AtomicBoolean(false);
+    private final AtomicBoolean timeoutTriggered = new AtomicBoolean(false);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
 
@@ -170,15 +171,17 @@ public class WorkloadController {
                         processBuilder.redirectErrorStream(true);
                         currentProcess = processBuilder.start();
 
-                        // Schedule task to stop the process after 15 minutes
+                        // Schedule task to stop the process after 5 minutes
                         scheduler.schedule(() -> {
                             if (currentProcess != null && currentProcess.isAlive()) {
-                                System.out.println("Stopping workload after 15 minutes...");
+                                System.out.println("Stopping workload after 5 minutes...");
+                                timeoutTriggered.set(true);  // Set timeout flag
                                 currentProcess.destroy();
-                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 15 minutes.", Alert.AlertType.INFORMATION));
+                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 5 minutes.", Alert.AlertType.INFORMATION));
                                 abortButton.setDisable(true);  // Disable abort button
                             }
                         }, 5, TimeUnit.MINUTES);
+
 
                         try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
                             String line;
@@ -192,11 +195,13 @@ public class WorkloadController {
 
                         Platform.runLater(() -> {
                             abortButton.setDisable(true);
-                            if (exitCode == 0 && !isAborted.get()) {
+                            if (exitCode == 0 && !isAborted.get() && !timeoutTriggered.get()) {
                                 System.out.println("Workload executed successfully.");
                                 showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
                             } else if (isAborted.get()) {
                                 System.out.println("Workload was aborted by user.");
+                            } else if (timeoutTriggered.get()) {
+                                System.out.println("Workload stopped after 5 minutes.");
                             } else {
                                 System.out.println("Workload execution failed. Exit code: " + exitCode);
                                 showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
