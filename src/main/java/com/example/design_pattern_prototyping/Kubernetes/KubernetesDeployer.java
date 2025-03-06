@@ -106,10 +106,10 @@ public class KubernetesDeployer {
         }
     }
 
-    public static void createNamespace() {
+    public static void createNamespace(String namespaceName) {
         try {
-            logger.info("Creating namespace 'user'...");
-            ProcessBuilder namespace = new ProcessBuilder("kubectl", "create", "namespace", "user");
+            logger.info("Creating namespace '" + namespaceName + "'...");
+            ProcessBuilder namespace = new ProcessBuilder("kubectl", "create", "namespace", namespaceName);
             Process process = namespace.start();
 
             try (BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
@@ -130,13 +130,13 @@ public class KubernetesDeployer {
                 process.waitFor();
 
                 if (!namespaceExists) {
-                    logger.info("Namespace 'user' created successfully.");
+                    logger.info("Namespace '" + namespaceName + "' created successfully.");
                 } else {
-                    logger.info("Namespace 'user' already exists.");
+                    logger.info("Namespace '" + namespaceName + "' already exists.");
                 }
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to create namespace 'user'.", e);
+            logger.log(Level.SEVERE, "Failed to create namespace '" + namespaceName + "'.", e);
         }
     }
 
