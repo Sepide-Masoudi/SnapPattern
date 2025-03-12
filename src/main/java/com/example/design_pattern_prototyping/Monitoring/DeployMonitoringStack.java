@@ -59,10 +59,13 @@ public class DeployMonitoringStack {
             logger.info("Installing Istiod...");
             runCommand("helm", "upgrade", "-install", "istiod", "istio/istiod",
                     "--namespace", "istio-system",
+                    "--set", "meshConfig.enableTracing=true",
                     "--set", "meshConfig.defaultConfig.tracing.sampling=100",
-                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger:9411",
+                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger-collector.istio-system.svc.cluster.local:9411",
+                    "--set", "meshConfig.outboundTrafficPolicy.mode=ALLOW_ANY",
                     "--set", "telemetry.enabled=true",
                     "--set", "values.prometheus.enabled=true",
+                    "--set", "values.global.proxy.tracer=jaeger",
                     "--set", "values.global.proxy.envoyStatsMatcher.includeAll=true");
 
             logger.info("Labeling namespace for Istio injection...");
@@ -73,7 +76,6 @@ public class DeployMonitoringStack {
                 logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
             }
 
-            // TODO NOTE: How to fetch Endpints dynamically with Kubernetes Commands
             System.out.println("Installing Jaeger...");
             runCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",

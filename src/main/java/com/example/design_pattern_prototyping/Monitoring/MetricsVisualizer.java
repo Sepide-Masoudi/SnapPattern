@@ -1,5 +1,7 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -12,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,13 +56,36 @@ public class MetricsVisualizer {
         String path = "Python/results";
         String fileName = path + "/metrics.xlsx";
         Path filePath = Paths.get(fileName);
+
+        logger.info("Starting exportMetricsExcel method...");
+        logger.info("File path: " + fileName);
+
+        // Check if the file exists and is empty. If so, delete it.
+        if (Files.exists(filePath)) {
+            try {
+                if (Files.size(filePath) == 0) {
+                    Files.delete(filePath);
+                    logger.warning("Deleted empty Excel file: " + fileName);
+                } else {
+                    logger.info("Excel file exists and is not empty.");
+                }
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Failed to check or delete empty file: " + fileName, e);
+            }
+        } else {
+            logger.info("Excel file does not exist. A new file will be created.");
+        }
+
         try (Workbook workbook = (Files.exists(filePath)
                 ? new XSSFWorkbook(Files.newInputStream(filePath))
                 : new XSSFWorkbook());
              FileOutputStream outputStream = new FileOutputStream(fileName)) {
 
+            logger.info("Workbook and FileOutputStream created successfully.");
+
             Sheet sheet = workbook.getSheet("Metrics");
             if (sheet == null) {
+                logger.info("Metrics sheet does not exist. Creating new sheet...");
                 sheet = workbook.createSheet("Metrics");
 
                 // Create header row
@@ -67,32 +93,70 @@ public class MetricsVisualizer {
                 headerRow.createCell(0).setCellValue("Pattern");
                 headerRow.createCell(1).setCellValue("Workload Level");
                 headerRow.createCell(2).setCellValue("Timestamp");
+                headerRow.createCell(3).setCellValue("Container Name");
+                headerRow.createCell(4).setCellValue("containerJoulesTotal");
+                headerRow.createCell(5).setCellValue("containerCacheMissTotal");
+                headerRow.createCell(6).setCellValue("containerCpuCyclesTotal");
+                headerRow.createCell(7).setCellValue("containerCpuInstructions");
+                headerRow.createCell(8).setCellValue("energyEfficiency");
 
-                // Add metric names to the header row dynamically
-                int columnIndex = 3;
-                for (String metricName : metrics.keySet()) {
-                    headerRow.createCell(columnIndex++).setCellValue(metricName);
-                }
+                logger.info("Header row created successfully.");
+            } else {
+                logger.info("Metrics sheet already exists.");
             }
 
-            // Find the next empty row
             int nextRowNum = sheet.getLastRowNum() + 1;
             if (sheet.getRow(nextRowNum) != null) {
                 nextRowNum++;
             }
-            Row valuesRow = sheet.createRow(nextRowNum);
 
-            valuesRow.createCell(0).setCellValue(pattern); // Selected pattern implementation
-            valuesRow.createCell(1).setCellValue(workload); // Selected workload level
-            valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Map<String, String>> containerMetrics = new HashMap<>();
 
-            int columnIndex = 3;
-            for (String metricValue : metrics.values()) {
-                valuesRow.createCell(columnIndex++).setCellValue(metricValue);
+            // Parse each metric JSON and populate the containerMetrics map
+            for (Map.Entry<String, String> entry : metrics.entrySet()) {
+                String metricName = entry.getKey();
+                String jsonResponse = entry.getValue();
+
+                logger.info("Processing metric: " + metricName);
+                logger.info("JSON Response: " + jsonResponse);
+
+                JsonNode rootNode = objectMapper.readTree(jsonResponse);
+                if ("success".equals(rootNode.path("status").asText())) {
+                    JsonNode results = rootNode.path("data").path("result");
+                    for (JsonNode node : results) {
+                        String containerName = node.path("metric").path("container_name").asText();
+                        String value = node.path("value").get(1).asText();
+
+                        // Store metric value per container
+                        containerMetrics.computeIfAbsent(containerName, k -> new HashMap<>()).put(metricName, value);
+                    }
+                } else {
+                    logger.warning("Metric fetch failed for: " + metricName + ". Status: " + rootNode.path("status").asText());
+                }
+            }
+
+            // Write the aggregated metrics to Excel
+            for (Map.Entry<String, Map<String, String>> entry : containerMetrics.entrySet()) {
+                String containerName = entry.getKey();
+                Map<String, String> metricValues = entry.getValue();
+
+                Row valuesRow = sheet.createRow(nextRowNum++);
+                valuesRow.createCell(0).setCellValue(pattern);
+                valuesRow.createCell(1).setCellValue(workload);
+                valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                valuesRow.createCell(3).setCellValue(containerName);
+                valuesRow.createCell(4).setCellValue(metricValues.getOrDefault("containerJoulesTotal", "0"));
+                valuesRow.createCell(5).setCellValue(metricValues.getOrDefault("containerCacheMissTotal", "0"));
+                valuesRow.createCell(6).setCellValue(metricValues.getOrDefault("containerCpuCyclesTotal", "0"));
+                valuesRow.createCell(7).setCellValue(metricValues.getOrDefault("containerCpuInstructions", "0"));
+                valuesRow.createCell(8).setCellValue(metricValues.getOrDefault("energyEfficiency", "0"));
+
+                logger.info("Wrote metrics for container: " + containerName);
             }
 
             // Auto-size columns
-            for (int i = 0; i < sheet.getRow(0).getLastCellNum(); i++) {
+            for (int i = 0; i <= 8; i++) {
                 sheet.autoSizeColumn(i);
             }
 
@@ -100,7 +164,11 @@ public class MetricsVisualizer {
             logger.info("Metrics exported to " + fileName);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to export metrics: " + e);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Unexpected error during exportMetricsExcel: " + e);
         }
+
+        logger.info("Finished exportMetricsExcel method.");
     }
 }
 

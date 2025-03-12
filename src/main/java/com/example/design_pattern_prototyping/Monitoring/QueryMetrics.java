@@ -39,22 +39,25 @@ public class QueryMetrics {
         logger.info("Executing PromQL: " + promql);
         String response = prometheusClient.queryPrometheus(promql);
         logger.info("Response: " + response);
-        return extractMetricValue(response);
+        return response;
     }
 
     public Map<String, String> queryAllMetrics(String namespace) {
         Map<String, String> metrics = new HashMap<>();
         try {
-            metrics.put("cpuUsage", queryAndExtract("rate(kepler_container_cpu_usage_total[5m])"));
-            metrics.put("memoryUsage", queryAndExtract("kepler_container_memory_usage_bytes"));
-            metrics.put("nodeEnergyConsumption", queryAndExtract("rate(kepler_node_energy_joules_total[5m])"));
-            metrics.put("containerEnergyConsumption", queryAndExtract("rate(kepler_container_energy_joules_total[5m])"));
-            metrics.put("energyEfficiency", queryAndExtract(
-                    "rate(kepler_container_energy_joules_total[5m]) / rate(kepler_container_cpu_usage_total[5m])"));
+            metrics.put("containerJoulesTotal", queryAndExtract(
+                    "sum(kepler_container_joules_total{container_namespace=~\"user|pattern\"}) by (container_name)"));
+            metrics.put("containerCpuCyclesTotal", queryAndExtract(
+                    "sum(kepler_container_cpu_cycles_total{container_namespace=~\"user|pattern\"}) by (container_name)\n"));
+            metrics.put("containerCacheMissTotal", queryAndExtract(
+                    "sum(kepler_container_cache_miss_total{container_namespace=~\"user|pattern\"}) by (container_name)\n"));
+            metrics.put("containerCpuInstructions", queryAndExtract(
+                    "sum(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}) by (container_name)"));
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);
             metrics.put("error", "Failed to query metrics: " + e.getMessage());
         }
+        logger.info("Metrics: " + metrics);
         return metrics;
     }
 }
