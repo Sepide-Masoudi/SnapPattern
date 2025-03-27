@@ -9,6 +9,10 @@ prometheus:
       matchLabels:
         release: prometheus
     additionalScrapeConfigs:
+      - job_name: 'otel-collector'
+        scrape_interval: 10s
+        static_configs:
+          - targets: ['otel-collector.otel.svc.cluster.local:9464']
       - job_name: 'istio-mesh'
         kubernetes_sd_configs:
           - role: pod

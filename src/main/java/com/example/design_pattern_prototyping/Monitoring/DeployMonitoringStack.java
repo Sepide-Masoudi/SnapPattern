@@ -12,47 +12,52 @@ public class DeployMonitoringStack {
         try {
             // Step 1: Add Helm repositories
             logger.info("Adding Helm repositories...");
-            runCommand("helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts");
-            runCommand("helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart");
-            runCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts");
-            runCommand("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts");
-            runCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
+            executeCommand("helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts");
+            executeCommand("helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart");
+            executeCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts");
+            executeCommand("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts");
+            executeCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
 
             // Step 2: Update Helm repositories
             logger.info("Updating Helm repositories...");
-            runCommand("helm", "repo", "update");
+            executeCommand("helm", "repo", "update");
 
             // Step 3: Create namespaces
             logger.info("Creating namespaces...");
+            createNamespaceIfNotExists("otel");
             createNamespaceIfNotExists("monitoring");
-            createNamespaceIfNotExists("istio-system");
 
             // Create Grafana ConfigMap
             createConfigMap();
 
             // Step 4: Install or upgrade tools
+            logger.info("Installing OpenTelemetry stack...");
+            logger.info("Installing Cert-Manager...");
+            executeCommand("kubectl", "apply", "-f", "https://github.com/cert-manager/cert-manager/releases/download/v1.17.0/cert-manager.yaml");
+
+            logger.info("Installing OpenTelemetry Operator...");
+            executeCommand("kubectl", "apply", "-f", "https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/otel/otel-operator-instrumentation.yml");
+
+            logger.info("Installing OpenTelemetry Collector...");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/otel/otel-collector-config.yml");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/otel/otel-collector-rbac.yml");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/otel/otel-collector-deployment.yml");
+            executeCommand("kubectl", "rollout", "restart", "deployment", "-n", "user");
+
             logger.info("Installing Prometheus...");
-            runCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "src/main/resources/monitoring/istio-enabled-values.yml");
-            runCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/ServiceMonitor.yml");
-            runCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/PodMonitor.yml");
+            executeCommand("helm", "upgrade", "-install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "src/main/resources/monitoring/prometheus-values.yml");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/ServiceMonitor.yml");
+            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/PodMonitor.yml");
 
             logger.info("Installing Kepler...");
-            runCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
+            executeCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
                     "-f", "src/main/resources/monitoring/kepler-values.yml",
                     "--namespace", "monitoring",
                     "--set", "securityContext.privileged=true",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
-
-            /**
-             * logger.info("Installing Grafana...");
-            runCommand("helm", "upgrade", "-install", "grafana", "grafana/grafana",
-                    "--namespace", "monitoring",
-                    "-f", "src/main/resources/monitoring/grafana-values.yml",
-                    "--set", "adminUser=admin",
-                    "--set", "adminPassword=admin");
-             **/
-
+/**
             logger.info("Installing Istio-base...");
             runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
 
@@ -75,11 +80,11 @@ public class DeployMonitoringStack {
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
             }
-
+ **/
             System.out.println("Installing Jaeger...");
-            runCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
+            executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
-                    "-f", "src/main/resources/monitoring/jaeger.yaml");
+                    "-f", "src/main/resources/monitoring/jaeger-values.yaml");
 
             logger.info("Monitoring stack deployed successfully.");
             return true;
@@ -100,7 +105,7 @@ public class DeployMonitoringStack {
                 logger.info("Namespace '" + namespace + "' already exists. Skipping creation.");
             } else {
                 logger.info("Namespace '" + namespace + "' does not exist. Creating...");
-                runCommand("kubectl", "create", "namespace", namespace);
+                executeCommand("kubectl", "create", "namespace", namespace);
             }
         } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error checking/creating namespace: " + namespace, e);
@@ -110,20 +115,20 @@ public class DeployMonitoringStack {
     private void createConfigMap() throws IOException, InterruptedException {
         logger.info("Checking if ConfigMap already exists...");
         try {
-            runCommand("kubectl", "delete", "configmap", "grafana-dashboard-config", "-n", "monitoring");
+            executeCommand("kubectl", "delete", "configmap", "grafana-dashboard-config", "-n", "monitoring");
             logger.info("ConfigMap deleted. Recreating it...");
         } catch (IOException e) {
             logger.info("ConfigMap does not exist. Proceeding to create it...");
         }
 
-        runCommand("kubectl", "create", "configmap", "grafana-dashboard-config", "-n", "monitoring",
+        executeCommand("kubectl", "create", "configmap", "grafana-dashboard-config", "-n", "monitoring",
                 "--from-file=src/main/resources/monitoring/Kepler-Exporter.json");
 
         logger.info("Labeling the ConfigMap as a Grafana dashboard...");
-        runCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", "monitoring", "grafana_dashboard=1", "--overwrite");
+        executeCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", "monitoring", "grafana_dashboard=1", "--overwrite");
     }
 
-    private void runCommand(String... command) throws IOException, InterruptedException {
+    private void executeCommand(String... command) throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.inheritIO();
         int exitCode = processBuilder.start().waitFor();

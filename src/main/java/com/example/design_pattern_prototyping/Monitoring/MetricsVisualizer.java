@@ -99,6 +99,11 @@ public class MetricsVisualizer {
                 headerRow.createCell(6).setCellValue("containerCpuCyclesTotal");
                 headerRow.createCell(7).setCellValue("containerCpuInstructions");
                 headerRow.createCell(8).setCellValue("energyEfficiency");
+                headerRow.createCell(9).setCellValue("avg_HTTP_client_request_duration");
+                headerRow.createCell(10).setCellValue("requestRate_RPS");
+                headerRow.createCell(11).setCellValue("averageLatency");
+                headerRow.createCell(12).setCellValue("95PercentileLatency");
+                headerRow.createCell(13).setCellValue("ErrorRate");
 
                 logger.info("Header row created successfully.");
             } else {
@@ -125,9 +130,20 @@ public class MetricsVisualizer {
                 if ("success".equals(rootNode.path("status").asText())) {
                     JsonNode results = rootNode.path("data").path("result");
                     for (JsonNode node : results) {
-                        String containerName = node.path("metric").path("container_name").asText();
-                        String value = node.path("value").get(1).asText();
 
+                        String containerName;
+                        JsonNode metricNode = node.path("metric");
+
+                        if (metricNode.has("container_name")) {
+                            // kepler metrics format
+                            containerName = metricNode.path("container_name").asText();
+                        } else if (metricNode.has("exported_job")) {
+                            // spanmetrics format
+                            containerName = metricNode.path("exported_job").asText();
+                        } else {
+                            containerName = "unknown";
+                        }
+                        String value = node.path("value").get(1).asText();
                         // Store metric value per container
                         containerMetrics.computeIfAbsent(containerName, k -> new HashMap<>()).put(metricName, value);
                     }
@@ -151,6 +167,11 @@ public class MetricsVisualizer {
                 valuesRow.createCell(6).setCellValue(metricValues.getOrDefault("containerCpuCyclesTotal", "0"));
                 valuesRow.createCell(7).setCellValue(metricValues.getOrDefault("containerCpuInstructions", "0"));
                 valuesRow.createCell(8).setCellValue(metricValues.getOrDefault("energyEfficiency", "0"));
+                valuesRow.createCell(9).setCellValue(metricValues.getOrDefault("avg_HTTP_client_request_duration", "0"));
+                valuesRow.createCell(10).setCellValue(metricValues.getOrDefault("requestRate_RPS", "0"));
+                valuesRow.createCell(11).setCellValue(metricValues.getOrDefault("averageLatency", "0"));
+                valuesRow.createCell(12).setCellValue(metricValues.getOrDefault("95PercentileLatency", "0"));
+                valuesRow.createCell(13).setCellValue(metricValues.getOrDefault("ErrorRate", "0"));
 
                 logger.info("Wrote metrics for container: " + containerName);
             }
