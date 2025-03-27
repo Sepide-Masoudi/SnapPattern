@@ -1,8 +1,5 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -25,7 +22,7 @@ public class QueryMetrics {
         return response;
     }
 
-    public Map<String, String> queryAllMetrics(String namespace) {
+    public Map<String, String> queryAllMetrics() {
         Map<String, String> metrics = new HashMap<>();
         try {
             // Kepler metrics
@@ -39,30 +36,34 @@ public class QueryMetrics {
                     "sum(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}) by (container_name)"));
             // Span metrics
             metrics.put("avg_HTTP_client_request_duration", queryAndExtract(
-                    "sum(rate(http_client_request_duration_seconds_sum{\n" +
-                            "  exported_instance=~\"user\\\\..*\"\n" +
-                            "}[5m])) by (exported_job)\n" +
-                            "/\n" +
-                            "sum(rate(http_client_request_duration_seconds_count{\n" +
-                            "  exported_instance=~\"user\\\\..*\"\n" +
-                            "}[5m])) by (exported_job)\n"));
+                    """
+                            sum(rate(http_client_request_duration_seconds_sum{
+                              exported_instance=~"user\\\\..*"
+                            }[5m])) by (exported_job)
+                            /
+                            sum(rate(http_client_request_duration_seconds_count{
+                              exported_instance=~"user\\\\..*"
+                            }[5m])) by (exported_job)
+                            """));
             metrics.put("requestRate_RPS", queryAndExtract(
                     "sum(rate(http_client_request_duration_seconds_count{exported_instance=~\"user\\\\..*\"}[5m])) by (exported_job)"));
             metrics.put("averageLatency", queryAndExtract(
-                    "sum(rate(http_client_request_duration_seconds_sum{exported_instance=~\"user\\\\..*\"}[5m])) by (exported_job)\n" +
-                            "/ \n" +
-                            "sum(rate(http_client_request_duration_seconds_count{exported_instance=~\"user\\\\..*\"}[5m])) by (exported_job)"));
+                    """
+                            sum(rate(http_client_request_duration_seconds_sum{exported_instance=~"user\\\\..*"}[5m])) by (exported_job)
+                            /\s
+                            sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m])) by (exported_job)"""));
             metrics.put("95PercentileLatency", queryAndExtract(
                     "histogram_quantile(0.95, sum(rate(http_client_request_duration_seconds_bucket{exported_instance=~\"user\\\\..*\"}[5m])) by (le, exported_job))"));
             metrics.put("ErrorRate", queryAndExtract(
-                    "sum(rate(http_client_request_duration_seconds_count{\n" +
-                            "  exported_instance=~\"user\\\\..*\",\n" +
-                            "  http_response_status_code!~\"2..\"\n" +
-                            "}[5m])) by (exported_job)\n" +
-                            "/\n" +
-                            "sum(rate(http_client_request_duration_seconds_count{\n" +
-                            "  exported_instance=~\"user\\\\..*\"\n" +
-                            "}[5m])) by (exported_job)"));
+                    """
+                            sum(rate(http_client_request_duration_seconds_count{
+                              exported_instance=~"user\\\\..*",
+                              http_response_status_code!~"2.."
+                            }[5m])) by (exported_job)
+                            /
+                            sum(rate(http_client_request_duration_seconds_count{
+                              exported_instance=~"user\\\\..*"
+                            }[5m])) by (exported_job)"""));
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);
             metrics.put("error", "Failed to query metrics: " + e.getMessage());

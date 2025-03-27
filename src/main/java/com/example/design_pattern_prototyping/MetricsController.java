@@ -16,7 +16,6 @@ import java.util.logging.Logger;
 
 public class MetricsController {
 
-    private static final String NAMESPACE = "user|pattern";
     private static final String USER_NAMESPACE = "user";
     private static final String PATTERN_NAMESPACE = "pattern";
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
@@ -90,7 +89,7 @@ public class MetricsController {
         logger.info("Generating metrics...");
         new Thread(() -> {
             try {
-                Map<String, String> metrics = queryMetrics.queryAllMetrics(NAMESPACE);
+                Map<String, String> metrics = queryMetrics.queryAllMetrics();
 
                 if (metrics.containsKey("error")) {
                     logger.warning("Error fetching metrics: " + metrics.get("error"));

@@ -57,8 +57,8 @@ public class DeployMonitoringStack {
                     "--set", "securityContext.privileged=true",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
-/**
-            logger.info("Installing Istio-base...");
+
+            /* logger.info("Installing Istio-base...");
             runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
 
             logger.info("Installing Istiod...");
@@ -79,8 +79,8 @@ public class DeployMonitoringStack {
                 logger.info("Successfully labeled the 'user' namespace with istio-injection=enabled.");
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
-            }
- **/
+            } */
+
             System.out.println("Installing Jaeger...");
             executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
