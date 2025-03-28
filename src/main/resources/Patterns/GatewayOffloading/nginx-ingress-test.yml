@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  namespace: proxy
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/limit-req-zone: '$binary_remote_addr zone=mylimit:10m rate=5r/s'
+    nginx.ingress.kubernetes.io/limit-req: "5"
+    nginx.ingress.kubernetes.io/limit-req-burst: "10"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-cache: "true"
+    nginx.ingress.kubernetes.io/proxy-cache-key: "$uri"
+    nginx.ingress.kubernetes.io/proxy-cache-path: "/data/nginx/cache levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;"
+spec:
+  rules:
+  - host: teastore-webui.user.svc.cluster.local
+    http:
+      paths:
+      - path: /webui
+        pathType: Prefix
+        backend:
+          service:
+            name: teastore-webui
+            port:
+              number: 8080
+
