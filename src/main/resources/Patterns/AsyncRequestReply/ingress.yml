@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kong-ingress
-  namespace: proxy # own namespace for additional impl. to original
+  namespace: pattern
   annotations:
     konghq.com/strip-path: "true"
     konghq.com/protocols: "http, https"
@@ -15,7 +15,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: proxy-service  # Proxy name
+            name: proxy-service
             port:
-              number: 80  # Proxy port
+              number: 80
       # Ability to add more rules

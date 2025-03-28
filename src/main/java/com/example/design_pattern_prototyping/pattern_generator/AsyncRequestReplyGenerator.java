@@ -100,12 +100,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
             updateHelmRepos.waitFor();
 
             // Step 2: Create namespaces
-            Process createRabbitmqNamespace = new ProcessBuilder("kubectl", "create", "namespace", "rabbitmq").inheritIO().start();
-            createRabbitmqNamespace.waitFor();
-
-            Process createPatternNamespace = new ProcessBuilder("kubectl", "create", "namespace", "pattern").inheritIO().start();
-            createPatternNamespace.waitFor();
-
             Process createProxyNamespace = new ProcessBuilder("kubectl", "create", "namespace", "proxy").inheritIO().start();
             createProxyNamespace.waitFor();
 

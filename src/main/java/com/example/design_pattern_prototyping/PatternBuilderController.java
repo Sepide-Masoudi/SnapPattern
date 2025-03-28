@@ -18,28 +18,52 @@ public class PatternBuilderController {
 
     private static final Logger logger = Logger.getLogger(PatternBuilderController.class.getName());
 
-    @FXML private Label statusLabel;
-    @FXML private VBox patternFieldsBox;
-    @FXML private ComboBox<String> patternDropdown;
-    @FXML private VBox asyncRequestReplyFields;
-    @FXML private VBox gatewayOffloadingFields;
+    public Label statusLabel;
+    public VBox patternFieldsBox;
+    public ComboBox<String> patternDropdown;
+    public VBox asyncRequestReplyFields;
+    public VBox gatewayOffloadingFields;
+    public VBox gatewayAggregationFields;
+    public VBox cacheAsideFields;
+    public VBox circuitBreakerFields;
 
-    @FXML private TextField sendingServiceName;
-    @FXML private TextField sendingServiceEndpoint;
-    @FXML private TextField sendingServicePort;
-    @FXML private TextField receivingServiceName;
-    @FXML private TextField receivingServiceEndpoint;
-    @FXML private TextField receivingServicePort;
+    // Asynch Request Reply Pattern
+    public TextField sendingServiceName;
+    public TextField sendingServiceEndpoint;
+    public TextField sendingServicePort;
+    public TextField receivingServiceName;
+    public TextField receivingServiceEndpoint;
+    public TextField receivingServicePort;
 
-    @FXML private TextField serviceHost;
-    @FXML private TextField serviceEndpoint;
-    @FXML private TextField serviceName;
+    // Gateway Offloading
+    public TextField serviceHost;
+    public TextField serviceEndpoint;
+    public TextField serviceName;
+
+    // Cache Aside Pattern
+    public TextField cachedEndpoints;
+    public TextField backendService;
+
+    // Gateway Aggregation Pattern
+    public TextField ga_serviceName;
+    public TextField ga_serviceEndpoint;
+    public TextField ga_serviceHost;
+    public TextField ga_servicePort;
+
+    //Circuit Breaker Pattern
+    public TextField cb_serviceName;
+    public TextField cb_max_pending_requests;
+    public TextField cb_max_connections;
+    public TextField cb_failureThreshold;
+    public TextField cb_retry_attempts;
+
     private File yamlFile;
 
     @FXML
     public void initialize() {
         // Register this controller with the mediator
         ControllerMediatorImpl.getInstance().registerPatternBuilderController(this);
+        patternDropdown.setValue("None");
         logger.info("PatternBuilderController initialized.");
     }
 
@@ -157,7 +181,7 @@ public class PatternBuilderController {
                 try {
                     boolean minikubeStarted = KubernetesDeployer.startMinikube();
                     if (minikubeStarted) {
-                        KubernetesDeployer.createNamespace();
+                        KubernetesDeployer.createNamespace("user");
                         KubernetesDeployer.applyYamlFile(yamlFile.getAbsolutePath());
                         javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {
@@ -180,16 +204,32 @@ public class PatternBuilderController {
         String selectedPattern = patternDropdown.getValue();
         logger.info("User selected pattern: " + selectedPattern);
 
-        patternFieldsBox.setVisible(true);
-        if ("Async Request Reply".equals(selectedPattern)) {
-            asyncRequestReplyFields.setVisible(true);
-            gatewayOffloadingFields.setVisible(false);
-        } else if ("Gateway Offloading".equals(selectedPattern)) {
-            asyncRequestReplyFields.setVisible(false);
-            gatewayOffloadingFields.setVisible(true);
-        } else {
-            asyncRequestReplyFields.setVisible(false);
-            gatewayOffloadingFields.setVisible(false);
+        patternFieldsBox.setVisible(!"None".equals(selectedPattern));
+
+        asyncRequestReplyFields.setVisible(false);
+        gatewayOffloadingFields.setVisible(false);
+        gatewayAggregationFields.setVisible(false);
+        cacheAsideFields.setVisible(false);
+        circuitBreakerFields.setVisible(false);
+
+        switch (selectedPattern) {
+            case "Async Request Reply":
+                asyncRequestReplyFields.setVisible(true);
+                break;
+            case "Gateway Offloading":
+                gatewayOffloadingFields.setVisible(true);
+                break;
+            case "Gateway Aggregation":
+                gatewayAggregationFields.setVisible(true);
+                break;
+            case "Cache Aside":
+                cacheAsideFields.setVisible(true);
+                break;
+            case "Circuit Breaker":
+                circuitBreakerFields.setVisible(true);
+                break;
+            default:
+                break;
         }
     }
 
@@ -216,8 +256,23 @@ public class PatternBuilderController {
                 parameters.put("SERVICE_HOST", serviceHost.getText());
                 parameters.put("SERVICE_ENDPOINT", serviceEndpoint.getText());
                 parameters.put("SERVICE_NAME", serviceName.getText());
+            } else if ("Gateway Aggregation".equals(selectedPattern)) {
+                parameters.put("SERVICE_1_NAME", ga_serviceName.getText());
+                parameters.put("SERVICE_1_ENDPOINT", ga_serviceEndpoint.getText());
+                parameters.put("SERVICE_1_HOST", ga_serviceHost.getText());
+                parameters.put("SERVICE_1_PORT", ga_servicePort.getText());
+            } else if ("Cache Aside".equals(selectedPattern)) {
+                parameters.put("CACHED_ENDPOINTS", cachedEndpoints.getText());
+                parameters.put("BACKEND_SERVICE", backendService.getText());
+            } else if ("Circuit Breaker".equals(selectedPattern)) {
+                parameters.put("SERVICE_NAME", cb_serviceName.getText());
+                parameters.put("MAX_PENDING_REQUESTS", cb_max_pending_requests.getText());
+                parameters.put("MAX_CONNECTIONS", cb_max_connections.getText());
+                parameters.put("FAILURE_THRESHOLD", cb_failureThreshold.getText());
+                parameters.put("RETRY_ATTEMPTS", cb_retry_attempts.getText());
             }
 
+            KubernetesDeployer.createNamespace("pattern");
             generator.generatePattern(yamlFilePath, parameters);
             generator.deployPattern();
 

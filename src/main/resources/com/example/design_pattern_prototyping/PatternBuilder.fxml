@@ -32,9 +32,12 @@
                 <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
                     <items>
                         <FXCollections fx:factory="observableArrayList">
+                            <String fx:value="None"/>
                             <String fx:value="Async Request Reply"/>
                             <String fx:value="Gateway Offloading"/>
-                            <String fx:value="Backends for Frontends"/>
+                            <String fx:value="Gateway Aggregation"/>
+                            <String fx:value="Cache Aside"/>
+                            <String fx:value="Circuit Breaker"/>
                         </FXCollections>
                     </items>
                 </ComboBox>
@@ -77,6 +80,51 @@
                             <TextField fx:id="serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
                         </GridPane>
                     </VBox>
+
+                    <!-- Cache Aside Config -->
+                    <VBox spacing="10.0" fx:id="cacheAsideFields" visible="false">
+                        <Label text="Cache Aside Configuration" style="-fx-font-weight: bold;"/>
+                        <GridPane hgap="10.0" vgap="10.0">
+                            <Label text="Cached Endpoints (comma-separated)" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cachedEndpoints" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Backend Service" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <TextField fx:id="backendService" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Gateway Aggregation Config -->
+                    <VBox spacing="10.0" fx:id="gatewayAggregationFields" visible="false">
+                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
+                        <GridPane hgap="10.0" vgap="10.0">
+                            <Label text="Service - Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <TextField fx:id="ga_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Service - Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <TextField fx:id="ga_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label text="Service - Host" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <TextField fx:id="ga_serviceHost" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Label text="Service - Port" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                            <TextField fx:id="ga_servicePort" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                        </GridPane>
+                    </VBox>
+
+                    <!-- Circuit Breaker Config -->
+                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="false">
+                        <Label text="Circuit Breaker Configuration" style="-fx-font-weight: bold;"/>
+                        <GridPane hgap="10.0" vgap="10.0">
+                            <Label text="Service Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cb_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Max pending requests" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cb_max_pending_requests" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <Label text="Max connections" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cb_max_connections" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Label text="Failure Threshold" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cb_failureThreshold" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                            <Label text="Retry attempts" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                            <TextField fx:id="cb_retry_attempts" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+                        </GridPane>
+                    </VBox>
+
                 </StackPane>
 
                 <Button text="Build Pattern" onAction="#buildPattern"/>

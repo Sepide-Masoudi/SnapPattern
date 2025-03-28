@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cache-config
+  namespace: pattern
+data:
+  # List of endpoints to cache - Set by user
+  CACHED_ENDPOINTS: "${CACHED_ENDPOINTS}"
+
+  # Backend Service - Set by user
+  BACKEND_SERVICE: "${BACKEND_SERVICE}"

@@ -8,13 +8,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class GatewayOffloadingGenerator implements PatternGenerator {
-    private static final Logger logger = Logger.getLogger(GatewayOffloadingGenerator.class.getName());
+public class CircuitBreakerGenerator implements PatternGenerator {
+    private static final Logger logger = Logger.getLogger(CircuitBreakerGenerator.class.getName());
     private String tempConfigPath;
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/GatewayOffloading/nginx-ingress.yml";
+        return "src/main/resources/patterns/CircuitBreaker/circuit-breaker-retry.yml";
     }
 
     @Override
@@ -25,22 +25,24 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values
-            yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
-            yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.getOrDefault("SERVICE_ENDPOINT", "/default-endpoint"));
             yamlContent = yamlContent.replace("${SERVICE_NAME}", parameters.getOrDefault("SERVICE_NAME", "default-service"));
+            yamlContent = yamlContent.replace("${MAX_PENDING_REQUESTS}", parameters.getOrDefault("MAX_PENDING_REQUESTS", "5"));
+            yamlContent = yamlContent.replace("${MAX_CONNECTIONS}", parameters.getOrDefault("MAX_CONNECTIONS", "1"));
+            yamlContent = yamlContent.replace("${FAILURE_THRESHOLD}", parameters.getOrDefault("FAILURE_THRESHOLD", "5"));
+            yamlContent = yamlContent.replace("${RETRY_ATTEMPTS}", parameters.getOrDefault("RETRY_ATTEMPTS", "3"));
 
             // Create temp file to store the modified YAML
-            Path tempFile = Files.createTempFile("gateway-offloading-config-", ".yml");
+            Path tempFile = Files.createTempFile("circuit-breaker-retry-", ".yml");
             Files.write(tempFile, yamlContent.getBytes());
             tempConfigPath = tempFile.toString();
 
-            logger.info("Temporary Gateway Offloading pattern config generated at: " + tempFile);
+            logger.info("Temporary Circuit Breaker pattern config generated at: " + tempFile);
 
             // Store the temporary file path for use in deployment
             parameters.put("TEMP_CONFIG_PATH", tempFile.toString());
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error generating Gateway Offloading pattern configuration.", e);
+            logger.log(Level.SEVERE, "Error generating Circuit Breaker pattern configuration.", e);
         }
     }
 
@@ -51,27 +53,25 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
                 throw new IOException("Temporary ConfigMap file path does not exist.");
             }
 
-            // Step 1: Add Helm repositories and update
-            executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
-            executeCommand("helm", "repo", "update");
+            // Step 1: Install istio control plane
+            logger.info("Installing Istio control plane...");
+            executeCommand("istioctl", "install", "--set", "profile=default", "--set", "values.global.platform=minikube", "--skip-confirmation");
+            executeCommand("kubectl", "rollout", "restart", "deployment", "-n", "user");
 
-            // Step 2: Create namespace  for proxy
-            executeCommand("kubectl", "create", "namespace", "proxy");
+            // Step 2: Enable istio sidecar injection
+            executeCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
 
-            // Step 3: Deploy NGINX Ingress Controller
-            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern");
-
-            // Step 4: Apply the generated Gateway Offloading YAML
+            // Step 3: Apply the generated Circuit Breaker YAML
             applyYamlFile(tempConfigPath);
 
-            logger.info("Gateway Offloading Pattern setup completed successfully.");
+            logger.info("Circuit Breaker and retry pattern setup completed successfully.");
 
             // Delete temporary file
             Files.deleteIfExists(Paths.get(tempConfigPath));
             logger.info("Temporary file deleted: " + tempConfigPath);
 
         } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error executing build steps for Gateway Offloading Pattern.", e);
+            logger.log(Level.SEVERE, "Error executing build steps for Circuit Breaker Pattern.", e);
         }
     }
 

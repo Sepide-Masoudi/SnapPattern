@@ -8,13 +8,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class GatewayOffloadingGenerator implements PatternGenerator {
-    private static final Logger logger = Logger.getLogger(GatewayOffloadingGenerator.class.getName());
+public class CacheAsideGenerator implements PatternGenerator {
+    private static final Logger logger = Logger.getLogger(CacheAsideGenerator.class.getName());
     private String tempConfigPath;
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/GatewayOffloading/nginx-ingress.yml";
+        return "src/main/resources/patterns/CacheAside/cache-config.yml";
     }
 
     @Override
@@ -25,22 +25,18 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values
-            yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
-            yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.getOrDefault("SERVICE_ENDPOINT", "/default-endpoint"));
-            yamlContent = yamlContent.replace("${SERVICE_NAME}", parameters.getOrDefault("SERVICE_NAME", "default-service"));
+            yamlContent = yamlContent.replace("${CACHED_ENDPOINTS}", parameters.get("CACHED_ENDPOINTS"));
+            yamlContent = yamlContent.replace("${BACKEND_SERVICE}", parameters.get("BACKEND_SERVICE"));
 
             // Create temp file to store the modified YAML
-            Path tempFile = Files.createTempFile("gateway-offloading-config-", ".yml");
+            Path tempFile = Files.createTempFile("cache-config-temp", ".yml");
             Files.write(tempFile, yamlContent.getBytes());
+
             tempConfigPath = tempFile.toString();
-
-            logger.info("Temporary Gateway Offloading pattern config generated at: " + tempFile);
-
-            // Store the temporary file path for use in deployment
-            parameters.put("TEMP_CONFIG_PATH", tempFile.toString());
+            logger.info("Temporary Cache-Aside pattern config generated at: " + tempConfigPath);
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error generating Gateway Offloading pattern configuration.", e);
+            logger.log(Level.SEVERE, "Error generating Cache-Aside pattern configuration.", e);
         }
     }
 
@@ -51,35 +47,25 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
                 throw new IOException("Temporary ConfigMap file path does not exist.");
             }
 
-            // Step 1: Add Helm repositories and update
-            executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
-            executeCommand("helm", "repo", "update");
-
-            // Step 2: Create namespace  for proxy
-            executeCommand("kubectl", "create", "namespace", "proxy");
-
-            // Step 3: Deploy NGINX Ingress Controller
-            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern");
-
-            // Step 4: Apply the generated Gateway Offloading YAML
+            // Step 1: Deploy ConfigMap using the temporary config file
             applyYamlFile(tempConfigPath);
 
-            logger.info("Gateway Offloading Pattern setup completed successfully.");
+            // Step 2: Deploy Redis cache
+            applyYamlFile("src/main/resources/patterns/CacheAside/redis-cache-deployment.yml");
 
-            // Delete temporary file
+            // Step 3: Deploy the NGINX proxy for cache-aside
+            applyYamlFile("src/main/resources/patterns/CacheAside/nginx-cache-config.yml");
+            applyYamlFile("src/main/resources/patterns/CacheAside/nginx-proxy-deployment.yml");
+
+            logger.info("Cache-Aside Pattern setup completed successfully.");
+
+            // Delete temp config file
             Files.deleteIfExists(Paths.get(tempConfigPath));
             logger.info("Temporary file deleted: " + tempConfigPath);
 
         } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error executing build steps for Gateway Offloading Pattern.", e);
+            logger.log(Level.SEVERE, "Error executing build steps for Cache-Aside Pattern.", e);
         }
-    }
-
-    private void executeCommand(String... command) throws IOException, InterruptedException {
-        logger.info("Executing command: " + String.join(" ", command));
-        ProcessBuilder processBuilder = new ProcessBuilder(command).inheritIO();
-        Process process = processBuilder.start();
-        process.waitFor();
     }
 
     /**

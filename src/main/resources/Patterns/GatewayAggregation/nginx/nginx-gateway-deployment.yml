@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-gateway-aggregation
+  namespace: pattern
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-gateway-aggregation
+  template:
+    metadata:
+      labels:
+        app: nginx-gateway-aggregation
+    spec:
+      containers:
+        - name: nginx
+          image: openresty/openresty:latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: gateway-aggregation-config
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /usr/local/openresty/nginx/conf/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-gateway-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-gateway
+  namespace: pattern
+spec:
+  selector:
+    app: nginx-gateway-aggregation
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80  
+  type: NodePort

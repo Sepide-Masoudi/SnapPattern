@@ -10,6 +10,9 @@ public class PatternGeneratorFactory {
     static {
         generators.put("Async Request Reply", new AsyncRequestReplyGenerator());
         generators.put("Gateway Offloading", new GatewayOffloadingGenerator());
+        generators.put("Gateway Aggregation", new GatewayAggregationGenerator());
+        generators.put("Cache Aside", new CacheAsideGenerator());
+        generators.put("Circuit Breaker", new CircuitBreakerGenerator());
         // Add other patterns as needed
     }
 

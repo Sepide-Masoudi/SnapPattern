@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-cache-proxy
+  namespace: pattern
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-cache-proxy
+  template:
+    metadata:
+      labels:
+        app: nginx-cache-proxy
+    spec:
+      containers:
+        - name: nginx
+          image: openresty/openresty:latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: cache-config
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /usr/local/openresty/nginx/conf/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-cache-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-cache-proxy
+  namespace: pattern
+spec:
+  selector:
+    app: nginx-cache-proxy
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort
