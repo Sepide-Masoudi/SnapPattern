@@ -15,7 +15,7 @@ public class DeployMonitoringStack {
             executeCommand("helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts");
             executeCommand("helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart");
             executeCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts");
-            executeCommand("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts");
+            //executeCommand("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts");
             executeCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
 
             // Step 2: Update Helm repositories
@@ -57,16 +57,16 @@ public class DeployMonitoringStack {
                     "--set", "securityContext.privileged=true",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
-
-            /* logger.info("Installing Istio-base...");
-            runCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
+            /*
+            logger.info("Installing Istio-base...");
+            executeCommand("helm", "upgrade", "-install", "istio-base", "istio/base", "--namespace", "istio-system");
 
             logger.info("Installing Istiod...");
-            runCommand("helm", "upgrade", "-install", "istiod", "istio/istiod",
+            executeCommand("helm", "upgrade", "-install", "istiod", "istio/istiod",
                     "--namespace", "istio-system",
                     "--set", "meshConfig.enableTracing=true",
                     "--set", "meshConfig.defaultConfig.tracing.sampling=100",
-                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger-collector.istio-system.svc.cluster.local:9411",
+                    "--set", "meshConfig.defaultConfig.tracing.zipkin.address=jaeger-collector.monitoring.svc.cluster.local:9411",
                     "--set", "meshConfig.outboundTrafficPolicy.mode=ALLOW_ANY",
                     "--set", "telemetry.enabled=true",
                     "--set", "values.prometheus.enabled=true",
@@ -75,13 +75,13 @@ public class DeployMonitoringStack {
 
             logger.info("Labeling namespace for Istio injection...");
             try {
-                runCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
+                executeCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
                 logger.info("Successfully labeled the 'user' namespace with istio-injection=enabled.");
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
-            } */
-
-            System.out.println("Installing Jaeger...");
+            }
+            */
+            logger.info("Installing Jaeger...");
             executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
                     "-f", "src/main/resources/monitoring/jaeger-values.yaml");

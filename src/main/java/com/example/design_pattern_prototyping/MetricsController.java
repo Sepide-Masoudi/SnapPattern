@@ -94,23 +94,23 @@ public class MetricsController {
                 if (metrics.containsKey("error")) {
                     logger.warning("Error fetching metrics: " + metrics.get("error"));
                 } else {
-                    logger.info("Metrics fetched successfully: " + metrics);
+                    logger.info("Metrics fetched successfully");
 
                     ControllerMediator mediator = ControllerMediatorImpl.getInstance();
                     String workloadLevel = mediator.getSelectedWorkloadLevel();
                     String pattern = mediator.getSelectedPattern();
                     MetricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
 
-                    String excelFilePath = "Python/results/metrics.xlsx";
-                    MetricsVisualizer.sendMetricsToPython(excelFilePath);
+                    //String excelFilePath = "Python/results/metrics.xlsx";
+                    //MetricsVisualizer.sendMetricsToPython(excelFilePath);
                 }
                 // Collect trace data for the "user" namespace
-                logger.info("Collecting trace data for namespace: " + USER_NAMESPACE);
-                jaegerClient.collectTraceData(USER_NAMESPACE, "Python/results/user-trace-data.json");
+                //logger.info("Collecting trace data for namespace: " + USER_NAMESPACE);
+                //jaegerClient.collectTraceData(USER_NAMESPACE, "Python/results/user-trace-data.json");
 
                 // Collect trace data for the "pattern" namespace
-                logger.info("Collecting trace data for namespace: " + PATTERN_NAMESPACE);
-                jaegerClient.collectTraceData(PATTERN_NAMESPACE, "Python/results/pattern-trace-data.json");
+                //logger.info("Collecting trace data for namespace: " + PATTERN_NAMESPACE);
+                //jaegerClient.collectTraceData(PATTERN_NAMESPACE, "Python/results/pattern-trace-data.json");
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
             }

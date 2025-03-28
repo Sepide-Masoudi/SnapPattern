@@ -27,13 +27,13 @@ public class QueryMetrics {
         try {
             // Kepler metrics
             metrics.put("containerJoulesTotal", queryAndExtract(
-                    "sum(kepler_container_joules_total{container_namespace=~\"user|pattern\"}) by (container_name)"));
+                    "sum(rate(kepler_container_joules_total{container_namespace=~\"user|pattern\"}[5m])) by (container_name)\n"));
             metrics.put("containerCpuCyclesTotal", queryAndExtract(
-                    "sum(kepler_container_cpu_cycles_total{container_namespace=~\"user|pattern\"}) by (container_name)\n"));
+                    "sum(rate(kepler_container_cpu_cycles_total{container_namespace=~\"user|pattern\"}[5m])) by (container_name)\n"));
             metrics.put("containerCacheMissTotal", queryAndExtract(
-                    "sum(kepler_container_cache_miss_total{container_namespace=~\"user|pattern\"}) by (container_name)\n"));
+                    "sum(rate(kepler_container_cache_miss_total{container_namespace=~\"user|pattern\"}[5m])) by (container_name)\n"));
             metrics.put("containerCpuInstructions", queryAndExtract(
-                    "sum(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}) by (container_name)"));
+                    "sum(rate(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}[5m])) by (container_name)"));
             // Span metrics
             metrics.put("avg_HTTP_client_request_duration", queryAndExtract(
                     """

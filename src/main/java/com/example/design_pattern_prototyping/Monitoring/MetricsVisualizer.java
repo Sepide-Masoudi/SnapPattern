@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO Recieve Metric Plots back from the Python service to display in Window
 public class MetricsVisualizer {
 
     private static final Logger logger = Logger.getLogger(MetricsVisualizer.class.getName());
@@ -122,9 +121,6 @@ public class MetricsVisualizer {
             for (Map.Entry<String, String> entry : metrics.entrySet()) {
                 String metricName = entry.getKey();
                 String jsonResponse = entry.getValue();
-
-                logger.info("Processing metric: " + metricName);
-                logger.info("JSON Response: " + jsonResponse);
 
                 JsonNode rootNode = objectMapper.readTree(jsonResponse);
                 if ("success".equals(rootNode.path("status").asText())) {
