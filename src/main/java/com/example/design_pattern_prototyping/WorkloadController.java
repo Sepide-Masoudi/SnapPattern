@@ -174,13 +174,13 @@ public class WorkloadController {
                         // Schedule task to stop the process after 5 minutes
                         scheduler.schedule(() -> {
                             if (currentProcess != null && currentProcess.isAlive()) {
-                                System.out.println("Stopping workload after 5 minutes...");
+                                System.out.println("Stopping workload after 15 minutes...");
                                 timeoutTriggered.set(true);  // Set timeout flag
                                 currentProcess.destroy();
-                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 5 minutes.", Alert.AlertType.INFORMATION));
+                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 15 minutes.", Alert.AlertType.INFORMATION));
                                 abortButton.setDisable(true);  // Disable abort button
                             }
-                        }, 5, TimeUnit.MINUTES);
+                        }, 15, TimeUnit.MINUTES);
 
 
                         try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {

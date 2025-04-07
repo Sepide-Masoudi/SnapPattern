@@ -45,7 +45,7 @@ public class KubernetesDeployer {
                 return true;
             }
             logger.info("Starting Minikube...");
-            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start");
+            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=none");
             Process startProcess = startBuilder.start();
 
             Thread outputThread = new Thread(() -> {
@@ -102,6 +102,21 @@ public class KubernetesDeployer {
             return true;
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to stop Minikube.", e);
+            return false;
+        }
+    }
+
+    public static boolean deleteMinikube() {
+        try {
+            logger.info("Stopping Minikube...");
+            ProcessBuilder stopBuilder = new ProcessBuilder("minikube", "delete");
+            Process stopProcess = stopBuilder.start();
+            stopProcess.waitFor();
+
+            logger.info("Minikube deleted successfully.");
+            return true;
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Failed to delete Minikube.", e);
             return false;
         }
     }

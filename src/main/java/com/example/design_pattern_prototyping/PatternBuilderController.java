@@ -114,6 +114,29 @@ public class PatternBuilderController {
     }
 
     @FXML
+    public void deleteKubernetes() {
+        logger.info("User requested to stop Kubernetes...");
+        statusLabel.setText("Stopping Kubernetes...");
+
+        new Thread(() -> {
+            try {
+                boolean minikubeDeleted = KubernetesDeployer.deleteMinikube();
+                javafx.application.Platform.runLater(() -> {
+                    if (minikubeDeleted) {
+                        showAlert(Alert.AlertType.INFORMATION, "Minikube Delete", "Minikube deleted successfully!");
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Minikube Delete", "Failed to delete Minikube. Check logs for details.");
+                    }
+                });
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Unexpected error during Kubernetes delete", e);
+                javafx.application.Platform.runLater(() -> showAlert(Alert.AlertType.ERROR, "Minikube Delete",
+                        "An error occurred while deleting Minikube: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    @FXML
     public void handleFileUpload() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("YAML Files", "*.yaml"));
