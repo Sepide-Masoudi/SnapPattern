@@ -54,18 +54,10 @@
                     <VBox spacing="10.0" fx:id="asyncRequestReplyFields" visible="false">
                         <Label text="Async Request Reply Configuration" style="-fx-font-weight: bold;"/>
                         <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Sending Service - Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="sendingServiceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <Label text="Service Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <TextField fx:id="async_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                             <Label text="Sending Service - Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="sendingServiceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label text="Sending Service - Port" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="sendingServicePort" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                            <Label text="Receiving Service - Name" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                            <TextField fx:id="receivingServiceName" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                            <Label text="Receiving Service - Endpoint" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                            <TextField fx:id="receivingServiceEndpoint" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-                            <Label text="Receiving Service - Port" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                            <TextField fx:id="receivingServicePort" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                            <TextField fx:id="async_endpointPath" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                         </GridPane>
                     </VBox>
 
@@ -74,11 +66,11 @@
                         <Label text="Gateway Offloading Configuration" style="-fx-font-weight: bold;"/>
                         <GridPane hgap="10.0" vgap="10.0">
                             <Label text="Service Host" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="serviceHost" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <TextField fx:id="go_serviceHost" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                             <Label text="Service Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                            <TextField fx:id="go_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                             <Label text="Service Name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <TextField fx:id="go_serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
                         </GridPane>
                     </VBox>
 

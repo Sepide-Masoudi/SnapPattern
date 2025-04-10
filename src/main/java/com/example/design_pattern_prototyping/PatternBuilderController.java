@@ -28,17 +28,13 @@ public class PatternBuilderController {
     public VBox circuitBreakerFields;
 
     // Asynch Request Reply Pattern
-    public TextField sendingServiceName;
-    public TextField sendingServiceEndpoint;
-    public TextField sendingServicePort;
-    public TextField receivingServiceName;
-    public TextField receivingServiceEndpoint;
-    public TextField receivingServicePort;
+    public TextField async_serviceName;
+    public TextField async_endpointPath;
 
     // Gateway Offloading
-    public TextField serviceHost;
-    public TextField serviceEndpoint;
-    public TextField serviceName;
+    public TextField go_serviceHost;
+    public TextField go_serviceEndpoint;
+    public TextField go_serviceName;
 
     // Cache Aside Pattern
     public TextField cachedEndpoints;
@@ -269,16 +265,12 @@ public class PatternBuilderController {
             String yamlFilePath = generator.getYamlFilePath();
 
             if ("Async Request Reply".equals(selectedPattern)) {
-                parameters.put("SEND_SERVICE_NAME", sendingServiceName.getText());
-                parameters.put("SEND_SERVICE_ENDPOINT", sendingServiceEndpoint.getText());
-                parameters.put("SEND_SERVICE_PORT", sendingServicePort.getText());
-                parameters.put("RECEIVE_SERVICE_NAME", receivingServiceName.getText());
-                parameters.put("RECEIVE_SERVICE_ENDPOINT", receivingServiceEndpoint.getText());
-                parameters.put("RECEIVE_SERVICE_PORT", receivingServicePort.getText());
+                parameters.put("SERVICE_NAME", async_serviceName.getText());
+                parameters.put("ENDPOINT_PATH", async_endpointPath.getText());
             } else if ("Gateway Offloading".equals(selectedPattern)) {
-                parameters.put("SERVICE_HOST", serviceHost.getText());
-                parameters.put("SERVICE_ENDPOINT", serviceEndpoint.getText());
-                parameters.put("SERVICE_NAME", serviceName.getText());
+                parameters.put("SERVICE_HOST", go_serviceHost.getText());
+                parameters.put("SERVICE_ENDPOINT", go_serviceEndpoint.getText());
+                parameters.put("SERVICE_NAME", go_serviceName.getText());
             } else if ("Gateway Aggregation".equals(selectedPattern)) {
                 parameters.put("SERVICE_1_NAME", ga_serviceName.getText());
                 parameters.put("SERVICE_1_ENDPOINT", ga_serviceEndpoint.getText());

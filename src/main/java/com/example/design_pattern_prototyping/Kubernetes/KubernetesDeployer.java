@@ -45,7 +45,7 @@ public class KubernetesDeployer {
                 return true;
             }
             logger.info("Starting Minikube...");
-            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=none");
+            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker");
             Process startProcess = startBuilder.start();
 
             Thread outputThread = new Thread(() -> {

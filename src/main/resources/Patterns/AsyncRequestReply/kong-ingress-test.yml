@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-auth-ingress
+  namespace: pattern
+  annotations:
+    konghq.com/strip-path: "true"
+    konghq.com/protocols: "http, https"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /useractions/login
+            pathType: Prefix
+            backend:
+              service:
+                name: proxy-service
+                port:
+                  number: 80
+          - path: /useractions/logout
+            pathType: Prefix
+            backend:
+              service:
+                name: proxy-service
+                port:
+                  number: 80

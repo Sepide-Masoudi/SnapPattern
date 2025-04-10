@@ -8,25 +8,29 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Configuration parameters (environment variables or defaults)
+# Configuration parameters
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', 'rabbitmq.rabbitmq.svc.cluster.local')
 RABBITMQ_PORT = int(os.getenv('RABBITMQ_PORT', '5672'))
 SERVICE_B_URL = os.getenv('SERVICE_URL', 'http://service.user.svc.cluster.local/target-endpoint')
-QUEUE_NAME = "service-queue"
+QUEUE_NAME = os.getenv('QUEUE_NAME', 'service-queue')
+EXCHANGE_NAME = os.getenv('EXCHANGE_NAME', 'service-exchange')
+ROUTING_KEY = os.getenv('ROUTING_KEY', 'service-routing-key')
 
-# Establish a RabbitMQ connection
 def get_rabbitmq_connection():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT))
-    return connection
+    return pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
+    )
 
-
-# Function to listen to RabbitMQ and forward messages to receiving Service
 def worker_function():
     while True:
         try:
             connection = get_rabbitmq_connection()
             channel = connection.channel()
+
+            # Declare exchange and queue and bind them
+            channel.exchange_declare(exchange=EXCHANGE_NAME, exchange_type='direct', durable=True)
             channel.queue_declare(queue=QUEUE_NAME, durable=True)
+            channel.queue_bind(exchange=EXCHANGE_NAME, queue=QUEUE_NAME, routing_key=ROUTING_KEY)
 
             def callback(ch, method, properties, body):
                 data = json.loads(body)
@@ -37,7 +41,6 @@ def worker_function():
                 except requests.RequestException as e:
                     logging.error(f"Failed to forward message to Service: {e}")
 
-            # Set up consumption
             channel.basic_consume(queue=QUEUE_NAME, on_message_callback=callback)
             logging.info("Listener started, waiting for messages...")
             channel.start_consuming()

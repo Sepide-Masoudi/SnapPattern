@@ -1,134 +1,172 @@
 package com.example.design_pattern_prototyping.pattern_generator;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStreamReader;
+import java.nio.file.*;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class AsyncRequestReplyGenerator implements PatternGenerator {
 
+    private static final Logger logger = Logger.getLogger(AsyncRequestReplyGenerator.class.getName());
+    private String tempIngressPath;
+    private String tempListenerPath;
+
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/GatewayOffloading/ingress.yml";
+        return "src/main/resources/Patterns/AsyncRequestReply/kong-ingress.yml";
     }
 
     @Override
     public void generatePattern(String filePath, Map<String, String> parameters) {
         try {
-            // Load ingress YAML content as a string
-            Path path = Paths.get(filePath);
-            String yamlContent = new String(Files.readAllBytes(path));
-            // Load listener YAML content as a string
-            Path listenerPath = Paths.get("src", "main", "resources", "patterns", "AsyncRequestReply", "listener", "listener_deployment.yml");
+            logger.info("Loading Kong Ingress template from: " + filePath);
+            Path templatePath = Paths.get(filePath);
+            String ingressContent = new String(Files.readAllBytes(templatePath));
+
+            // Replace placeholder in ingress template
+            ingressContent = ingressContent.replace("${ENDPOINT_PATH}", parameters.get("ENDPOINT_PATH"));
+
+            // Write to a temporary file
+            Path tempIngressFile = Files.createTempFile("kong-ingress-temp", ".yml");
+            Files.write(tempIngressFile, ingressContent.getBytes());
+            tempIngressPath = tempIngressFile.toString();
+            logger.info("Generated Kong Ingress at temporary path: " + tempIngressPath);
+
+            // Replace listener placeholder
+            Path listenerPath = Paths.get("src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment.yml");
             String listenerContent = new String(Files.readAllBytes(listenerPath));
 
-            String sendinghost = parameters.get("SEND_SERVICE_NAME") + ".user.svc.cluster.local";
-            String receivinghost = parameters.get("RECEIVE_SERVICE_NAME") + ".user.svc.cluster.local";
-            String receivingUrl = "http://"+receivinghost+"/"+parameters.get("SERVICE_ENDPOINT");
+            String targetHost = parameters.get("SERVICE_NAME") + ".user.svc.cluster.local";
+            String fullTargetUrl = "http://" + targetHost + "/" + parameters.get("ENDPOINT_PATH");
+            listenerContent = listenerContent.replace("${SERVICE_NAME}", fullTargetUrl);
+            logger.info("Updated listener deployment with SERVICE_URL: " + fullTargetUrl);
 
-            // Replace placeholders with parameter values
-            yamlContent = yamlContent.replace("${SERVICE_HOST}", sendinghost);
-            yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.get("SERVICE_ENDPOINT"));
-            yamlContent = yamlContent.replace("${SERVICE_PORT}", parameters.get("SERVICE_PORT"));
-            listenerContent = listenerContent.replace("${SERVICE_URL}", receivingUrl);
-            // Write the updated content back to the  File
-            Files.write(path, yamlContent.getBytes());
-            Files.write(listenerPath, listenerContent.getBytes());
-            System.out.println("Async Request Reply pattern generated successfully at " + filePath);
+            // Write to a temporary file
+            Path tempListenerFile = Files.createTempFile("listener-deployment-temp", ".yml");
+            Files.write(tempListenerFile, listenerContent.getBytes());
+            tempListenerPath = tempListenerFile.toString();
+            logger.info("Generated Listener at temporary path: " + tempListenerPath);
 
-            // Build Docker images for proxy and listener
-            buildDockerImage("src/main/resources/Dockerfile.proxy", "proxy-service:local");
-            buildDockerImage("src/main/resources/Dockerfile.listener", "listener-service:local");
+            // Build Docker images
+            buildDockerImage("src/main/resources/Patterns/AsyncRequestReply/proxy/Dockerfile.proxy", "proxy-service:local");
+            buildDockerImage("src/main/resources/Patterns/AsyncRequestReply/listener/Dockerfile.listener", "listener-service:local");
             loadImageMinikube("proxy-service:local");
             loadImageMinikube("listener-service:local");
 
         } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Error generating Async Request Reply pattern: " + e.getMessage());
-        }
-    }
-
-    private void buildDockerImage(String dockerfilePath, String imageName) {
-        try {
-            Process dockerBuild = new ProcessBuilder(
-                    "docker", "build", "-t", imageName, "-f", dockerfilePath, ".")
-                    .inheritIO() // Display output in console
-                    .start();
-
-            int exitCode = dockerBuild.waitFor();
-            if (exitCode == 0) {
-                System.out.println("Docker image built successfully: " + imageName);
-            } else {
-                System.err.println("Failed to build Docker image: " + imageName);
-            }
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            System.out.println("Error building Docker image: " + imageName);
-        }
-    }
-    private void loadImageMinikube(String imageName) {
-        try {
-            Process loadImage = new ProcessBuilder(
-                    "minikube", "image", "load", imageName)
-                    .inheritIO() // Display output in console
-                    .start();
-
-            int exitCode = loadImage.waitFor();
-            if (exitCode == 0) {
-                System.out.println("Image loaded into Minikube successfully: " + imageName);
-            } else {
-                System.err.println("Failed to load image into Minikube: " + imageName);
-            }
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            System.out.println("Error loading image into Minikube: " + imageName);
+            logger.log(Level.SEVERE, "Error generating Async Request Reply pattern.", e);
         }
     }
 
     @Override
     public void deployPattern() {
         try {
-            // Step 1: Add Helm repositories and update them
-            Process addKongRepo = new ProcessBuilder("helm", "repo", "add", "kong", "https://charts.konghq.com").inheritIO().start();
-            addKongRepo.waitFor();
+            if (tempIngressPath == null) {
+                throw new IOException("No generated Kong Ingress file found.");
+            }
+            if (tempListenerPath == null) {
+                throw new IOException("No generated Listener file found.");
+            }
 
-            Process addBitnamiRepo = new ProcessBuilder("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami").inheritIO().start();
-            addBitnamiRepo.waitFor();
+            // Helm repositories
+            executeCommand("helm", "repo", "add", "kong", "https://charts.konghq.com");
+            executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
+            executeCommand("helm", "repo", "update");
 
-            Process updateHelmRepos = new ProcessBuilder("helm", "repo", "update").inheritIO().start();
-            updateHelmRepos.waitFor();
+            // RabbitMQ
+            executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq", "--set",
+                    "auth.username=user,auth.password=bitnami", "--namespace", "pattern");
 
-            // Step 2: Create namespaces
-            Process createProxyNamespace = new ProcessBuilder("kubectl", "create", "namespace", "proxy").inheritIO().start();
-            createProxyNamespace.waitFor();
+            // Proxy
+            applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml");
+            applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml");
 
-            // Step 3: Install RabbitMQ
-            Process installRabbitmq = new ProcessBuilder("helm", "install", "rabbitmq", "bitnami/rabbitmq", "--set", "auth.username=user,auth.password=bitnami", "--namespace", "rabbitmq").inheritIO().start();
-            installRabbitmq.waitFor();
+            // Listener
+            applyYaml(tempListenerPath);
 
-            // Step 4: Install Kong
-            Process installKong = new ProcessBuilder("helm", "install", "kong/kong", "--generate-name", "--set", "ingressController.installCRDs=false", "--namespace", "pattern").inheritIO().start();
-            installKong.waitFor();
+            // Kong and Ingress
+            executeCommand("helm", "upgrade", "--install", "kong", "kong/kong", "--set",
+                    "ingressController.installCRDs=false", "--namespace", "pattern");
+            applyYaml(tempIngressPath);
 
-            // Step 5: Apply Kubernetes YAML files
-            Process applyKongIngress = new ProcessBuilder("kubectl", "apply", "-f", "kong-nginx-ingress.yml", "--namespace", "pattern").inheritIO().start();
-            applyKongIngress.waitFor();
+            logger.info("Async Request Reply Pattern setup completed successfully.");
 
-            Process applyListener = new ProcessBuilder("kubectl", "apply", "-f", "listener-deployment.yml", "--namespace", "pattern").inheritIO().start();
-            applyListener.waitFor();
-
-            Process applyProxyDeployment = new ProcessBuilder("kubectl", "apply", "-f", "proxy-deployment.yml", "--namespace", "proxy").inheritIO().start();
-            applyProxyDeployment.waitFor();
-
-            Process applyProxyService = new ProcessBuilder("kubectl", "apply", "-f", "proxy-service.yml", "--namespace", "proxy").inheritIO().start();
-            applyProxyService.waitFor();
-
-            System.out.println("Async Request Reply Pattern setup completed successfully.");
+            Files.deleteIfExists(Paths.get(tempIngressPath));
+            logger.info("Temporary file deleted: " + tempIngressPath);
+            Files.deleteIfExists(Paths.get(tempListenerPath));
+            logger.info("Temporary file deleted: " + tempListenerPath);
 
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            System.out.println("Error executing build steps for Async Request Reply Pattern: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error during Async Request Reply pattern deployment.", e);
+        }
+    }
+
+    private void applyYaml(String filePath) throws IOException, InterruptedException {
+        logger.info("Applying YAML from: " + filePath);
+        Process process = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "pattern").start();
+
+        try (BufferedReader out = new BufferedReader(new InputStreamReader(process.getInputStream()));
+             BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+            out.lines().forEach(line -> logger.info("[KUBECTL OUTPUT] " + line));
+            err.lines().forEach(line -> logger.warning("[KUBECTL ERROR] " + line));
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode == 0) {
+            logger.info("Successfully applied: " + filePath);
+        } else {
+            logger.severe("Failed to apply: " + filePath + " (exit code " + exitCode + ")");
+        }
+    }
+
+    private void executeCommand(String... command) throws IOException, InterruptedException {
+        logger.info("Running command: " + String.join(" ", command));
+        Process process = new ProcessBuilder(command).inheritIO().start();
+        int exitCode = process.waitFor();
+        if (exitCode == 0) {
+            logger.info("Command succeeded: " + String.join(" ", command));
+        } else {
+            logger.warning("Command failed: " + String.join(" ", command));
+        }
+    }
+
+    private void buildDockerImage(String dockerfilePath, String imageName) {
+        try {
+            Path dockerfile = Paths.get(dockerfilePath);
+            String buildContext = dockerfile.getParent().toString();
+
+            logger.info("Building Docker image: " + imageName);
+            Process process = new ProcessBuilder(
+                    "docker", "build", "-t", imageName, "-f", dockerfilePath, buildContext)
+                    .inheritIO()
+                    .start();
+
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.info("Docker image built: " + imageName);
+            } else {
+                logger.warning("Failed to build Docker image: " + imageName);
+            }
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Error building Docker image: " + imageName, e);
+        }
+    }
+
+    private void loadImageMinikube(String imageName) {
+        try {
+            logger.info("Loading image into Minikube: " + imageName);
+            Process process = new ProcessBuilder("minikube", "image", "load", imageName).inheritIO().start();
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.info("Image loaded into Minikube: " + imageName);
+            } else {
+                logger.warning("Failed to load image into Minikube: " + imageName);
+            }
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Error loading image into Minikube: " + imageName, e);
         }
     }
 }

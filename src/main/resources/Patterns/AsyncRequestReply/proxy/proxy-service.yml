@@ -2,11 +2,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: proxy-service
+  namespace: pattern
 spec:
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
   selector:
     app: proxy-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
   type: ClusterIP

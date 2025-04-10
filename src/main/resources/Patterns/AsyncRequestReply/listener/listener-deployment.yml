@@ -17,11 +17,17 @@ spec:
         - name: listener-container
           image: listener-service:local
           env:
-            - name: SERVICE_URL # recieving message URL
-              value: ${SERVICE_URL}
+            - name: SERVICE_URL
+              value: ${SERVICE_NAME} #"http://teastore-auth.user.svc.cluster.local:8080/useractions/login"
             - name: RABBITMQ_HOST
-              value: "rabbitmq.rabbitmq.svc.cluster.local"
+              value: "rabbitmq.pattern.svc.cluster.local"
             - name: RABBITMQ_PORT
               value: "5672"
+            - name: QUEUE_NAME
+              value: "service-queue"
+            - name: EXCHANGE_NAME
+              value: "service-exchange"
+            - name: ROUTING_KEY
+              value: "service-key"
           ports:
             - containerPort: 80

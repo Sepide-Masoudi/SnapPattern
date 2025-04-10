@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: proxy-service
-  namespace: proxy
+  namespace: pattern
 spec:
   replicas: 1
   selector:
@@ -18,11 +18,11 @@ spec:
           image: proxy-service:local
           env:
             - name: RABBITMQ_HOST
-              value: "rabbitmq.rabbitmq.svc.cluster.local"
+              value: "rabbitmq.pattern.svc.cluster.local"
             - name: RABBITMQ_PORT
               value: "5672"
             - name: PROXY_HOST
-              value: "proxy-service.proxy.svc.cluster.local"
+              value: "proxy-service.pattern.svc.cluster.local" #"0.0.0.0"
             - name: PROXY_PORT
               value: "80"
           ports:

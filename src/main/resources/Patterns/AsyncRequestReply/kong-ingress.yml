@@ -8,19 +8,13 @@ metadata:
     konghq.com/protocols: "http, https"
 spec:
   rules:
-    - http:
-        paths:
-          - path: /useractions/login
-            pathType: Prefix
-            backend:
-              service:
-                name: teastore-auth-0 
-                port:
-                  number: 80
-          - path: /useractions/logout
-            pathType: Prefix
-            backend:
-              service:
-                name: teastore-auth-0 
-                port:
-                  number: 80
+    http:
+      paths:
+      - path: ${SERVICE-ENDPOINT}  # Set path for async requests
+        pathType: Prefix
+        backend:
+          service:
+            name: proxy-service
+            port:
+              number: 80
+      # Ability to add more rules
