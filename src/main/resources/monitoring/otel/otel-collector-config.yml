@@ -65,10 +65,6 @@ data:
             - set(attributes["container"], resource.attributes["k8s.container.name"])
             - set(attributes["pod"], resource.attributes["k8s.pod.name"])
     exporters:
-      otlp:
-        endpoint: "jaeger-collector.monitoring.svc.cluster.local:4317"
-        tls:
-          insecure: true
       prometheus:
         endpoint: "0.0.0.0:9464"
     connectors:
@@ -81,9 +77,9 @@ data:
     service:
       pipelines:
         traces:
-          receivers: [otlp, jaeger]
+          receivers: [otlp]
           processors: [memory_limiter, probabilistic_sampler, k8sattributes, attributes/insert, batch]
-          exporters: [otlp, spanmetrics]
+          exporters: [spanmetrics]
         metrics:
           receivers: [otlp]
           processors: [batch]

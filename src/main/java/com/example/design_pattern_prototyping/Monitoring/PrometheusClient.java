@@ -1,35 +1,36 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
-import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
-import io.kubernetes.client.openapi.ApiClient;
-import io.kubernetes.client.util.Config;
+//import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
+//import io.kubernetes.client.openapi.ApiClient;
+//import io.kubernetes.client.util.Config;
 import java.io.BufferedReader;
-import java.io.IOException;
+//import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 // TODO Replace HttpURLConnection library like Apache HttpClient
 // TODO add retries, and timeouts.
-// TODO Add Logging for Port Forwarding
+// TODO Add Logging
 public class PrometheusClient {
+    /*
     private static final Logger logger = Logger.getLogger(PrometheusClient.class.getName());
     private static final String NAMESPACE = "monitoring";
     private static final String SERVICE_NAME = "prometheus-kube-prometheus-prometheus";
     private static final int LOCAL_PORT = 9090;
     private static final int TARGET_PORT = 9090;
     private static Process prometheusProcess;
+    */
 
     /**
     public static void startPortForwarding2() {
         try {
             // Initialize the Kubernetes API client
             ApiClient client = Config.defaultClient();
-            KubernetesClientAPI kubernetesClientAPI = new KubernetesClientAPI(client);
+            KubernetesClientAPI = new KubernetesClientAPI(client);
 
             // Call the generalized port-forwarding method
             kubernetesClientAPI.startPortForwarding(NAMESPACE, SERVICE_NAME, LOCAL_PORT, TARGET_PORT);
@@ -37,7 +38,7 @@ public class PrometheusClient {
         } catch (Exception e) {
             logger.severe("Failed to initialize port forwarding: " + e.getMessage());
         }
-    }**/
+    }
 
     public static void startPortForwarding() {
         new Thread(() -> {
@@ -65,9 +66,9 @@ public class PrometheusClient {
             }
         }));
     }
-
+     **/
     public String queryPrometheus(String query) throws Exception {
-        String url = "http://127.0.0.1:9090/api/v1/query?query=" +
+        String url = "http://192.168.49.2:30090/api/v1/query?query=" +
                 URLEncoder.encode(query, StandardCharsets.UTF_8);
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();

@@ -1,6 +1,8 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,7 +18,7 @@ public class DeployMonitoringStack {
             executeCommand("helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart");
             executeCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts");
             //executeCommand("helm", "repo", "add", "istio", "https://istio-release.storage.googleapis.com/charts");
-            executeCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
+            //executeCommand("helm", "repo", "add", "jaegertracing", "https://jaegertracing.github.io/helm-charts");
 
             // Step 2: Update Helm repositories
             logger.info("Updating Helm repositories...");
@@ -35,8 +37,15 @@ public class DeployMonitoringStack {
             logger.info("Installing Cert-Manager...");
             executeCommand("kubectl", "apply", "-f", "https://github.com/cert-manager/cert-manager/releases/download/v1.17.0/cert-manager.yaml");
 
+            // Wait for Cert-Manager to be ready
+            waitForDeploymentReady("cert-manager", "cert-manager");
+            waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
+            waitForDeploymentReady("cert-manager-webhook", "cert-manager");
+
             logger.info("Installing OpenTelemetry Operator...");
             executeCommand("kubectl", "apply", "-f", "https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml");
+            // Wait for OpenTelemetry Operator controller to be ready
+            waitForDeploymentReady("opentelemetry-operator-controller-manager", "opentelemetry-operator-system");
             executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/otel/otel-operator-instrumentation.yml");
 
             logger.info("Installing OpenTelemetry Collector...");
@@ -80,12 +89,12 @@ public class DeployMonitoringStack {
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Failed to label the 'user' namespace. Ensure the namespace exists.", e);
             }
-            */
+
             logger.info("Installing Jaeger...");
             executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
                     "--namespace", "monitoring",
                     "-f", "src/main/resources/monitoring/jaeger-values.yaml");
-
+            */
             logger.info("Monitoring stack deployed successfully.");
             return true;
         } catch (Exception e) {
@@ -130,10 +139,44 @@ public class DeployMonitoringStack {
 
     private void executeCommand(String... command) throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
-        processBuilder.inheritIO();
-        int exitCode = processBuilder.start().waitFor();
+        Process process = processBuilder.start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[stdout] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stdout of process", e);
+            }
+        }).start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.warning("[stderr] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stderr of process", e);
+            }
+        }).start();
+
+        int exitCode = process.waitFor();
         if (exitCode != 0) {
             throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
         }
     }
+
+    private void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {
+        logger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
+        executeCommand("kubectl", "wait",
+                "--for=condition=Available",
+                "--timeout=" + 180 + "s",
+                "deployment/" + deploymentName,
+                "-n", namespace);
+        logger.info("Deployment '" + deploymentName + "' is ready.");
+    }
+
 }
