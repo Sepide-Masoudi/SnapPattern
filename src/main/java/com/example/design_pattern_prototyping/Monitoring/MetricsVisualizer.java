@@ -158,16 +158,16 @@ public class MetricsVisualizer {
                 valuesRow.createCell(1).setCellValue(workload);
                 valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 valuesRow.createCell(3).setCellValue(containerName);
-                valuesRow.createCell(4).setCellValue(metricValues.getOrDefault("containerJoulesTotal", "0"));
-                valuesRow.createCell(5).setCellValue(metricValues.getOrDefault("containerCacheMissTotal", "0"));
-                valuesRow.createCell(6).setCellValue(metricValues.getOrDefault("containerCpuCyclesTotal", "0"));
-                valuesRow.createCell(7).setCellValue(metricValues.getOrDefault("containerCpuInstructions", "0"));
-                valuesRow.createCell(8).setCellValue(metricValues.getOrDefault("energyEfficiency", "0"));
-                valuesRow.createCell(9).setCellValue(metricValues.getOrDefault("avg_HTTP_client_request_duration", "0"));
-                valuesRow.createCell(10).setCellValue(metricValues.getOrDefault("requestRate_RPS", "0"));
-                valuesRow.createCell(11).setCellValue(metricValues.getOrDefault("averageLatency", "0"));
-                valuesRow.createCell(12).setCellValue(metricValues.getOrDefault("95PercentileLatency", "0"));
-                valuesRow.createCell(13).setCellValue(metricValues.getOrDefault("ErrorRate", "0"));
+                valuesRow.createCell(4).setCellValue(metricValues.getOrDefault("containerJoulesTotal", "NULL"));
+                valuesRow.createCell(5).setCellValue(metricValues.getOrDefault("containerCacheMissTotal", "NULL"));
+                valuesRow.createCell(6).setCellValue(metricValues.getOrDefault("containerCpuCyclesTotal", "NULL"));
+                valuesRow.createCell(7).setCellValue(metricValues.getOrDefault("containerCpuInstructions", "NULL"));
+                valuesRow.createCell(8).setCellValue(metricValues.getOrDefault("energyEfficiency", "NULL"));
+                valuesRow.createCell(9).setCellValue(metricValues.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
+                valuesRow.createCell(10).setCellValue(metricValues.getOrDefault("requestRate_RPS", "NULL"));
+                valuesRow.createCell(11).setCellValue(metricValues.getOrDefault("averageLatency", "NULL"));
+                valuesRow.createCell(12).setCellValue(metricValues.getOrDefault("95PercentileLatency", "NULL"));
+                valuesRow.createCell(13).setCellValue(metricValues.getOrDefault("ErrorRate", "NULL"));
 
                 logger.info("Wrote metrics for container: " + containerName);
             }

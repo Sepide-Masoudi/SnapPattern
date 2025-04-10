@@ -16,8 +16,6 @@ import java.util.logging.Logger;
 
 public class MetricsController {
 
-    private static final String USER_NAMESPACE = "user";
-    private static final String PATTERN_NAMESPACE = "pattern";
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
 
     @FXML public Button exposeServicesButton;
@@ -29,7 +27,7 @@ public class MetricsController {
     @FXML public Button loadDashboard;
     private DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
-    private JaegerClient jaegerClient;
+    //private JaegerClient jaegerClient;
 
     @FXML
     public void initialize() {
@@ -37,14 +35,14 @@ public class MetricsController {
         ControllerMediatorImpl.getInstance().registerMetricsController(this);
         this.queryMetrics = new QueryMetrics();
         this.deployMonitoringStack = new DeployMonitoringStack();
-        this.jaegerClient = new JaegerClient();
+        //this.jaegerClient = new JaegerClient();
         logger.info("MetricsController initialized.");
     }
 
     @FXML
     private void exposeMonitoringServices() {
         logger.info("Starting port forwarding for monitoring services...");
-        PrometheusClient.startPortForwarding();
+        //PrometheusClient.startPortForwarding();
         GrafanaClient.startPortForwarding();
         JaegerClient.startPortForwarding();
     }
@@ -85,7 +83,7 @@ public class MetricsController {
 
     // Query Metrics and Generate Plots and Results File
     @FXML
-    private void generateMetrics() {
+    public void generateMetrics() {
         logger.info("Generating metrics...");
         new Thread(() -> {
             try {

@@ -7,4 +7,6 @@ public interface ControllerMediator {
 
     String getSelectedWorkloadLevel();
     String getSelectedPattern();
+
+    MetricsController getMetricsController();
 }

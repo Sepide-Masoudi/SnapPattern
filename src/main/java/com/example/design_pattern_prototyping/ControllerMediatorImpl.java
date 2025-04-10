@@ -47,4 +47,9 @@ public class ControllerMediatorImpl implements ControllerMediator {
         }
         return null;
     }
+
+    @Override
+    public MetricsController getMetricsController() {
+        return metricsController;
+    }
 }
