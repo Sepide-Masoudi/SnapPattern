@@ -8,7 +8,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +22,7 @@ public class MetricsVisualizer {
 
     private static final Logger logger = Logger.getLogger(MetricsVisualizer.class.getName());
 
-    public static void sendMetricsToPython(String excelFilePath) {
+    public static void runMetricsService() {
         try {
             URL url = new URL("http://127.0.0.1:5000/generate_metrics");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -31,29 +30,24 @@ public class MetricsVisualizer {
             connection.setRequestProperty("Content-Type", "application/json; utf-8");
             connection.setDoOutput(true);
 
-            // Create JSON payload with the file path
-            String jsonPayload = String.format("{\"file_path\": \"%s\"}", excelFilePath.replace("\\", "/"));
-
-            // Write JSON payload to request body
             try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
+                os.write(new byte[0]);
             }
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                logger.info("File path sent to Python service successfully.");
+                logger.info("Successfully triggered Python metrics generation service.");
             } else {
-                logger.warning("Failed to send file path to Python service. HTTP Code: " + responseCode);
+                logger.warning("Failed to trigger Python metrics service. HTTP Code: " + responseCode);
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to send file path to Python service: " + e);
+            logger.log(Level.SEVERE, "Error calling Python metrics service: ", e);
         }
     }
 
     public static void exportMetricsExcel(Map<String, String> metrics, String workload, String pattern) {
         String path = "Python/results";
-        String fileName = path + "/metrics.xlsx";
+        String fileName = path + "/metrics_agg.xlsx";
         Path filePath = Paths.get(fileName);
 
         logger.info("Starting exportMetricsExcel method...");
@@ -92,17 +86,16 @@ public class MetricsVisualizer {
                 headerRow.createCell(0).setCellValue("Pattern");
                 headerRow.createCell(1).setCellValue("Workload Level");
                 headerRow.createCell(2).setCellValue("Timestamp");
-                headerRow.createCell(3).setCellValue("Container Name");
-                headerRow.createCell(4).setCellValue("containerJoulesTotal");
-                headerRow.createCell(5).setCellValue("containerCacheMissTotal");
-                headerRow.createCell(6).setCellValue("containerCpuCyclesTotal");
-                headerRow.createCell(7).setCellValue("containerCpuInstructions");
-                headerRow.createCell(8).setCellValue("energyEfficiency");
-                headerRow.createCell(9).setCellValue("avg_HTTP_client_request_duration");
-                headerRow.createCell(10).setCellValue("requestRate_RPS");
-                headerRow.createCell(11).setCellValue("averageLatency");
-                headerRow.createCell(12).setCellValue("95PercentileLatency");
-                headerRow.createCell(13).setCellValue("ErrorRate");
+                headerRow.createCell(3).setCellValue("containerJoulesTotal");
+                headerRow.createCell(4).setCellValue("containerCacheMissTotal");
+                headerRow.createCell(5).setCellValue("containerCpuCyclesTotal");
+                headerRow.createCell(6).setCellValue("containerCpuInstructions");
+                headerRow.createCell(7).setCellValue("energyEfficiency");
+                headerRow.createCell(8).setCellValue("avg_HTTP_client_request_duration");
+                headerRow.createCell(9).setCellValue("requestRate_RPS");
+                headerRow.createCell(10).setCellValue("averageLatency");
+                headerRow.createCell(11).setCellValue("95PercentileLatency");
+                headerRow.createCell(12).setCellValue("ErrorRate");
 
                 logger.info("Header row created successfully.");
             } else {
@@ -115,9 +108,8 @@ public class MetricsVisualizer {
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Map<String, String>> containerMetrics = new HashMap<>();
+            Map<String, String> flatMetrics = new HashMap<>();
 
-            // Parse each metric JSON and populate the containerMetrics map
             for (Map.Entry<String, String> entry : metrics.entrySet()) {
                 String metricName = entry.getKey();
                 String jsonResponse = entry.getValue();
@@ -125,23 +117,9 @@ public class MetricsVisualizer {
                 JsonNode rootNode = objectMapper.readTree(jsonResponse);
                 if ("success".equals(rootNode.path("status").asText())) {
                     JsonNode results = rootNode.path("data").path("result");
-                    for (JsonNode node : results) {
-
-                        String containerName;
-                        JsonNode metricNode = node.path("metric");
-
-                        if (metricNode.has("container_name")) {
-                            // kepler metrics format
-                            containerName = metricNode.path("container_name").asText();
-                        } else if (metricNode.has("exported_job")) {
-                            // spanmetrics format
-                            containerName = metricNode.path("exported_job").asText();
-                        } else {
-                            containerName = "unknown";
-                        }
-                        String value = node.path("value").get(1).asText();
-                        // Store metric value per container
-                        containerMetrics.computeIfAbsent(containerName, k -> new HashMap<>()).put(metricName, value);
+                    if (results.isArray() && results.size() > 0) {
+                        String value = results.get(0).path("value").get(1).asText();
+                        flatMetrics.put(metricName, value);
                     }
                 } else {
                     logger.warning("Metric fetch failed for: " + metricName + ". Status: " + rootNode.path("status").asText());
@@ -149,28 +127,20 @@ public class MetricsVisualizer {
             }
 
             // Write the aggregated metrics to Excel
-            for (Map.Entry<String, Map<String, String>> entry : containerMetrics.entrySet()) {
-                String containerName = entry.getKey();
-                Map<String, String> metricValues = entry.getValue();
-
-                Row valuesRow = sheet.createRow(nextRowNum++);
-                valuesRow.createCell(0).setCellValue(pattern);
-                valuesRow.createCell(1).setCellValue(workload);
-                valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                valuesRow.createCell(3).setCellValue(containerName);
-                valuesRow.createCell(4).setCellValue(metricValues.getOrDefault("containerJoulesTotal", "NULL"));
-                valuesRow.createCell(5).setCellValue(metricValues.getOrDefault("containerCacheMissTotal", "NULL"));
-                valuesRow.createCell(6).setCellValue(metricValues.getOrDefault("containerCpuCyclesTotal", "NULL"));
-                valuesRow.createCell(7).setCellValue(metricValues.getOrDefault("containerCpuInstructions", "NULL"));
-                valuesRow.createCell(8).setCellValue(metricValues.getOrDefault("energyEfficiency", "NULL"));
-                valuesRow.createCell(9).setCellValue(metricValues.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
-                valuesRow.createCell(10).setCellValue(metricValues.getOrDefault("requestRate_RPS", "NULL"));
-                valuesRow.createCell(11).setCellValue(metricValues.getOrDefault("averageLatency", "NULL"));
-                valuesRow.createCell(12).setCellValue(metricValues.getOrDefault("95PercentileLatency", "NULL"));
-                valuesRow.createCell(13).setCellValue(metricValues.getOrDefault("ErrorRate", "NULL"));
-
-                logger.info("Wrote metrics for container: " + containerName);
-            }
+            Row valuesRow = sheet.createRow(nextRowNum++);
+            valuesRow.createCell(0).setCellValue(pattern);
+            valuesRow.createCell(1).setCellValue(workload);
+            valuesRow.createCell(2).setCellValue(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            valuesRow.createCell(3).setCellValue(flatMetrics.getOrDefault("containerJoulesTotal", "NULL"));
+            valuesRow.createCell(4).setCellValue(flatMetrics.getOrDefault("containerCacheMissTotal", "NULL"));
+            valuesRow.createCell(5).setCellValue(flatMetrics.getOrDefault("containerCpuCyclesTotal", "NULL"));
+            valuesRow.createCell(6).setCellValue(flatMetrics.getOrDefault("containerCpuInstructions", "NULL"));
+            valuesRow.createCell(7).setCellValue(flatMetrics.getOrDefault("energyEfficiency", "NULL"));
+            valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
+            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
+            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("averageLatency", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
+            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
 
             // Auto-size columns
             for (int i = 0; i <= 8; i++) {

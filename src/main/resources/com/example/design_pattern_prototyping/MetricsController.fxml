@@ -25,6 +25,9 @@
                             <Button fx:id="getMetricsButton" text="Get Metrics" onAction="#generateMetrics"/>
                         </HBox>
                         <HBox spacing="10.0">
+                            <Button fx:id="makePlots" text="Make Plots" onAction="#makePlots"/>
+                        </HBox>
+                        <HBox spacing="10.0">
                             <Button fx:id="viewPlotsButton" text="View Plots" onAction="#viewPlots"/>
                         </HBox>
 

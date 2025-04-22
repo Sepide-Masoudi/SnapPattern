@@ -99,20 +99,17 @@ public class MetricsController {
                     String pattern = mediator.getSelectedPattern();
                     MetricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
 
-                    //String excelFilePath = "Python/results/metrics.xlsx";
-                    //MetricsVisualizer.sendMetricsToPython(excelFilePath);
+                    MetricsVisualizer.runMetricsService();
                 }
-                // Collect trace data for the "user" namespace
-                //logger.info("Collecting trace data for namespace: " + USER_NAMESPACE);
-                //jaegerClient.collectTraceData(USER_NAMESPACE, "Python/results/user-trace-data.json");
-
-                // Collect trace data for the "pattern" namespace
-                //logger.info("Collecting trace data for namespace: " + PATTERN_NAMESPACE);
-                //jaegerClient.collectTraceData(PATTERN_NAMESPACE, "Python/results/pattern-trace-data.json");
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
             }
         }).start();
+    }
+
+    @FXML
+    public void makePlots() {
+        MetricsVisualizer.runMetricsService();
     }
 
     @FXML

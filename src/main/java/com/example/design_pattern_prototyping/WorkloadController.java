@@ -218,23 +218,25 @@ public class WorkloadController {
                         Platform.runLater(() -> {
                             abortButton.setDisable(true);
 
-                            ControllerMediator mediator = ControllerMediatorImpl.getInstance();
-                            mediator.getMetricsController().generateMetrics();
-
                             if (isAborted.get()) {
                                 logger.info("Workload was aborted by user.");
                                 showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
-                            } else if (exitCode == 0) {
-                                if (timeoutTriggered.get()) {
-                                    logger.info("Workload stopped by timeout.");
-                                    showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                } else {
-                                    logger.info("Workload executed successfully.");
-                                    showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                }
                             } else {
-                                logger.warning("Workload execution failed. Exit code: " + exitCode);
-                                showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
+                                ControllerMediator mediator = ControllerMediatorImpl.getInstance();
+                                mediator.getMetricsController().generateMetrics();
+
+                                if (exitCode == 0) {
+                                    if (timeoutTriggered.get()) {
+                                        logger.info("Workload stopped by timeout.");
+                                        showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                                    } else {
+                                        logger.info("Workload executed successfully.");
+                                        showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                                    }
+                                } else {
+                                    logger.warning("Workload execution failed. Exit code: " + exitCode);
+                                    showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
+                                }
                             }
                         });
                     } catch (IOException | InterruptedException e) {
