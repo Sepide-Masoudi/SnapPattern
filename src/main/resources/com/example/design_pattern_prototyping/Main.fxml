@@ -3,20 +3,36 @@
 <?import javafx.scene.layout.*?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.design_pattern_prototyping.MainController">
-    <left>
-        <TabPane side="LEFT">
+
+    <top>
+        <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
+            <HBox spacing="15" alignment="CENTER">
+                <Button text="Start Kubernetes" onAction="#startKubernetes"/>
+                <Button text="Stop Kubernetes" onAction="#stopKubernetes"/>
+                <Button text="Delete Cluster" onAction="#deleteKubernetes"/>
+            </HBox>
+            <Label fx:id="statusLabel" style="-fx-text-fill: gray;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane>
             <!-- Pattern Builder Tab -->
-            <Tab text="Pattern Builder" closable="false">
-                <fx:include source="PatternBuilder.fxml"/>
+            <Tab text="Resource Dashboard" closable="false">
+                <fx:include source="ResourceController.fxml"/>
+            </Tab>
+            <!-- Pattern Builder Tab -->
+            <Tab text="Pattern Dashboard" closable="false">
+                <fx:include source="PatternController.fxml"/>
             </Tab>
             <!-- Workload Manager Tab -->
-            <Tab text="Workload Manager" closable="false">
+            <Tab text="Workload Dashboard" closable="false">
                 <fx:include source="WorkloadController.fxml"/>
             </Tab>
             <!-- Monitoring Tab -->
-            <Tab text="Monitoring" closable="false">
+            <Tab text="Monitoring Dashboard" closable="false">
                 <fx:include source="MetricsController.fxml"/>
             </Tab>
         </TabPane>
-    </left>
+    </center>
 </BorderPane>
