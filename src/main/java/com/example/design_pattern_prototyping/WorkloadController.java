@@ -1,11 +1,9 @@
 package com.example.design_pattern_prototyping;
 
+import com.example.design_pattern_prototyping.util.UILogger;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -25,17 +23,14 @@ import java.util.stream.Stream;
 public class WorkloadController {
 
     private static final Logger logger = Logger.getLogger(WorkloadController.class.getName());
+    private UILogger uiLogger;
 
-    @FXML
-    private ComboBox<String> fileDropdown;
-    @FXML
-    private ComboBox<String> workloadLevelComboBox;
-    @FXML
-    private TextField hostnameField;
-    @FXML
-    private TextField portField;
-    @FXML
-    private Button abortButton;
+    @FXML private TextArea logTextArea;
+    @FXML private ComboBox<String> fileDropdown;
+    @FXML private ComboBox<String> workloadLevelComboBox;
+    @FXML private TextField hostnameField;
+    @FXML private TextField portField;
+    @FXML private Button abortButton;
     private Process currentProcess = null;
     private final AtomicBoolean isAborted = new AtomicBoolean(false);
     private final AtomicBoolean timeoutTriggered = new AtomicBoolean(false);
@@ -67,6 +62,9 @@ public class WorkloadController {
             showAlert("Error", "Failed to initialize file dropdown: " + e.getMessage(), Alert.AlertType.ERROR);
         }
         abortButton.setDisable(true);
+
+        Logger logger = Logger.getLogger("WorkloadLogger");
+        uiLogger = new UILogger(logTextArea, logger);
         logger.info("WorkloadController initialized.");
     }
 

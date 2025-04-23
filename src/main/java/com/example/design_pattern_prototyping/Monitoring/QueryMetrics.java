@@ -1,5 +1,7 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import com.example.design_pattern_prototyping.util.UILogger;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -8,6 +10,11 @@ import java.util.logging.Logger;
 public class QueryMetrics {
 
     private static final Logger logger = Logger.getLogger(QueryMetrics.class.getName());
+    private UILogger uiLogger;
+
+    public void setLogger(UILogger logger) {
+        this.uiLogger = logger;
+    }
 
     private final PrometheusClient prometheusClient;
 
@@ -17,8 +24,10 @@ public class QueryMetrics {
 
     private String queryAndExtract(String promql) throws Exception {
         logger.info("Executing PromQL: " + promql);
+        uiLogger.info("Executing PromQL: " + promql);
         String response = prometheusClient.queryPrometheus(promql);
         logger.info("Response: " + response);
+        uiLogger.info("Response: " + response);
         return response;
     }
 
@@ -57,6 +66,7 @@ public class QueryMetrics {
                             sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))"""));
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);
+            uiLogger.error("Failed to query metrics");
             metrics.put("error", "Failed to query metrics: " + e.getMessage());
         }
         logger.info("Metrics: " + metrics);

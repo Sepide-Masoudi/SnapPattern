@@ -4,7 +4,7 @@ public class ControllerMediatorImpl implements ControllerMediator {
 
     private static ControllerMediatorImpl instance;
 
-    private PatternBuilderController patternBuilderController;
+    private PatternController patternController;
     private WorkloadController workloadController;
     private MetricsController metricsController;
 
@@ -18,8 +18,8 @@ public class ControllerMediatorImpl implements ControllerMediator {
     }
 
     @Override
-    public void registerPatternBuilderController(PatternBuilderController controller) {
-        this.patternBuilderController = controller;
+    public void registerPatternBuilderController(PatternController controller) {
+        this.patternController = controller;
     }
 
     @Override
@@ -42,8 +42,8 @@ public class ControllerMediatorImpl implements ControllerMediator {
 
     @Override
     public String getSelectedPattern() {
-        if (patternBuilderController != null) {
-            return patternBuilderController.getSelectedPattern();
+        if (patternController != null) {
+            return patternController.getSelectedPattern();
         }
         return null;
     }

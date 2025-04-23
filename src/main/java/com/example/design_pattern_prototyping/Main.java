@@ -18,7 +18,7 @@ public class Main extends Application {
         // Load the JavaFX UI
         Parent root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("Main.fxml")));
         primaryStage.setTitle("Local Kubernetes Microservice Design Pattern Prototype");
-        primaryStage.setScene(new Scene(root, 800, 600));
+        primaryStage.setScene(new Scene(root, 1000, 800));
         primaryStage.show();
 
         // Ensure Python service is stopped when the application closes

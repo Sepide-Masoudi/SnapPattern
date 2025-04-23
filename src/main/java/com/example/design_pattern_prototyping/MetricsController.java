@@ -1,6 +1,7 @@
 package com.example.design_pattern_prototyping;
 
 import com.example.design_pattern_prototyping.Monitoring.*;
+import com.example.design_pattern_prototyping.util.UILogger;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -17,7 +18,9 @@ import java.util.logging.Logger;
 public class MetricsController {
 
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
+    public UILogger uiLogger;
 
+    @FXML private TextArea logTextArea;
     @FXML public Button exposeServicesButton;
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
@@ -25,6 +28,7 @@ public class MetricsController {
     @FXML public VBox metricsSetupBox;
     @FXML public Label statusLabel;
     @FXML public Button loadDashboard;
+    @FXML public TextField patternTextField;
     private DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
     //private JaegerClient jaegerClient;
@@ -36,6 +40,11 @@ public class MetricsController {
         this.queryMetrics = new QueryMetrics();
         this.deployMonitoringStack = new DeployMonitoringStack();
         //this.jaegerClient = new JaegerClient();
+
+        Logger logger = Logger.getLogger("PatternLogger");
+        uiLogger = new UILogger(logTextArea, logger);
+        deployMonitoringStack.setLogger(uiLogger);
+        queryMetrics.setLogger(uiLogger);
         logger.info("MetricsController initialized.");
     }
 
@@ -52,6 +61,7 @@ public class MetricsController {
         deployMetricsButton.setDisable(true); // Disable the button during setup
         statusLabel.setText("Deploying monitoring stack...");
         logger.info("Starting deployment of monitoring stack...");
+        uiLogger.info("Starting deployment of monitoring stack...");
 
         new Thread(() -> {
             boolean success = false;
@@ -59,6 +69,7 @@ public class MetricsController {
                 success = deployMonitoringStack.deployMonitoringStack();
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Unexpected error during monitoring stack deployment", e);
+                uiLogger.error("Unexpected error during monitoring stack deployment");
             }
 
             final boolean deploymentSuccess = success;
@@ -68,6 +79,7 @@ public class MetricsController {
                     metricsSetupBox.setVisible(true);
                     metricsSetupBox.setManaged(true);
                     logger.info("Monitoring stack deployed successfully.");
+                    uiLogger.info("Monitoring stack deployed successfully.");
 
                     // Start port forwarding for Prometheus and Grafana
                     //PrometheusClient.startPortForwarding();
@@ -85,24 +97,30 @@ public class MetricsController {
     @FXML
     public void generateMetrics() {
         logger.info("Generating metrics...");
+        uiLogger.info("Generating metrics...");
         new Thread(() -> {
             try {
                 Map<String, String> metrics = queryMetrics.queryAllMetrics();
 
                 if (metrics.containsKey("error")) {
-                    logger.warning("Error fetching metrics: " + metrics.get("error"));
+                    logger.warning("Error generating metrics: " + metrics.get("error"));
+                    uiLogger.warning("Error generating metrics: " + metrics.get("error"));
                 } else {
-                    logger.info("Metrics fetched successfully");
+                    logger.info("Metrics generated successfully");
+                    uiLogger.info("Metrics generated successfully");
 
                     ControllerMediator mediator = ControllerMediatorImpl.getInstance();
                     String workloadLevel = mediator.getSelectedWorkloadLevel();
-                    String pattern = mediator.getSelectedPattern();
+                    // Check if the text field has input
+                    String patternInput = patternTextField.getText();
+                    String pattern = (patternInput != null && !patternInput.trim().isEmpty())
+                            ? patternInput.trim()
+                            : mediator.getSelectedPattern();
                     MetricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
-
-                    MetricsVisualizer.runMetricsService();
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
+                uiLogger.error("Error generating metrics");
             }
         }).start();
     }
@@ -114,7 +132,8 @@ public class MetricsController {
 
     @FXML
     private void viewPlots() {
-        logger.info("Viewing plots...");
+        logger.info("Opening plots...");
+        uiLogger.info("Opening plots...");
         Stage plotViewerStage = new Stage();
         plotViewerStage.setTitle("Metric Plots");
 
@@ -134,10 +153,12 @@ public class MetricsController {
                 plotLayout.getChildren().add(imageView);
             }
             logger.info("Plots loaded successfully. Total plots: " + plotFiles.length);
+            uiLogger.info("Plots loaded successfully. Total plots: " + plotFiles.length);
         } else {
             Label noPlotsLabel = new Label("No plots found in the results folder.");
             plotLayout.getChildren().add(noPlotsLabel);
-            logger.warning("No plot files were found in the 'Python/results' folder.");
+            logger.warning("No plot files were found in results folder.");
+            uiLogger.warning("No plot files were found in results folder.");
             showAlert("No Plots Found", "There are no plot files in the results folder. Please generate metrics to view plots.", Alert.AlertType.INFORMATION);
         }
 
@@ -147,7 +168,7 @@ public class MetricsController {
         plotViewerStage.setScene(plotScene);
         plotViewerStage.show();
     }
-
+/*
     @FXML
     private void loadGrafanaDashboard() {
         logger.info("Attempting to load Grafana dashboard...");
@@ -166,7 +187,7 @@ public class MetricsController {
             showAlert("Port Forwarding Inactive", "Port forwarding is not active. Please restart port forwarding and try again.", Alert.AlertType.WARNING);
         }
     }
-
+*/
     private void showAlert(String title, String message, Alert.AlertType alertType) {
         System.out.println("Showing alert - " + title + ": " + message);
         Alert alert = new Alert(alertType);
