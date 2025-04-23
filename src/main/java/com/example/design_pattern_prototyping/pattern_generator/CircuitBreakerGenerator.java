@@ -14,7 +14,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/CircuitBreaker/circuit-breaker-retry.yml";
+        return "src/main/resources/Patterns/CircuitBreaker/circuit-breaker-retry.yml";
     }
 
     @Override
@@ -55,7 +55,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
 
             // Step 1: Install istio control plane
             logger.info("Installing Istio control plane...");
-            executeCommand("istioctl", "install", "--set", "profile=default", "--set", "values.global.platform=minikube", "--skip-confirmation");
+            //executeCommand("istioctl", "install", "--set", "profile=default", "--set", "values.global.platform=minikube", "--skip-confirmation");
             executeCommand("kubectl", "rollout", "restart", "deployment", "-n", "user");
 
             // Step 2: Enable istio sidecar injection
@@ -76,10 +76,35 @@ public class CircuitBreakerGenerator implements PatternGenerator {
     }
 
     private void executeCommand(String... command) throws IOException, InterruptedException {
-        logger.info("Executing command: " + String.join(" ", command));
-        ProcessBuilder processBuilder = new ProcessBuilder(command).inheritIO();
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = processBuilder.start();
-        process.waitFor();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[stdout] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stdout of process", e);
+            }
+        }).start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.warning("[stderr] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stderr of process", e);
+            }
+        }).start();
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
+        }
     }
 
     /**
@@ -89,7 +114,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
      */
     private void applyYamlFile(String filePath) throws IOException, InterruptedException {
         logger.info("Applying configuration from file: " + filePath);
-        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "pattern");
+        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");
         Process process = apply.start();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));

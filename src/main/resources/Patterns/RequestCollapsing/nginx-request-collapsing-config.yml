@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: request-collapsing-config
+  namespace: pattern
+data:
+  BACKEND_SERVICE: ${BACKEND_SERVICE} # teastore-persistence.user.svc.cluster.local
+  NGINX_CONF: |
+    worker_processes  1;
+
+    events {
+      worker_connections 1024;
+    }
+
+    http {
+      lua_shared_dict collapse_cache 10m;
+
+      server {
+        listen 80;
+
+        location / {
+          content_by_lua_block {
+            local uri = ngx.var.request_uri
+            local dict = ngx.shared.collapse_cache
+
+            local cached = dict:get(uri)
+            if cached then
+              ngx.say(cached)
+              return
+            end
+
+            local lock = require "resty.lock".new("collapse_cache")
+            local elapsed, err = lock:lock(uri)
+            if not elapsed then
+              ngx.exit(500)
+            end
+
+            cached = dict:get(uri)
+            if cached then
+              lock:unlock()
+              ngx.say(cached)
+              return
+            end
+
+            local http = require "resty.http"
+            local httpc = http.new()
+            local backend_service = os.getenv("BACKEND_SERVICE")
+            local res, err = httpc:request_uri("http://" .. backend_service .. uri, {
+              method = "GET"
+            })
+
+            if res then
+              dict:set(uri, res.body, 1)
+              lock:unlock()
+              ngx.say(res.body)
+            else
+              lock:unlock()
+              ngx.exit(500)
+            end
+          }
+        }
+      }
+    }

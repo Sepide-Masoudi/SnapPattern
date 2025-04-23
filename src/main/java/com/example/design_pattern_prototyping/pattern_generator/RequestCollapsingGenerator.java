@@ -3,18 +3,20 @@ package com.example.design_pattern_prototyping.pattern_generator;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class GatewayAggregationGenerator implements PatternGenerator {
-    private static final Logger logger = Logger.getLogger(GatewayAggregationGenerator.class.getName());
+public class RequestCollapsingGenerator implements PatternGenerator {
+    private static final Logger logger = Logger.getLogger(RequestCollapsingGenerator.class.getName());
     private String tempConfigPath;
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/Patterns/GatewayAggregation/nginx/gateway-aggregation-config.yml";
+        return "src/main/resources/Patterns/RequestCollapsing/nginx-request-collapsing-config.yml";
     }
 
     @Override
@@ -25,23 +27,20 @@ public class GatewayAggregationGenerator implements PatternGenerator {
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values
-            yamlContent = yamlContent.replace("${SERVICE_1_NAME}", parameters.get("SERVICE_1_NAME"));
-            yamlContent = yamlContent.replace("${SERVICE_1_ENDPOINT}", parameters.get("SERVICE_1_ENDPOINT"));
-            yamlContent = yamlContent.replace("${SERVICE_1_HOST}", parameters.get("SERVICE_1_HOST"));
-            yamlContent = yamlContent.replace("${SERVICE_1_PORT}", parameters.get("SERVICE_1_PORT"));
+            yamlContent = yamlContent.replace("${BACKEND_SERVICE}", parameters.get("BACKEND_SERVICE"));
 
             // Create temp file to store the modified YAML
-            Path tempFile = Files.createTempFile("gateway-aggregation-config-", ".yml");
+            Path tempFile = Files.createTempFile("nginx-request-collapsing-config-", ".yml");
             Files.write(tempFile, yamlContent.getBytes());
 
-            logger.info("Temporary Gateway Aggregation pattern config generated at: " + tempFile);
+            logger.info("Temporary Request Collapsing pattern config generated at: " + tempFile);
 
             // Store temp file path
             tempConfigPath = tempFile.toString();
             logger.info("Temporary Cache-Aside pattern config generated at: " + tempConfigPath);
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error generating Gateway Aggregation pattern configuration.", e);
+            logger.log(Level.SEVERE, "Error generating Request Collapsing pattern configuration.", e);
         }
     }
 
@@ -55,18 +54,17 @@ public class GatewayAggregationGenerator implements PatternGenerator {
             // Step 1: Apply ConfigMap with user parameters
             applyYamlFile(tempConfigPath);
 
-            // Step 2: Deploy the NGINX reverse proxy for Gateway Aggregation
-            applyYamlFile("src/main/resources/Patterns/GatewayAggregation/nginx/nginx-gateway-config.yml");
-            applyYamlFile("src/main/resources/Patterns/GatewayAggregation/nginx/nginx-gateway-deployment.yml");
+            // Step 2: Deploy the NGINX proxy for Request Collapsing
+            applyYamlFile("src/main/resources/Patterns/RequestCollapsing/nginx-request-collapsing-deployment.yml");
 
-            logger.info("Gateway Aggregation Pattern setup completed successfully.");
+            logger.info("Request Collapsing Pattern setup completed successfully.");
 
             // Step 3: Delete temporary file
             Files.deleteIfExists(Paths.get(tempConfigPath));
             logger.info("Temporary file deleted: " + tempConfigPath);
 
         } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error executing build steps for Gateway Aggregation Pattern.", e);
+            logger.log(Level.SEVERE, "Error executing build steps for Request Collapsing Pattern.", e);
         }
     }
 

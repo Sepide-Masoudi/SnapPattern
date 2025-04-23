@@ -2,9 +2,8 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: nginx-ingress
-  namespace: proxy
+  namespace: user
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/limit-req-zone: '$binary_remote_addr zone=mylimit:10m rate=5r/s'
     nginx.ingress.kubernetes.io/limit-req: "5"
     nginx.ingress.kubernetes.io/limit-req-burst: "10"
@@ -13,15 +12,14 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-cache-key: "$uri"
     nginx.ingress.kubernetes.io/proxy-cache-path: "/data/nginx/cache levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;"
 spec:
+  ingressClassName: nginx
   rules:
-    - host: ${SERVICE-HOST}
-      http:
+    - http:
         paths:
-          - path: ${SERVICE-ENDPOINT}
+          - path: ${SERVICE_ENDPOINT}
             pathType: Prefix
             backend:
               service:
-                name:  ${SERVICE-NAME}
+                name: ${SERVICE_NAME}
                 port:
                   number: 8080
-

@@ -14,7 +14,7 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/GatewayOffloading/nginx-ingress.yml";
+        return "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
     }
 
     @Override
@@ -25,7 +25,7 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values
-            yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
+            //yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
             yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.getOrDefault("SERVICE_ENDPOINT", "/default-endpoint"));
             yamlContent = yamlContent.replace("${SERVICE_NAME}", parameters.getOrDefault("SERVICE_NAME", "default-service"));
 
@@ -59,7 +59,8 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             executeCommand("kubectl", "create", "namespace", "proxy");
 
             // Step 3: Deploy NGINX Ingress Controller
-            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern");
+            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",
+                    "--set", "controller.admissionWebhooks.enabled=false");
 
             // Step 4: Apply the generated Gateway Offloading YAML
             applyYamlFile(tempConfigPath);
@@ -89,7 +90,7 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
      */
     private void applyYamlFile(String filePath) throws IOException, InterruptedException {
         logger.info("Applying configuration from file: " + filePath);
-        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "pattern");
+        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");
         Process process = apply.start();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));

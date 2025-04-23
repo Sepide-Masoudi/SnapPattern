@@ -4,14 +4,14 @@ metadata:
   name: service-circuit-breaker
   namespace: user
 spec:
-  host: teastore-persistence.user.svc.cluster.local
+  host: teastore-auth.user.svc.cluster.local
   trafficPolicy:
     connectionPool:
       http:
-        http1MaxPendingRequests: 1
-        maxRequestsPerConnection: 1
+        http1MaxPendingRequests: 100
+        maxRequestsPerConnection: 100
       tcp:
-        maxConnections: 1
+        maxConnections: 100
     outlierDetection:
       consecutive5xxErrors: 3
       interval: 10s

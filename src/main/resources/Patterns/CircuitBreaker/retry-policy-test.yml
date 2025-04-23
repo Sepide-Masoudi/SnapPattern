@@ -5,11 +5,11 @@ metadata:
   namespace: user
 spec:
   hosts:
-    - teastore-persistence
+    - teastore-auth
   http:
     - route:
         - destination:
-            host: teastore-persistence
+            host: teastore-auth
       retries:
         attempts: 3
         perTryTimeout: 2s
