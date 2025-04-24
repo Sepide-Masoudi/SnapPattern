@@ -3,12 +3,15 @@ package com.example.design_pattern_prototyping;
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
 import com.example.design_pattern_prototyping.pattern_generator.*;
 import com.example.design_pattern_prototyping.util.UILogger;
+import com.example.design_pattern_prototyping.util.YamlEditor;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -23,6 +26,7 @@ public class PatternController {
     @FXML private TextArea logTextArea;
     @FXML private  Label statusLabel;
     @FXML private  VBox patternFieldsBox;
+    @FXML private  ComboBox<String> languageComboBox;
     @FXML private  ComboBox<String> patternDropdown;
     @FXML private  VBox asyncRequestReplyFields;
     @FXML private  VBox gatewayOffloadingFields;
@@ -145,16 +149,33 @@ public class PatternController {
     @FXML
     public void deployApplication() {
         if (yamlFile != null) {
+            String language = languageComboBox.getValue();
+            if (language == null) {
+                uiLogger.warning("Please select an application language.");
+                showAlert(Alert.AlertType.WARNING, "Missing Language", "Please select a language before deploying.");
+                return;
+            }
             logger.info("User requested to deploy the application with configuration: " + yamlFile.getAbsolutePath());
             uiLogger.info("Deploying application with configuration: " + yamlFile.getAbsolutePath());
             statusLabel.setText("Deploying applicaion configuration...");
 
             new Thread(() -> {
                 try {
+                    // Read original YAML
+                    String originalYaml = Files.readString(yamlFile.toPath());
+
+                    // Inject annotation
+                    String modifiedYaml = YamlEditor.injectAnnotation(originalYaml, language);
+
+                    // Save to temporary file
+                    Path instrumentedPath = Path.of("instrumented-" + yamlFile.getName());
+                    Files.writeString(instrumentedPath, modifiedYaml);
+                    uiLogger.info("Annotation injected successfully for language: " + language);
+
                     boolean minikubeStarted = KubernetesDeployer.startMinikube();
                     if (minikubeStarted) {
                         KubernetesDeployer.createNamespace("user");
-                        KubernetesDeployer.applyYamlFile(yamlFile.getAbsolutePath());
+                        KubernetesDeployer.applyYamlFile(instrumentedPath.toAbsolutePath().toString());
                         uiLogger.info("Application configuration applied.");
                         javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {

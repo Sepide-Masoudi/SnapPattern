@@ -15,6 +15,18 @@
             <HBox spacing="10.0">
                 <Label text="Upload YAML Configuration File" />
                 <Button text="Choose File" onAction="#handleFileUpload"/>
+
+                <Label text="Application Language"/>
+                <ComboBox fx:id="languageComboBox">
+                    <items>
+                        <FXCollections fx:factory="observableArrayList">
+                            <String fx:value="Java"/>
+                            <String fx:value="Python"/>
+                            <String fx:value="NodeJS"/>
+                            <String fx:value=".NET"/>
+                        </FXCollections>
+                    </items>
+                </ComboBox>
             </HBox>
             <HBox spacing="10.0">
                 <Button text="Deploy Microservice" onAction="#deployApplication"/>
