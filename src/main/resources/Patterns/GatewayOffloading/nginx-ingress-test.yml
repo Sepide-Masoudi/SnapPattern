@@ -4,23 +4,27 @@ metadata:
   name: nginx-ingress
   namespace: user
   annotations:
+    # https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/
+    # Rate limiting: define a shared memory zone and rate per IP
     nginx.ingress.kubernetes.io/limit-req-zone: '$binary_remote_addr zone=mylimit:10m rate=5r/s'
+    # Rate limiting: allow up to 5 requests per second per IP
     nginx.ingress.kubernetes.io/limit-req: "5"
+    # Rate limiting burst: allow short bursts of 10 requests above the rate limit
     nginx.ingress.kubernetes.io/limit-req-burst: "10"
+    # Request size limiting: reject requests larger than 50 MB
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/proxy-cache: "true"
-    nginx.ingress.kubernetes.io/proxy-cache-key: "$uri"
-    nginx.ingress.kubernetes.io/proxy-cache-path: "/data/nginx/cache levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;"
+    # nginx.ingress.kubernetes.io/proxy-cache: "true"
+    # nginx.ingress.kubernetes.io/proxy-cache-key: "$uri"
+    # nnginx.ingress.kubernetes.io/proxy-cache-path: "/data/nginx/cache levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;"
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /useractions/login
+          - path: /useractions
             pathType: Prefix
             backend:
               service:
                 name: teastore-auth
                 port:
                   number: 8080
-

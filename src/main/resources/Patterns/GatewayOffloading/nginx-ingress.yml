@@ -8,9 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/limit-req: "5"
     nginx.ingress.kubernetes.io/limit-req-burst: "10"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/proxy-cache: "true"
-    nginx.ingress.kubernetes.io/proxy-cache-key: "$uri"
-    nginx.ingress.kubernetes.io/proxy-cache-path: "/data/nginx/cache levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;"
+
 spec:
   ingressClassName: nginx
   rules:
@@ -22,4 +20,4 @@ spec:
               service:
                 name: ${SERVICE_NAME}
                 port:
-                  number: 8080
+                  number: ${SERVICE_PORT}

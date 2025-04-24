@@ -73,12 +73,12 @@
                     <VBox spacing="10.0" fx:id="gatewayOffloadingFields" visible="false">
                         <Label text="Gateway Offloading Configuration" style="-fx-font-weight: bold;"/>
                         <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Service Host" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="go_serviceHost" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                             <Label text="Service Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                             <TextField fx:id="go_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                             <Label text="Service Name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                             <TextField fx:id="go_serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                            <Label text="Service Port" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                            <TextField fx:id="go_servicePort" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                         </GridPane>
                     </VBox>
 

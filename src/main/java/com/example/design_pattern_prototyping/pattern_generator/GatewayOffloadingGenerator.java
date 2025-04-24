@@ -28,6 +28,7 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             //yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
             yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.getOrDefault("SERVICE_ENDPOINT", "/default-endpoint"));
             yamlContent = yamlContent.replace("${SERVICE_NAME}", parameters.getOrDefault("SERVICE_NAME", "default-service"));
+            yamlContent = yamlContent.replace("${SERVICE_PORT}", parameters.getOrDefault("SERVICE_PORT", "8080"));
 
             // Create temp file to store the modified YAML
             Path tempFile = Files.createTempFile("gateway-offloading-config-", ".yml");
@@ -54,9 +55,6 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             // Step 1: Add Helm repositories and update
             executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
             executeCommand("helm", "repo", "update");
-
-            // Step 2: Create namespace  for proxy
-            executeCommand("kubectl", "create", "namespace", "proxy");
 
             // Step 3: Deploy NGINX Ingress Controller
             executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",

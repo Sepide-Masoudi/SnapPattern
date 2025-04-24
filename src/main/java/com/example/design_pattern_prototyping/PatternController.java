@@ -40,9 +40,9 @@ public class PatternController {
     public TextField async_endpointPath;
 
     // Gateway Offloading
-    public TextField go_serviceHost;
     public TextField go_serviceEndpoint;
     public TextField go_serviceName;
+    public TextField go_servicePort;
 
     // Cache Aside Pattern
     public TextField cachedEndpoints;
@@ -252,7 +252,7 @@ public class PatternController {
                 parameters.put("SERVICE_NAME", async_serviceName.getText());
                 parameters.put("ENDPOINT_PATH", async_endpointPath.getText());
             } else if ("Gateway Offloading".equals(selectedPattern)) {
-                //parameters.put("SERVICE_HOST", go_serviceHost.getText());
+                parameters.put("SERVICE_HOST", go_servicePort.getText());
                 parameters.put("SERVICE_ENDPOINT", go_serviceEndpoint.getText());
                 parameters.put("SERVICE_NAME", go_serviceName.getText());
             } else if ("Gateway Aggregation".equals(selectedPattern)) {
