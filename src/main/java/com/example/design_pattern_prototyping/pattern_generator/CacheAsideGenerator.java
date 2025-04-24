@@ -14,7 +14,7 @@ public class CacheAsideGenerator implements PatternGenerator {
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/patterns/CacheAside/cache-config.yml";
+        return "src/main/resources/Patterns/CacheAside/cache-config.yml";
     }
 
     @Override
@@ -51,11 +51,11 @@ public class CacheAsideGenerator implements PatternGenerator {
             applyYamlFile(tempConfigPath);
 
             // Step 2: Deploy Redis cache
-            applyYamlFile("src/main/resources/patterns/CacheAside/redis-cache-deployment.yml");
+            applyYamlFile("src/main/resources/Patterns/CacheAside/redis-cache-deployment.yml");
 
             // Step 3: Deploy the NGINX proxy for cache-aside
-            applyYamlFile("src/main/resources/patterns/CacheAside/nginx-cache-config.yml");
-            applyYamlFile("src/main/resources/patterns/CacheAside/nginx-proxy-deployment.yml");
+            applyYamlFile("src/main/resources/Patterns/CacheAside/nginx-cache-config.yml");
+            applyYamlFile("src/main/resources/Patterns/CacheAside/nginx-proxy-deployment.yml");
 
             logger.info("Cache-Aside Pattern setup completed successfully.");
 
