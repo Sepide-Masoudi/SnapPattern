@@ -71,12 +71,14 @@ public class WorkloadController {
     @FXML
     public void uploadFile() {
         logger.info("Opening file chooser dialog...");
+        uiLogger.info("Opening file chooser dialog...");
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JMeter Files", "*.jmx"));
         File selectedFile = fileChooser.showOpenDialog(new Stage());
 
         if (selectedFile != null) {
             logger.info("Uploading file: " + selectedFile.getAbsolutePath());
+            uiLogger.info("Uploading file: " + selectedFile.getAbsolutePath());
 
             try {
                 Path targetDir = Paths.get("src/main/resources/workloads");
@@ -84,6 +86,7 @@ public class WorkloadController {
                 Files.copy(selectedFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
                 logger.info("File uploaded successfully to: " + targetPath);
+                uiLogger.info("File uploaded successfully to: " + targetPath);
                 showAlert("Success", "File uploaded successfully!", Alert.AlertType.INFORMATION);
 
                 String fileName = selectedFile.getName();
@@ -93,6 +96,7 @@ public class WorkloadController {
 
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Error uploading file", e);
+                uiLogger.error("Error uploading file");
                 showAlert("Error", "Failed to upload the file: " + e.getMessage(), Alert.AlertType.ERROR);
             }
         } else {
@@ -140,6 +144,7 @@ public class WorkloadController {
                         break;
                 }
                 logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
+                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
 
                 Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
                 File jmeterFile = jmeterPath.toFile();
@@ -179,7 +184,8 @@ public class WorkloadController {
                         scheduler.schedule(() -> {
                             if (currentProcess != null && currentProcess.isAlive()) {
                                 timeoutTriggered.set(true);
-                                logger.warning("Stopping workload after 10 minutes...");
+                                logger.info("Stopping workload...");
+                                uiLogger.info("Stopping workload...");
                                 try {
                                     ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
                                     stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
@@ -190,12 +196,14 @@ public class WorkloadController {
                                         String line;
                                         while ((line = reader.readLine()) != null) {
                                             logger.info("[stoptest.sh] " + line);
+                                            uiLogger.info("[stoptest.sh] " + line);
                                         }
                                     }
 
                                     stopProcess.waitFor();
                                 } catch (IOException | InterruptedException e) {
                                     logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
+                                    uiLogger.error("Failed to execute stoptest.sh");
                                 }
 
                                 Platform.runLater(() -> showAlert("Info", "Workload stopped after 10 minutes.", Alert.AlertType.INFORMATION));
@@ -207,6 +215,7 @@ public class WorkloadController {
                             String line;
                             while ((line = reader.readLine()) != null) {
                                 logger.info(line);
+                                uiLogger.info(line);
                             }
                         }
 
@@ -218,6 +227,7 @@ public class WorkloadController {
 
                             if (isAborted.get()) {
                                 logger.info("Workload was aborted by user.");
+                                uiLogger.info("Workload was aborted by user.");
                                 showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
                             } else {
                                 ControllerMediator mediator = ControllerMediatorImpl.getInstance();
@@ -226,6 +236,7 @@ public class WorkloadController {
                                 if (exitCode == 0) {
                                     if (timeoutTriggered.get()) {
                                         logger.info("Workload stopped by timeout.");
+                                        uiLogger.info("Workload stopped by timeout.");
                                         showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
                                     } else {
                                         logger.info("Workload executed successfully.");
@@ -233,12 +244,14 @@ public class WorkloadController {
                                     }
                                 } else {
                                     logger.warning("Workload execution failed. Exit code: " + exitCode);
+                                    uiLogger.warning("Workload execution failed. Exit code: " + exitCode);
                                     showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
                                 }
                             }
                         });
                     } catch (IOException | InterruptedException e) {
                         logger.log(Level.SEVERE, "Error during workload execution", e);
+                        uiLogger.error("Error during workload execution");
                         Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
                     }
                 }).start();
@@ -254,6 +267,7 @@ public class WorkloadController {
         if (currentProcess != null && currentProcess.isAlive()) {
             try {
                 logger.info("Aborting workload using stoptest.sh...");
+                uiLogger.info("Aborting workload using stoptest.sh...");
                 ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
                 stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
                 stopBuilder.redirectErrorStream(true);
@@ -268,12 +282,14 @@ public class WorkloadController {
 
                 int exitCode = stopProcess.waitFor();
                 logger.info("stoptest.sh exited with code: " + exitCode);
+                uiLogger.info("stoptest.sh exited with code: " + exitCode);
 
                 isAborted.set(true);
                 abortButton.setDisable(true);
                 showAlert("Aborted", "Workload execution aborted successfully!", Alert.AlertType.INFORMATION);
             } catch (IOException | InterruptedException e) {
                 logger.log(Level.SEVERE, "Failed to run stoptest.sh", e);
+                uiLogger.error("Failed to run stoptest.sh");
                 showAlert("Error", "Failed to run stoptest.sh: " + e.getMessage(), Alert.AlertType.ERROR);
             }
         }
