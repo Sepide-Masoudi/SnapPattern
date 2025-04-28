@@ -53,7 +53,6 @@ public class MetricsVisualizer {
         logger.info("Starting exportMetricsExcel method...");
         logger.info("File path: " + fileName);
 
-        // Check if the file exists and is empty. If so, delete it.
         if (Files.exists(filePath)) {
             try {
                 if (Files.size(filePath) == 0) {
@@ -91,11 +90,12 @@ public class MetricsVisualizer {
                 headerRow.createCell(5).setCellValue("containerCpuCyclesTotal");
                 headerRow.createCell(6).setCellValue("containerCpuInstructions");
                 headerRow.createCell(7).setCellValue("energyEfficiency");
-                headerRow.createCell(8).setCellValue("avg_HTTP_client_request_duration");
-                headerRow.createCell(9).setCellValue("requestRate_RPS");
-                headerRow.createCell(10).setCellValue("averageLatency");
-                headerRow.createCell(11).setCellValue("95PercentileLatency");
-                headerRow.createCell(12).setCellValue("ErrorRate");
+                headerRow.createCell(8).setCellValue("IPC");
+                headerRow.createCell(9).setCellValue("avg_HTTP_client_request_duration");
+                headerRow.createCell(10).setCellValue("requestRate_RPS");
+                headerRow.createCell(11).setCellValue("averageLatency");
+                headerRow.createCell(12).setCellValue("95PercentileLatency");
+                headerRow.createCell(13).setCellValue("ErrorRate");
 
                 logger.info("Header row created successfully.");
             } else {
@@ -126,6 +126,26 @@ public class MetricsVisualizer {
                 }
             }
 
+            // Compute Energy Efficiency and IPC
+            try {
+                double joules = Double.parseDouble(flatMetrics.getOrDefault("containerJoulesTotal", "0"));
+                double cycles = Double.parseDouble(flatMetrics.getOrDefault("containerCpuCyclesTotal", "0"));
+                double instructions = Double.parseDouble(flatMetrics.getOrDefault("containerCpuInstructions", "0"));
+
+                String energyEfficiency = (cycles != 0) ? String.valueOf(joules / cycles) : "NULL";
+                String ipc = (cycles != 0) ? String.valueOf(instructions / cycles) : "NULL";
+
+                flatMetrics.put("energyEfficiency", energyEfficiency);
+                flatMetrics.put("IPC", ipc);
+
+                logger.info("Computed Energy Efficiency: " + energyEfficiency);
+                logger.info("Computed IPC: " + ipc);
+            } catch (Exception e) {
+                logger.warning("Failed to compute derived metrics: " + e.getMessage());
+                flatMetrics.put("energyEfficiency", "NULL");
+                flatMetrics.put("IPC", "NULL");
+            }
+
             // Write the aggregated metrics to Excel
             Row valuesRow = sheet.createRow(nextRowNum++);
             valuesRow.createCell(0).setCellValue(pattern);
@@ -136,23 +156,24 @@ public class MetricsVisualizer {
             valuesRow.createCell(5).setCellValue(flatMetrics.getOrDefault("containerCpuCyclesTotal", "NULL"));
             valuesRow.createCell(6).setCellValue(flatMetrics.getOrDefault("containerCpuInstructions", "NULL"));
             valuesRow.createCell(7).setCellValue(flatMetrics.getOrDefault("energyEfficiency", "NULL"));
-            valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
-            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
-            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("averageLatency", "NULL"));
-            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
-            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
+            valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
+            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
+            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("averageLatency", "NULL"));
+            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
+            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
 
-            // Auto-size columns
-            for (int i = 0; i <= 8; i++) {
+            // Auto-size all columns
+            for (int i = 0; i <= 13; i++) {
                 sheet.autoSizeColumn(i);
             }
 
             workbook.write(outputStream);
             logger.info("Metrics exported to " + fileName);
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to export metrics: " + e);
+            logger.log(Level.SEVERE, "Failed to export metrics: ", e);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Unexpected error during exportMetricsExcel: " + e);
+            logger.log(Level.SEVERE, "Unexpected error during exportMetricsExcel: ", e);
         }
 
         logger.info("Finished exportMetricsExcel method.");

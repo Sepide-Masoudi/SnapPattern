@@ -11,15 +11,14 @@ app = Flask(__name__)
 
 # Folder to save plots
 RESULTS_FOLDER = "Python/results"
-os.makedirs (RESULTS_FOLDER, exist_ok=True)
+os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
-EXCEL_FILE = os.path.join(RESULTS_FOLDER, "metrics.xlsx")
-
+EXCEL_FILE = os.path.join(RESULTS_FOLDER, "metrics_agg.xlsx")
 
 @app.route('/generate_metrics', methods=['POST'])
 def generate_metrics():
     try:
-        print("📊 Generating metrics from default Excel file...")
+        print("Generating metrics from default Excel file...")
 
         if not os.path.exists(EXCEL_FILE):
             print(f"File not found: {EXCEL_FILE}")
@@ -40,7 +39,7 @@ def generate_metrics():
 
 def generate_metrics_standalone():
     try:
-        print("📊 Generating metrics from default Excel file...")
+        print("Generating metrics from default Excel file...")
 
         if not os.path.exists(EXCEL_FILE):
             print(f"File not found: {EXCEL_FILE}")
@@ -66,38 +65,50 @@ def generate_plots(df):
         try:
             # Prepare data for plotting
             plot_df = df[['Pattern', 'Workload Level', metric_name]].dropna()
+            baseline_df = plot_df[plot_df['Pattern'] == 'Baseline']
+            plot_df = plot_df[
+                (plot_df['Pattern'] != 'Baseline') &
+                (~plot_df['Pattern'].str.contains('Internal', na=False))
+                ]
 
-            # Plot grouped bar chart using seaborn
-            plt.figure(figsize=(10, 6))
-            sns.barplot(
-                data=plot_df,
-                x='Pattern',
-                y=metric_name,
-                hue='Workload Level',
-                palette='colorblind',
-                errorbar='sd',
-                edgecolor='black'
-            )
+            workload_levels = plot_df['Workload Level'].unique()
 
-            plt.title(f"{metric_name} by Pattern and Workload Level", fontsize=14)
-            plt.xlabel("Pattern", fontsize=12)
-            plt.ylabel(metric_name, fontsize=12)
-            plt.xticks(rotation=45, ha="right", fontsize=10)
-            handles, labels = plt.gca().get_legend_handles_labels()
-            if handles:
-                plt.legend(title="Workload Level", fontsize=10)
-            plt.grid(axis="y", linestyle="--", alpha=0.7)
+            for workload in workload_levels:
+                workload_df = plot_df[plot_df['Workload Level'] == workload]
+                baseline_value = baseline_df[baseline_df['Workload Level'] == workload][metric_name].mean()
 
-    # Save the plot
-            plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}_grouped.png")
-            plt.tight_layout()
-            plt.savefig(plot_path)
-            plt.close()
+                plt.figure(figsize=(10, 6))
+                sns.barplot(
+                    data=workload_df,
+                    x='Pattern',
+                    y=metric_name,
+                    palette='colorblind',
+                    errorbar='sd',
+                    edgecolor='black'
+                )
 
-            print(f"Grouped bar plot saved for {metric_name} at {plot_path}")
+                if not np.isnan(baseline_value):
+                    plt.axhline(y=baseline_value, color='red', linestyle='--', label='Baseline')
+
+                plt.title(f"{metric_name} - {workload} Workload", fontsize=14)
+                plt.xlabel("Pattern", fontsize=12)
+                plt.ylabel(metric_name, fontsize=12)
+                plt.xticks(rotation=45, ha="right", fontsize=10)
+
+                handles, labels = plt.gca().get_legend_handles_labels()
+                if handles:
+                    plt.legend(fontsize=10)
+
+                plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+                plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}_{workload}_separate.png")
+                plt.tight_layout()
+                plt.savefig(plot_path)
+                plt.close()
+
+                print(f"Plot saved for {metric_name} - {workload} at {plot_path}")
         except Exception as e:
-            print(f"Error generating grouped bar plot for {metric_name}: {e}")
-
+            print(f"Error generating bar plot for {metric_name}: {e}")
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
