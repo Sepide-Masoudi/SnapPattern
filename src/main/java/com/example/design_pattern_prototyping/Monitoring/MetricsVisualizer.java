@@ -1,5 +1,6 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
+import com.example.design_pattern_prototyping.util.UILogger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
@@ -21,8 +22,13 @@ import java.util.logging.Logger;
 public class MetricsVisualizer {
 
     private static final Logger logger = Logger.getLogger(MetricsVisualizer.class.getName());
+    public UILogger uiLogger;
 
-    public static void runMetricsService() {
+    public void setLogger(UILogger logger) {
+        this.uiLogger = logger;
+    }
+
+    public void runMetricsService() {
         try {
             URL url = new URL("http://127.0.0.1:5000/generate_metrics");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -37,21 +43,25 @@ public class MetricsVisualizer {
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 logger.info("Successfully triggered Python metrics generation service.");
+                uiLogger.info("Successfully triggered Python metrics generation service.");
             } else {
                 logger.warning("Failed to trigger Python metrics service. HTTP Code: " + responseCode);
+                uiLogger.warning("Failed to trigger Python metrics service. HTTP Code: " + responseCode);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error calling Python metrics service: ", e);
+            uiLogger.error("Error calling metrics service: " +e.getMessage());
         }
     }
 
-    public static void exportMetricsExcel(Map<String, String> metrics, String workload, String pattern) {
+    public void exportMetricsExcel(Map<String, String> metrics, String workload, String pattern) {
         String path = "Python/results";
         String fileName = path + "/metrics_agg.xlsx";
         Path filePath = Paths.get(fileName);
 
         logger.info("Starting exportMetricsExcel method...");
-        logger.info("File path: " + fileName);
+        uiLogger.info("Starting exportMetricsExcel method...");
+        uiLogger.info("File path: " + fileName);
 
         if (Files.exists(filePath)) {
             try {
@@ -123,6 +133,7 @@ public class MetricsVisualizer {
                     }
                 } else {
                     logger.warning("Metric fetch failed for: " + metricName + ". Status: " + rootNode.path("status").asText());
+                    uiLogger.warning("Metric fetch failed for: " + metricName + ". Status: " + rootNode.path("status").asText());
                 }
             }
 
@@ -170,13 +181,17 @@ public class MetricsVisualizer {
 
             workbook.write(outputStream);
             logger.info("Metrics exported to " + fileName);
+            uiLogger.info("Metrics exported to " + fileName);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to export metrics: ", e);
+            uiLogger.error("Failed to export metrics: " + e.getMessage());
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Unexpected error during exportMetricsExcel: ", e);
+            uiLogger.error("Unexpected error during exportMetricsExcel: " + e.getMessage());
         }
 
         logger.info("Finished exportMetricsExcel method.");
+        uiLogger.info("Finished exportMetricsExcel method.");
     }
 }
 

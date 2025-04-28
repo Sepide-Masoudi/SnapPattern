@@ -96,7 +96,7 @@ public class WorkloadController {
 
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Error uploading file", e);
-                uiLogger.error("Error uploading file");
+                uiLogger.error("Error uploading file " +e.getMessage());
                 showAlert("Error", "Failed to upload the file: " + e.getMessage(), Alert.AlertType.ERROR);
             }
         } else {
@@ -203,7 +203,7 @@ public class WorkloadController {
                                     stopProcess.waitFor();
                                 } catch (IOException | InterruptedException e) {
                                     logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
-                                    uiLogger.error("Failed to execute stoptest.sh");
+                                    uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
                                 }
 
                                 Platform.runLater(() -> showAlert("Info", "Workload stopped after 10 minutes.", Alert.AlertType.INFORMATION));
@@ -251,7 +251,7 @@ public class WorkloadController {
                         });
                     } catch (IOException | InterruptedException e) {
                         logger.log(Level.SEVERE, "Error during workload execution", e);
-                        uiLogger.error("Error during workload execution");
+                        uiLogger.error("Error during workload execution " + e.getMessage());
                         Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
                     }
                 }).start();
@@ -289,7 +289,7 @@ public class WorkloadController {
                 showAlert("Aborted", "Workload execution aborted successfully!", Alert.AlertType.INFORMATION);
             } catch (IOException | InterruptedException e) {
                 logger.log(Level.SEVERE, "Failed to run stoptest.sh", e);
-                uiLogger.error("Failed to run stoptest.sh");
+                uiLogger.error("Failed to run stoptest.sh " + e.getMessage());
                 showAlert("Error", "Failed to run stoptest.sh: " + e.getMessage(), Alert.AlertType.ERROR);
             }
         }

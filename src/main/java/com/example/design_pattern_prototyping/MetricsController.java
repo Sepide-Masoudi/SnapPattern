@@ -27,10 +27,10 @@ public class MetricsController {
     @FXML public Button deployMetricsButton;
     @FXML public VBox metricsSetupBox;
     @FXML public Label statusLabel;
-    @FXML public Button loadDashboard;
     @FXML public TextField patternTextField;
     private DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
+    private MetricsVisualizer metricsVisualizer;
     //private JaegerClient jaegerClient;
 
     @FXML
@@ -39,12 +39,14 @@ public class MetricsController {
         ControllerMediatorImpl.getInstance().registerMetricsController(this);
         this.queryMetrics = new QueryMetrics();
         this.deployMonitoringStack = new DeployMonitoringStack();
+        this.metricsVisualizer = new MetricsVisualizer();
         //this.jaegerClient = new JaegerClient();
 
         Logger logger = Logger.getLogger("PatternLogger");
         uiLogger = new UILogger(logTextArea, logger);
         deployMonitoringStack.setLogger(uiLogger);
         queryMetrics.setLogger(uiLogger);
+        metricsVisualizer.setLogger(uiLogger);
         logger.info("MetricsController initialized.");
     }
 
@@ -69,7 +71,7 @@ public class MetricsController {
                 success = deployMonitoringStack.deployMonitoringStack();
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Unexpected error during monitoring stack deployment", e);
-                uiLogger.error("Unexpected error during monitoring stack deployment");
+                uiLogger.error("Unexpected error during monitoring stack deployment" + e.getMessage());
             }
 
             final boolean deploymentSuccess = success;
@@ -116,18 +118,18 @@ public class MetricsController {
                     String pattern = (patternInput != null && !patternInput.trim().isEmpty())
                             ? patternInput.trim()
                             : mediator.getSelectedPattern();
-                    MetricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
+                    metricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
-                uiLogger.error("Error generating metrics");
+                uiLogger.error("Error generating metrics: " + e.getMessage());
             }
         }).start();
     }
 
     @FXML
     public void makePlots() {
-        MetricsVisualizer.runMetricsService();
+        new Thread(() -> metricsVisualizer.runMetricsService()).start();
     }
 
     @FXML
@@ -168,26 +170,7 @@ public class MetricsController {
         plotViewerStage.setScene(plotScene);
         plotViewerStage.show();
     }
-/*
-    @FXML
-    private void loadGrafanaDashboard() {
-        logger.info("Attempting to load Grafana dashboard...");
-        if (GrafanaClient.isPortForwardingActive()) {
-            try {
-                javafx.application.Platform.runLater(() -> {
-                    Stage dashboardStage = new Stage();
-                    new GrafanaClient().start(dashboardStage);
-                });
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Failed to load Grafana dashboard", e);
-                showAlert("Error", "Unable to open Grafana Dashboard. Please make sure port forwarding is active and try again.", Alert.AlertType.ERROR);
-            }
-        } else {
-            logger.warning("Port forwarding is not active. Please restart port forwarding.");
-            showAlert("Port Forwarding Inactive", "Port forwarding is not active. Please restart port forwarding and try again.", Alert.AlertType.WARNING);
-        }
-    }
-*/
+
     private void showAlert(String title, String message, Alert.AlertType alertType) {
         System.out.println("Showing alert - " + title + ": " + message);
         Alert alert = new Alert(alertType);

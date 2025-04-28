@@ -66,7 +66,7 @@ public class QueryMetrics {
                             sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))"""));
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);
-            uiLogger.error("Failed to query metrics");
+            uiLogger.error("Failed to query metrics" + e.getMessage());
             metrics.put("error", "Failed to query metrics: " + e.getMessage());
         }
         logger.info("Metrics: " + metrics);
