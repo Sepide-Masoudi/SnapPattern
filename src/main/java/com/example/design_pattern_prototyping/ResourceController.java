@@ -1,6 +1,7 @@
 package com.example.design_pattern_prototyping;
 
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
 import io.kubernetes.client.util.Config;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -25,20 +26,6 @@ public class ResourceController {
     private static final Logger logger = Logger.getLogger(ResourceController.class.getName());
 
     @FXML
-    public void initialize() {
-        try {
-            logger.info("Initializing Kubernetes client...");
-            var apiClient = Config.defaultClient();
-            kubernetesClient = new KubernetesClientAPI(apiClient);
-            logger.info("Kubernetes client initialized successfully.");
-            loadResources();
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error initializing Kubernetes client", e);
-            showAlert("Initialization Error", e.getMessage());
-        }
-    }
-
-    @FXML
     private void loadResources() {
         String namespace = namespaceField.getText().trim();
         serviceListView.getItems().clear();
@@ -46,6 +33,20 @@ public class ResourceController {
         podDetailsGrid.getChildren().clear();
 
         try {
+            // Check Minikube status before trying to connect
+            if (!KubernetesDeployer.statusMinikube()) {
+                logger.warning("Minikube cluster is not running. Cannot load Kubernetes resources.");
+                showAlert("Cluster not available", "Minikube is not running. Please start the cluster first.");
+                return;
+            }
+
+            if (kubernetesClient == null) {
+                logger.info("Initializing Kubernetes client...");
+                var apiClient = Config.defaultClient();
+                kubernetesClient = new KubernetesClientAPI(apiClient);
+                logger.info("Kubernetes client initialized successfully.");
+            }
+
             if (filterNamespaceCheckbox.isSelected()) {
                 logger.info("Loading resources filtered by namespace: " + namespace);
                 serviceListView.getItems().addAll(kubernetesClient.getServicesInNamespace(namespace));
@@ -53,18 +54,17 @@ public class ResourceController {
             } else {
                 logger.info("Loading resources from all namespaces");
 
-                // List services across all namespaces
                 Map<String, String> allServices = kubernetesClient.getAllServicesWithNamespaces();
                 allServices.forEach((svc, ns) ->
                         serviceListView.getItems().add(svc + " (ns: " + ns + ")")
                 );
 
-                // List pods across all namespaces
                 Map<String, String> allPods = kubernetesClient.getAllPodsWithNamespaces();
                 allPods.forEach((pod, ns) ->
                         podListView.getItems().add(pod + " (ns: " + ns + ")")
                 );
             }
+
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error loading resources", e);
             showAlert("Resource Loading Error", e.getMessage());
