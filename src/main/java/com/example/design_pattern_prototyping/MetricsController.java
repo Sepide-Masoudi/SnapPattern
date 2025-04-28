@@ -129,6 +129,8 @@ public class MetricsController {
 
     @FXML
     public void makePlots() {
+        logger.info("Generating metrics plots...");
+        uiLogger.info("Generating metrics plots...");
         new Thread(() -> metricsVisualizer.runMetricsService()).start();
     }
 
