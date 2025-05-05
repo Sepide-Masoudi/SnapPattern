@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import java.util.concurrent.ScheduledFuture;
 
 public class WorkloadController {
 
@@ -35,6 +36,7 @@ public class WorkloadController {
     private final AtomicBoolean isAborted = new AtomicBoolean(false);
     private final AtomicBoolean timeoutTriggered = new AtomicBoolean(false);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> timeoutTask;
 
     @FXML
     public void initialize() {
@@ -181,7 +183,7 @@ public class WorkloadController {
                         currentProcess = processBuilder.start();
 
                         // Schedule task to stop the process after 10 minutes
-                        scheduler.schedule(() -> {
+                        timeoutTask = scheduler.schedule(() -> {
                             if (currentProcess != null && currentProcess.isAlive()) {
                                 timeoutTriggered.set(true);
                                 logger.info("Stopping workload...");
@@ -205,8 +207,6 @@ public class WorkloadController {
                                     logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
                                     uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
                                 }
-
-                                Platform.runLater(() -> showAlert("Info", "Workload stopped after 10 minutes.", Alert.AlertType.INFORMATION));
                                 abortButton.setDisable(true);
                             }
                         }, 10, TimeUnit.MINUTES);
@@ -268,6 +268,11 @@ public class WorkloadController {
             try {
                 logger.info("Aborting workload using stoptest.sh...");
                 uiLogger.info("Aborting workload using stoptest.sh...");
+
+                if (timeoutTask != null && !timeoutTask.isDone()) {
+                    timeoutTask.cancel(false);
+                }
+
                 ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
                 stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
                 stopBuilder.redirectErrorStream(true);
