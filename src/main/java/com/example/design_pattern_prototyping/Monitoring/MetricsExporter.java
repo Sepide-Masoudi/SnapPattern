@@ -19,9 +19,9 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MetricsVisualizer {
+public class MetricsExporter {
 
-    private static final Logger logger = Logger.getLogger(MetricsVisualizer.class.getName());
+    private static final Logger logger = Logger.getLogger(MetricsExporter.class.getName());
     public UILogger uiLogger;
 
     public void setLogger(UILogger logger) {

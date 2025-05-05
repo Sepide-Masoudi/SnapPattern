@@ -30,7 +30,7 @@ public class MetricsController {
     @FXML public TextField patternTextField;
     private DeployMonitoringStack deployMonitoringStack;
     private QueryMetrics queryMetrics;
-    private MetricsVisualizer metricsVisualizer;
+    private MetricsExporter metricsExporter;
     //private JaegerClient jaegerClient;
 
     @FXML
@@ -39,14 +39,14 @@ public class MetricsController {
         ControllerMediatorImpl.getInstance().registerMetricsController(this);
         this.queryMetrics = new QueryMetrics();
         this.deployMonitoringStack = new DeployMonitoringStack();
-        this.metricsVisualizer = new MetricsVisualizer();
+        this.metricsExporter = new MetricsExporter();
         //this.jaegerClient = new JaegerClient();
 
         Logger logger = Logger.getLogger("PatternLogger");
         uiLogger = new UILogger(logTextArea, logger);
         deployMonitoringStack.setLogger(uiLogger);
         queryMetrics.setLogger(uiLogger);
-        metricsVisualizer.setLogger(uiLogger);
+        metricsExporter.setLogger(uiLogger);
         logger.info("MetricsController initialized.");
     }
 
@@ -118,7 +118,7 @@ public class MetricsController {
                     String pattern = (patternInput != null && !patternInput.trim().isEmpty())
                             ? patternInput.trim()
                             : mediator.getSelectedPattern();
-                    metricsVisualizer.exportMetricsExcel(metrics, workloadLevel, pattern);
+                    metricsExporter.exportMetricsExcel(metrics, workloadLevel, pattern);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
@@ -131,7 +131,7 @@ public class MetricsController {
     public void makePlots() {
         logger.info("Generating metrics plots...");
         uiLogger.info("Generating metrics plots...");
-        new Thread(() -> metricsVisualizer.runMetricsService()).start();
+        new Thread(() -> metricsExporter.runMetricsService()).start();
     }
 
     @FXML
