@@ -71,42 +71,52 @@ def generate_plots(df):
                 (~plot_df['Pattern'].str.contains('Internal', na=False))
                 ]
 
-            workload_levels = plot_df['Workload Level'].unique()
+            # Enforce correct workload order
+            workload_order = ['Low', 'Medium', 'High']
+            workload_levels = [w for w in workload_order if w in plot_df['Workload Level'].unique()]
 
-            for workload in workload_levels:
+
+            # Set up figure with 1 row, 3 columns
+            fig, axes = plt.subplots(1, len(workload_levels), figsize=(5 * len(workload_levels), 6), sharey=True)
+
+            if len(workload_levels) == 1:
+                axes = [axes]  # Make sure it's iterable
+
+            for ax, workload in zip(axes, workload_levels):
                 workload_df = plot_df[plot_df['Workload Level'] == workload]
                 baseline_value = baseline_df[baseline_df['Workload Level'] == workload][metric_name].mean()
 
-                plt.figure(figsize=(10, 6))
                 sns.barplot(
                     data=workload_df,
                     x='Pattern',
                     y=metric_name,
                     palette='colorblind',
                     errorbar='sd',
-                    edgecolor='black'
+                    edgecolor='black',
+                    ax=ax
                 )
 
                 if not np.isnan(baseline_value):
-                    plt.axhline(y=baseline_value, color='red', linestyle='--', label='Baseline')
+                    ax.axhline(y=baseline_value, color='red', linestyle='--', label='Baseline')
 
-                plt.title(f"{metric_name} - {workload} Workload", fontsize=14)
-                plt.xlabel("Pattern", fontsize=12)
-                plt.ylabel(metric_name, fontsize=12)
-                plt.xticks(rotation=45, ha="right", fontsize=10)
+                ax.set_title(f"{workload} Workload", fontsize=12)
+                ax.set_xlabel("Pattern", fontsize=10)
+                ax.set_ylabel(metric_name, fontsize=10)
+                ax.tick_params(axis='x', rotation=45)
+                ax.grid(axis='y', linestyle='--', alpha=0.7)
 
-                handles, labels = plt.gca().get_legend_handles_labels()
-                if handles:
-                    plt.legend(fontsize=10)
+                if not np.isnan(baseline_value):
+                    ax.legend(fontsize=8)
 
-                plt.grid(axis="y", linestyle="--", alpha=0.7)
+            plt.suptitle(f"{metric_name} Across Workloads", fontsize=16)
+            plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-                plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}_{workload}_separate.png")
-                plt.tight_layout()
-                plt.savefig(plot_path)
-                plt.close()
+            plot_path = os.path.join(RESULTS_FOLDER, f"{metric_name}_combined.png")
+            plt.savefig(plot_path)
+            plt.close()
 
-                print(f"Plot saved for {metric_name} - {workload} at {plot_path}")
+            print(f"Combined plot saved for {metric_name} at {plot_path}")
+
         except Exception as e:
             print(f"Error generating bar plot for {metric_name}: {e}")
 

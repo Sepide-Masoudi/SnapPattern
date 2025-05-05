@@ -44,6 +44,7 @@ public class QueryMetrics {
             metrics.put("containerCpuInstructions", queryAndExtract(
                     "sum(rate(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)"));
             // Span metrics
+
             metrics.put("avg_HTTP_client_request_duration", queryAndExtract(
                     """
                             sum(rate(http_client_request_duration_seconds_sum{exported_instance=~"user\\\\..*"}[5m]))
@@ -64,6 +65,10 @@ public class QueryMetrics {
                             sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*",http_response_status_code!~"2.."}[5m]))
                             /
                             sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))"""));
+            metrics.put("TotalSpanCount", queryAndExtract(
+                    "sum(increase(span_metrics_calls_total{namespace=\"user\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"
+            ));
+
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);
             uiLogger.error("Failed to query metrics" + e.getMessage());

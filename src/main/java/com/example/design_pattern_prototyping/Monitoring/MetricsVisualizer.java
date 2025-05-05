@@ -105,7 +105,8 @@ public class MetricsVisualizer {
                 headerRow.createCell(10).setCellValue("requestRate_RPS");
                 headerRow.createCell(11).setCellValue("averageLatency");
                 headerRow.createCell(12).setCellValue("95PercentileLatency");
-                headerRow.createCell(13).setCellValue("ErrorRate");
+                headerRow.createCell(13).setCellValue("TotalSpanCount");
+                //headerRow.createCell(13).setCellValue("ErrorRate");
 
                 logger.info("Header row created successfully.");
             } else {
@@ -139,23 +140,27 @@ public class MetricsVisualizer {
 
             // Compute Energy Efficiency and IPC
             try {
-                double joules = Double.parseDouble(flatMetrics.getOrDefault("containerJoulesTotal", "0"));
-                double cycles = Double.parseDouble(flatMetrics.getOrDefault("containerCpuCyclesTotal", "0"));
-                double instructions = Double.parseDouble(flatMetrics.getOrDefault("containerCpuInstructions", "0"));
+                double joules = Double.parseDouble(flatMetrics.getOrDefault("containerJoulesTotal", "NULL"));
+                double cycles = Double.parseDouble(flatMetrics.getOrDefault("containerCpuCyclesTotal", "NULL"));
+                double instructions = Double.parseDouble(flatMetrics.getOrDefault("containerCpuInstructions", "NULL"));
 
-                String energyEfficiency = (cycles != 0) ? String.valueOf(joules / cycles) : "NULL";
+                // Energy Efficiency: instructions per joule
+                String energyEfficiency = (joules != 0) ? String.valueOf(instructions / joules) : "NULL";
+
+                // IPC: instructions per cycle
                 String ipc = (cycles != 0) ? String.valueOf(instructions / cycles) : "NULL";
 
                 flatMetrics.put("energyEfficiency", energyEfficiency);
                 flatMetrics.put("IPC", ipc);
 
-                logger.info("Computed Energy Efficiency: " + energyEfficiency);
-                logger.info("Computed IPC: " + ipc);
+                logger.info("Computed Energy Efficiency (instructions per joule): " + energyEfficiency);
+                logger.info("Computed IPC (instructions per cycle): " + ipc);
             } catch (Exception e) {
                 logger.warning("Failed to compute derived metrics: " + e.getMessage());
                 flatMetrics.put("energyEfficiency", "NULL");
                 flatMetrics.put("IPC", "NULL");
             }
+
 
             // Write the aggregated metrics to Excel
             Row valuesRow = sheet.createRow(nextRowNum++);
@@ -172,7 +177,8 @@ public class MetricsVisualizer {
             valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
             valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("averageLatency", "NULL"));
             valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
-            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
+            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
+            //valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
 
             // Auto-size all columns
             for (int i = 0; i <= 13; i++) {
