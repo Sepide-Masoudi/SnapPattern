@@ -53,11 +53,6 @@ public class QueryMetrics {
                             """));
             metrics.put("requestRate_RPS", queryAndExtract(
                     "sum(rate(http_client_request_duration_seconds_count{exported_instance=~\"user\\\\..*\"}[5m]))"));
-            metrics.put("averageLatency", queryAndExtract(
-                    """
-                            sum(rate(http_client_request_duration_seconds_sum{exported_instance=~"user\\\\..*"}[5m]))
-                            /\s
-                            sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))"""));
             metrics.put("95PercentileLatency", queryAndExtract(
                     "histogram_quantile(0.95, sum(rate(http_client_request_duration_seconds_bucket{exported_instance=~\"user\\\\..*\"}[5m])) by (le))"));
             metrics.put("ErrorRate", queryAndExtract(

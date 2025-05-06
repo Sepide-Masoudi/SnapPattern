@@ -76,7 +76,7 @@ def generate_relative_difference_per_pattern(file_path, output_folder):
             values = row.values
 
             plt.figure(figsize=(14, 6))
-            colors = ['green' if v >= 0 else 'red' for v in values]
+            colors = ['red' if v >= 0 else 'green' for v in values]
             bars = plt.bar(metrics, values, edgecolor='black', color=colors)
 
             # Add labels on top of bars

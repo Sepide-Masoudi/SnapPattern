@@ -101,11 +101,10 @@ public class MetricsExporter {
                 headerRow.createCell(6).setCellValue("containerCpuInstructions");
                 headerRow.createCell(7).setCellValue("energyEfficiency");
                 headerRow.createCell(8).setCellValue("IPC");
-                headerRow.createCell(9).setCellValue("avg_HTTP_client_request_duration");
-                headerRow.createCell(10).setCellValue("requestRate_RPS");
-                headerRow.createCell(11).setCellValue("averageLatency");
-                headerRow.createCell(12).setCellValue("95PercentileLatency");
-                headerRow.createCell(13).setCellValue("TotalSpanCount");
+                headerRow.createCell(9).setCellValue("requestRate_RPS");
+                headerRow.createCell(10).setCellValue("avg_HTTP_client_request_duration");
+                headerRow.createCell(11).setCellValue("95PercentileLatency");
+                headerRow.createCell(12).setCellValue("TotalSpanCount");
                 //headerRow.createCell(13).setCellValue("ErrorRate");
 
                 logger.info("Header row created successfully.");
@@ -173,11 +172,10 @@ public class MetricsExporter {
             valuesRow.createCell(6).setCellValue(flatMetrics.getOrDefault("containerCpuInstructions", "NULL"));
             valuesRow.createCell(7).setCellValue(flatMetrics.getOrDefault("energyEfficiency", "NULL"));
             valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
-            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
-            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
-            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("averageLatency", "NULL"));
-            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
-            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
+            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("requestRate_RPS", "NULL"));
+            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("avg_HTTP_client_request_duration", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
+            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
             //valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
 
             // Auto-size all columns
