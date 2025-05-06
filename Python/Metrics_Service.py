@@ -13,7 +13,7 @@ app = Flask(__name__)
 RESULTS_FOLDER = "Python/results"
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
-EXCEL_FILE = os.path.join(RESULTS_FOLDER, "metrics_agg.xlsx")
+EXCEL_FILE = os.path.join(RESULTS_FOLDER, "metrics_test.xlsx")
 
 @app.route('/generate_metrics', methods=['POST'])
 def generate_metrics():

@@ -48,7 +48,7 @@ def generate_relative_difference_per_pattern(file_path, output_folder):
 
                 # Skip metric if both are all NaN
                 if external.isna().all() and internal.isna().all():
-                    print(f"⚠ Skipping metric '{metric}' (all values are NaN)")
+                    print(f"Skipping metric '{metric}' (all values are NaN)")
                     continue
 
                 # Compute percentage change
