@@ -38,7 +38,7 @@ public class GatewayAggregationGenerator implements PatternGenerator {
 
             // Store temp file path
             tempConfigPath = tempFile.toString();
-            logger.info("Temporary Cache-Aside pattern config generated at: " + tempConfigPath);
+            logger.info("TemporaryGateway Aggregation config generated at: " + tempConfigPath);
 
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Error generating Gateway Aggregation pattern configuration.", e);
