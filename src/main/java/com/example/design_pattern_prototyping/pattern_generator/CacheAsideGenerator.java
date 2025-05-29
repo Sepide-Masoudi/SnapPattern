@@ -1,5 +1,7 @@
 package com.example.design_pattern_prototyping.pattern_generator;
 
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,6 +13,7 @@ import java.util.logging.Logger;
 public class CacheAsideGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(CacheAsideGenerator.class.getName());
     private String tempConfigPath;
+    private static final String NAMESPACE = "pattern";
 
     @Override
     public String getYamlFilePath() {
@@ -48,14 +51,14 @@ public class CacheAsideGenerator implements PatternGenerator {
             }
 
             // Step 1: Deploy ConfigMap using the temporary config file
-            applyYamlFile(tempConfigPath);
+            KubernetesUtil.applyYaml(tempConfigPath, NAMESPACE);
 
             // Step 2: Deploy Redis cache
-            applyYamlFile("src/main/resources/Patterns/CacheAside/redis-cache-deployment.yml");
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/CacheAside/redis-cache-deployment.yml", NAMESPACE);
 
             // Step 3: Deploy the NGINX proxy for cache-aside
-            applyYamlFile("src/main/resources/Patterns/CacheAside/nginx-cache-config.yml");
-            applyYamlFile("src/main/resources/Patterns/CacheAside/nginx-proxy-deployment.yml");
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/CacheAside/nginx-cache-config.yml", NAMESPACE);
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/CacheAside/nginx-proxy-deployment.yml", NAMESPACE);
 
             logger.info("Cache-Aside Pattern setup completed successfully.");
 
@@ -63,38 +66,8 @@ public class CacheAsideGenerator implements PatternGenerator {
             Files.deleteIfExists(Paths.get(tempConfigPath));
             logger.info("Temporary file deleted: " + tempConfigPath);
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             logger.log(Level.SEVERE, "Error executing build steps for Cache-Aside Pattern.", e);
-        }
-    }
-
-    /**
-     * Helper method to apply a YAML file using kubectl.
-     *
-     * @param filePath The path to the YAML file to be applied.
-     */
-    private void applyYamlFile(String filePath) throws IOException, InterruptedException {
-        logger.info("Applying configuration from file: " + filePath);
-        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "pattern");
-        Process process = apply.start();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                logger.info("[KUBECTL OUTPUT] " + line);
-            }
-            while ((line = errorReader.readLine()) != null) {
-                logger.warning("[KUBECTL ERROR] " + line);
-            }
-        }
-
-        int exitCode = process.waitFor();
-        if (exitCode == 0) {
-            logger.info("Successfully applied: " + filePath);
-        } else {
-            logger.severe("Failed to apply: " + filePath + " with exit code " + exitCode);
         }
     }
 }

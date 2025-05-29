@@ -1,5 +1,7 @@
 package com.example.design_pattern_prototyping.pattern_generator;
 
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,6 +13,7 @@ import java.util.logging.Logger;
 public class CircuitBreakerGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(CircuitBreakerGenerator.class.getName());
     private String tempConfigPath;
+    private static final String NAMESPACE = "pattern";
 
     @Override
     public String getYamlFilePath() {
@@ -62,7 +65,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
             executeCommand("kubectl", "label", "namespace", "user", "istio-injection=enabled", "--overwrite");
 
             // Step 3: Apply the generated Circuit Breaker YAML
-            applyYamlFile(tempConfigPath);
+            KubernetesUtil.applyYaml(tempConfigPath, NAMESPACE);
 
             logger.info("Circuit Breaker and retry pattern setup completed successfully.");
 
@@ -104,36 +107,6 @@ public class CircuitBreakerGenerator implements PatternGenerator {
         int exitCode = process.waitFor();
         if (exitCode != 0) {
             throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
-        }
-    }
-
-    /**
-     * Helper method to apply a YAML file using kubectl.
-     *
-     * @param filePath The path to the YAML file to be applied.
-     */
-    private void applyYamlFile(String filePath) throws IOException, InterruptedException {
-        logger.info("Applying configuration from file: " + filePath);
-        ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");
-        Process process = apply.start();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                logger.info("[KUBECTL OUTPUT] " + line);
-            }
-            while ((line = errorReader.readLine()) != null) {
-                logger.warning("[KUBECTL ERROR] " + line);
-            }
-        }
-
-        int exitCode = process.waitFor();
-        if (exitCode == 0) {
-            logger.info("Successfully applied: " + filePath);
-        } else {
-            logger.severe("Failed to apply: " + filePath + " with exit code " + exitCode);
         }
     }
 }

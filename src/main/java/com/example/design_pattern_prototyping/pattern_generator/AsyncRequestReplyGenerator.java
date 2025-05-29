@@ -1,18 +1,19 @@
 package com.example.design_pattern_prototyping.pattern_generator;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.*;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
 
 public class AsyncRequestReplyGenerator implements PatternGenerator {
 
     private static final Logger logger = Logger.getLogger(AsyncRequestReplyGenerator.class.getName());
     private String tempIngressPath;
     private String tempListenerPath;
+    private static final String NAMESPACE = "pattern";
 
     @Override
     public String getYamlFilePath() {
@@ -78,19 +79,19 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
 
             // RabbitMQ
             executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq", "--set",
-                    "auth.username=user,auth.password=bitnami", "--namespace", "pattern");
+                    "auth.username=user,auth.password=bitnami", "--namespace", NAMESPACE);
 
             // Proxy
-            applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml");
-            applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml");
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml", NAMESPACE);
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml", NAMESPACE);
 
             // Listener
-            applyYaml(tempListenerPath);
+            KubernetesUtil.applyYaml(tempListenerPath, NAMESPACE);
 
             // Kong and Ingress
             executeCommand("helm", "upgrade", "--install", "kong", "kong/kong", "--set",
-                    "ingressController.installCRDs=false", "--namespace", "pattern");
-            applyYaml(tempIngressPath);
+                    "ingressController.installCRDs=false", "--namespace", NAMESPACE);
+            KubernetesUtil.applyYaml(tempIngressPath, NAMESPACE);
 
             logger.info("Async Request Reply Pattern setup completed successfully.");
 
@@ -101,24 +102,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
 
         } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error during Async Request Reply pattern deployment.", e);
-        }
-    }
-
-    private void applyYaml(String filePath) throws IOException, InterruptedException {
-        logger.info("Applying YAML from: " + filePath);
-        Process process = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "pattern").start();
-
-        try (BufferedReader out = new BufferedReader(new InputStreamReader(process.getInputStream()));
-             BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-            out.lines().forEach(line -> logger.info("[KUBECTL OUTPUT] " + line));
-            err.lines().forEach(line -> logger.warning("[KUBECTL ERROR] " + line));
-        }
-
-        int exitCode = process.waitFor();
-        if (exitCode == 0) {
-            logger.info("Successfully applied: " + filePath);
-        } else {
-            logger.severe("Failed to apply: " + filePath + " (exit code " + exitCode + ")");
         }
     }
 

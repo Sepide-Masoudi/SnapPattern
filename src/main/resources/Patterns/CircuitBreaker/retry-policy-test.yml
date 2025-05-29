@@ -11,6 +11,6 @@ spec:
         - destination:
             host: teastore-auth
       retries:
-        attempts: 3
-        perTryTimeout: 2s
+        attempts: 2
+        perTryTimeout: 1s
         retryOn: gateway-error,connect-failure,refused-stream

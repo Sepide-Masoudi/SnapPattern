@@ -205,7 +205,7 @@ public class PatternController {
                     boolean minikubeStarted = KubernetesUtil.startMinikube();
                     if (minikubeStarted) {
                         KubernetesUtil.createNamespace("user");
-                        KubernetesUtil.applyYamlFile(fileToDeploy.getAbsolutePath());
+                        KubernetesUtil.applyYaml(fileToDeploy.getAbsolutePath(), "user");
                         uiLogger.info("Application configuration applied.");
                         javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {

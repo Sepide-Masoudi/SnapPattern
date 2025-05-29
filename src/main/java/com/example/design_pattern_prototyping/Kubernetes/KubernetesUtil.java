@@ -1,7 +1,11 @@
 package com.example.design_pattern_prototyping.Kubernetes;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -219,23 +223,70 @@ public class KubernetesUtil {
         }
     }
 
-    public static void applyYamlFile(String filePath) {
+    public static void applyYaml(String filePath, String namespace) {
         try {
             logger.info("Applying configuration from file: " + filePath);
-            ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", "user");
+
+            Path path = Paths.get(filePath);
+            String content = Files.readString(path);
+
+            if (isDockerCompose(content)) {
+                logger.info("Detected Docker Compose format. Converting to Kubernetes YAML using Kompose.");
+                convertComposeToKubernetes(path, namespace);
+                return;
+            }
+
+            ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", namespace);
             Process process = apply.start();
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    logger.info(line);
+                    logger.info("[kubectl] " + line);
                 }
             }
 
-            process.waitFor();
-            logger.info("Configuration applied successfully.");
+            int exit = process.waitFor();
+            if (exit == 0) {
+                logger.info("Configuration applied successfully.");
+            } else {
+                logger.warning("kubectl apply exited with code " + exit);
+            }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to apply configuration.", e);
+        }
+    }
+
+    private static boolean isDockerCompose(String content) {
+        return content.contains("services:") && content.contains("version:");
+    }
+
+    private static void convertComposeToKubernetes(Path composePath, String namespace) throws IOException, InterruptedException {
+        Path parentDir = composePath.getParent();
+        logger.info("Running kompose conversion in directory: " + parentDir);
+
+        ProcessBuilder kompose = new ProcessBuilder("kompose", "convert", "-f", composePath.toString(), "-o", "kompose-output.yaml");
+        kompose.directory(parentDir.toFile());
+        kompose.redirectErrorStream(true);
+        Process process = kompose.start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            reader.lines().forEach(line -> logger.info("[kompose] " + line));
+        }
+
+        int exit = process.waitFor();
+        if (exit != 0) {
+            logger.warning("Kompose conversion failed (exit code " + exit + ")");
+            return;
+        }
+
+        Path outputPath = parentDir.resolve("kompose-output.yaml");
+        if (Files.exists(outputPath)) {
+            logger.info("Applying converted Kubernetes YAML from kompose-output.yaml");
+            applyYaml(outputPath.toString(), namespace);
+            Files.deleteIfExists(outputPath);
+        } else {
+            logger.warning("Kompose output file not found at: " + outputPath);
         }
     }
 }
