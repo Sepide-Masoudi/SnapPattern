@@ -5,9 +5,9 @@ import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class KubernetesDeployer {
+public class KubernetesUtil {
 
-    private static final Logger logger = Logger.getLogger(KubernetesDeployer.class.getName());
+    private static final Logger logger = Logger.getLogger(KubernetesUtil.class.getName());
 
     public static boolean statusMinikube() {
         try {

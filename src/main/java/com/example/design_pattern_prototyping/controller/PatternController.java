@@ -1,7 +1,6 @@
 package com.example.design_pattern_prototyping.controller;
 
-import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
-import com.example.design_pattern_prototyping.Monitoring.MetricsExporter;
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import com.example.design_pattern_prototyping.pattern_generator.*;
 import com.example.design_pattern_prototyping.util.UILogger;
 import com.example.design_pattern_prototyping.util.YamlEditor;
@@ -15,9 +14,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,10 +145,10 @@ public class PatternController {
 
         new Thread(() -> {
             try {
-                boolean minikubeStarted = KubernetesDeployer.startMinikube();
+                boolean minikubeStarted = KubernetesUtil.startMinikube();
                 if (minikubeStarted) {
-                    KubernetesDeployer.deleteUserNamespace();
-                    KubernetesDeployer.deletePatternNamespace();
+                    KubernetesUtil.deleteUserNamespace();
+                    KubernetesUtil.deletePatternNamespace();
                     logger.info("User application services deleted successfully...");
                     uiLogger.info("User application services deleted successfully...");
                     javafx.application.Platform.runLater(() -> statusLabel.setText("user application deleted successfully."));
@@ -176,9 +173,9 @@ public class PatternController {
 
         new Thread(() -> {
             try {
-                boolean minikubeStarted = KubernetesDeployer.startMinikube();
+                boolean minikubeStarted = KubernetesUtil.startMinikube();
                 if (minikubeStarted) {
-                    KubernetesDeployer.deletePatternNamespace();
+                    KubernetesUtil.deletePatternNamespace();
                     uiLogger.info("Pattern deleted successfully.");
                     javafx.application.Platform.runLater(() -> statusLabel.setText("Pattern deleted successfully."));
                 } else {
@@ -205,10 +202,10 @@ public class PatternController {
 
             new Thread(() -> {
                 try {
-                    boolean minikubeStarted = KubernetesDeployer.startMinikube();
+                    boolean minikubeStarted = KubernetesUtil.startMinikube();
                     if (minikubeStarted) {
-                        KubernetesDeployer.createNamespace("user");
-                        KubernetesDeployer.applyYamlFile(fileToDeploy.getAbsolutePath());
+                        KubernetesUtil.createNamespace("user");
+                        KubernetesUtil.applyYamlFile(fileToDeploy.getAbsolutePath());
                         uiLogger.info("Application configuration applied.");
                         javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {
@@ -306,7 +303,7 @@ public class PatternController {
                 parameters.put("RETRY_ATTEMPTS", cb_retry_attempts.getText());
             }
 
-            KubernetesDeployer.createNamespace("pattern");
+            KubernetesUtil.createNamespace("pattern");
             generator.generatePattern(yamlFilePath, parameters);
             generator.deployPattern();
 

@@ -1,6 +1,6 @@
 package com.example.design_pattern_prototyping.controller;
 
-import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -21,7 +21,7 @@ public class MainController {
 
         new Thread(() -> {
             try {
-                boolean minikubeStarted = KubernetesDeployer.startMinikube();
+                boolean minikubeStarted = KubernetesUtil.startMinikube();
                 javafx.application.Platform.runLater(() -> {
                     if (minikubeStarted) {
                         showAlert(Alert.AlertType.INFORMATION, "Minikube Start", "Minikube started successfully!");
@@ -44,7 +44,7 @@ public class MainController {
 
         new Thread(() -> {
             try {
-                boolean minikubeStopped = KubernetesDeployer.stopMinikube();
+                boolean minikubeStopped = KubernetesUtil.stopMinikube();
                 javafx.application.Platform.runLater(() -> {
                     if (minikubeStopped) {
                         showAlert(Alert.AlertType.INFORMATION, "Minikube Stop", "Minikube stopped successfully!");
@@ -67,7 +67,7 @@ public class MainController {
 
         new Thread(() -> {
             try {
-                boolean minikubeDeleted = KubernetesDeployer.deleteMinikube();
+                boolean minikubeDeleted = KubernetesUtil.deleteMinikube();
                 javafx.application.Platform.runLater(() -> {
                     if (minikubeDeleted) {
                         showAlert(Alert.AlertType.INFORMATION, "Minikube Delete", "Minikube deleted successfully!");

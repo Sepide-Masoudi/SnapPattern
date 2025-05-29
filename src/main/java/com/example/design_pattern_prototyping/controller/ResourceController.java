@@ -1,7 +1,7 @@
 package com.example.design_pattern_prototyping.controller;
 
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
-import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
+import com.example.design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import io.kubernetes.client.util.Config;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -34,7 +34,7 @@ public class ResourceController {
 
         try {
             // Check Minikube status before trying to connect
-            if (!KubernetesDeployer.statusMinikube()) {
+            if (!KubernetesUtil.statusMinikube()) {
                 logger.warning("Minikube cluster is not running. Cannot load Kubernetes resources.");
                 showAlert("Cluster not available", "Minikube is not running. Please start the cluster first.");
                 return;
