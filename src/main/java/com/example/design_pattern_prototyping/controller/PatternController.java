@@ -1,18 +1,25 @@
-package com.example.design_pattern_prototyping;
+package com.example.design_pattern_prototyping.controller;
 
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
+import com.example.design_pattern_prototyping.Monitoring.MetricsExporter;
 import com.example.design_pattern_prototyping.pattern_generator.*;
 import com.example.design_pattern_prototyping.util.UILogger;
 import com.example.design_pattern_prototyping.util.YamlEditor;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,6 +72,8 @@ public class PatternController {
     public TextField cb_retry_attempts;
 
     private File yamlFile;
+    private File instrumentedYamlFile;
+    private Map<String, String> languageMap;
 
     @FXML
     public void initialize() {
@@ -80,7 +89,7 @@ public class PatternController {
     @FXML
     public void handleFileUpload() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("YAML Files", "*.yaml"));
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("YAML Files", "*.yaml", "*.yml"));
         yamlFile = fileChooser.showOpenDialog(new Stage());
         if (yamlFile != null) {
             logger.info("YAML file selected: " + yamlFile.getAbsolutePath());
@@ -89,6 +98,45 @@ public class PatternController {
         } else {
             statusLabel.setText("No YAML file selected.");
             uiLogger.warning("No YAML file selected.");
+        }
+    }
+
+    @FXML
+    public void openInstrumentationModal() {
+        if (yamlFile == null) {
+            showAlert(Alert.AlertType.WARNING, "Missing YAML", "Please upload a YAML configuration file first.");
+            return;
+        }
+
+        try {
+            String content = Files.readString(yamlFile.toPath());
+            List<String> deploymentNames = YamlEditor.extractDeploymentNames(content);
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/design_pattern_prototyping/DeploymentController.fxml"));
+            Parent root = loader.load();
+            DeploymentController controller = loader.getController();
+            controller.setDeployments(deploymentNames);
+            controller.setOriginalYamlFile(yamlFile);
+
+            Stage modal = new Stage();
+            modal.setTitle("Set Instrumentation Language");
+            modal.initModality(Modality.APPLICATION_MODAL);
+            modal.setScene(new Scene(root));
+            modal.showAndWait();
+
+            File instrumented = controller.getInstrumentedamlFile();
+            if (instrumented != null) {
+                this.instrumentedYamlFile = instrumented;
+                this.languageMap = controller.getConfirmedLanguageMap();
+            }
+
+        } catch (Exception e) {
+            String errorMsg = "Failed to process YAML file. Please check its structure and indentation.\n" +
+                    "Error: " + e.getMessage();
+
+            logger.log(Level.SEVERE, "YAML parsing failed", e);
+            uiLogger.error(errorMsg);
+            showAlert(Alert.AlertType.ERROR, "YAML Error", errorMsg);
         }
     }
 
@@ -148,34 +196,19 @@ public class PatternController {
 
     @FXML
     public void deployApplication() {
-        if (yamlFile != null) {
-            String language = languageComboBox.getValue();
-            if (language == null) {
-                uiLogger.warning("Please select an application language.");
-                showAlert(Alert.AlertType.WARNING, "Missing Language", "Please select a language before deploying.");
-                return;
-            }
-            logger.info("User requested to deploy the application with configuration: " + yamlFile.getAbsolutePath());
-            uiLogger.info("Deploying application with configuration: " + yamlFile.getAbsolutePath());
-            statusLabel.setText("Deploying applicaion configuration...");
+        File fileToDeploy = (instrumentedYamlFile != null) ? instrumentedYamlFile : yamlFile;
+
+        if (fileToDeploy != null) {
+            logger.info("User requested to deploy the application with configuration: " + fileToDeploy.getAbsolutePath());
+            uiLogger.info("Deploying application with configuration: " + fileToDeploy.getAbsolutePath());
+            statusLabel.setText("Deploying application configuration...");
 
             new Thread(() -> {
                 try {
-                    // Read original YAML
-                    String originalYaml = Files.readString(yamlFile.toPath());
-
-                    // Inject annotation
-                    String modifiedYaml = YamlEditor.injectAnnotation(originalYaml, language);
-
-                    // Save to temporary file
-                    Path instrumentedPath = Path.of("instrumented-" + yamlFile.getName());
-                    Files.writeString(instrumentedPath, modifiedYaml);
-                    uiLogger.info("Annotation injected successfully for language: " + language);
-
                     boolean minikubeStarted = KubernetesDeployer.startMinikube();
                     if (minikubeStarted) {
                         KubernetesDeployer.createNamespace("user");
-                        KubernetesDeployer.applyYamlFile(instrumentedPath.toAbsolutePath().toString());
+                        KubernetesDeployer.applyYamlFile(fileToDeploy.getAbsolutePath());
                         uiLogger.info("Application configuration applied.");
                         javafx.application.Platform.runLater(() -> statusLabel.setText("Configuration applied successfully."));
                     } else {

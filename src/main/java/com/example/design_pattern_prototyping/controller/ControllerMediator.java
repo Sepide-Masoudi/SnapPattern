@@ -1,4 +1,4 @@
-package com.example.design_pattern_prototyping;
+package com.example.design_pattern_prototyping.controller;
 
 public interface ControllerMediator {
     void registerPatternBuilderController(PatternController controller);

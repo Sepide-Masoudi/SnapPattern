@@ -1,4 +1,4 @@
-package com.example.design_pattern_prototyping;
+package com.example.design_pattern_prototyping.controller;
 
 import com.example.design_pattern_prototyping.Monitoring.*;
 import com.example.design_pattern_prototyping.util.UILogger;
@@ -42,7 +42,7 @@ public class MetricsController {
         this.metricsExporter = new MetricsExporter();
         //this.jaegerClient = new JaegerClient();
 
-        Logger logger = Logger.getLogger("PatternLogger");
+        Logger logger = Logger.getLogger("MetricsLogger");
         uiLogger = new UILogger(logTextArea, logger);
         deployMonitoringStack.setLogger(uiLogger);
         queryMetrics.setLogger(uiLogger);

@@ -4,7 +4,7 @@
 <?import javafx.collections.FXCollections?>
 <?import java.lang.String?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.design_pattern_prototyping.PatternController">
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.design_pattern_prototyping.controller.PatternController">
     <top>
         <Label text="Deployment Dashboard" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
     </top>
@@ -15,18 +15,7 @@
             <HBox spacing="10.0">
                 <Label text="Upload YAML Configuration File" />
                 <Button text="Choose File" onAction="#handleFileUpload"/>
-
-                <Label text="Application Language"/>
-                <ComboBox fx:id="languageComboBox">
-                    <items>
-                        <FXCollections fx:factory="observableArrayList">
-                            <String fx:value="Java"/>
-                            <String fx:value="Python"/>
-                            <String fx:value="NodeJS"/>
-                            <String fx:value=".NET"/>
-                        </FXCollections>
-                    </items>
-                </ComboBox>
+                <Button text="Setup Instrumentation" onAction="#openInstrumentationModal"/>
             </HBox>
             <HBox spacing="10.0">
                 <Button text="Deploy Microservice" onAction="#deployApplication"/>

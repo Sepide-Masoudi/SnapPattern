@@ -1,4 +1,4 @@
-package com.example.design_pattern_prototyping;
+package com.example.design_pattern_prototyping.controller;
 
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesDeployer;
 import javafx.fxml.FXML;

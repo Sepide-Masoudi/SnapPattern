@@ -1,7 +1,7 @@
 package com.example.design_pattern_prototyping.Monitoring;
 
 import com.example.design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
-import com.example.design_pattern_prototyping.MetricsController;
+import com.example.design_pattern_prototyping.controller.MetricsController;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.util.Config;
 
