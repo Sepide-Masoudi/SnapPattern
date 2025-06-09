@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.WorkloadController">
+    <top>
+        <Label text="Workload Dashboard" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
+    </top>
+
+    <center>
+        <VBox spacing="20.0" style="-fx-padding: 20.0;">
+            <!-- Upload Workload File -->
+            <HBox spacing="10.0">
+                <Label text="Upload Workload File:"/>
+                <Button text="Upload File" onAction="#uploadFile"/>
+            </HBox>
+            <!-- Select Workload File -->
+            <HBox spacing="10.0">
+                <Label text="Select Workload File:"/>
+                <ComboBox fx:id="fileDropdown"/>
+            </HBox>
+            <!-- Set WebUI Hostname -->
+            <HBox spacing="10.0">
+                <Label text="Hostnamme (IP):"/>
+                <TextField fx:id="hostnameField" text="192.168.49.2" promptText="192.168.49.2"/>
+                <Label text="Port:"/>
+                <TextField fx:id="portField" text="30080" promptText="30080"/>
+            </HBox>
+            <!-- Set Workload intensity -->
+            <HBox spacing="10.0">
+                <Label text="Select Workload Level:"/>
+                <ComboBox fx:id="workloadLevelComboBox"/>
+            </HBox>
+            <!-- Run workload -->
+            <HBox spacing="10.0">
+                <Button text="Run Workload" onAction="#runWorkload"/>
+                <Button fx:id="abortButton" text="Abort" onAction="#abortWorkload" disable="true"/>
+            </HBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <TitledPane text="Logs">
+            <VBox style="-fx-padding: 10;">
+                <TextArea fx:id="logTextArea" editable="false" wrapText="true" prefRowCount="8"/>
+            </VBox>
+        </TitledPane>
+    </bottom>
+</BorderPane>

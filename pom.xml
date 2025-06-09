@@ -104,7 +104,7 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>
-                                com.example.design_pattern_prototyping/com.example.design_pattern_prototyping.Main
+                                com.example.design_pattern_prototyping/design_pattern_prototyping.Main
                             </mainClass>
                             <options>
                                 --module-path ${project.build.outputDirectory};${maven.repo.local}

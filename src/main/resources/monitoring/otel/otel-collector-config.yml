@@ -77,7 +77,7 @@ data:
     service:
       pipelines:
         traces:
-          receivers: [otlp]
+          receivers: [otlp, jaeger]
           processors: [memory_limiter, probabilistic_sampler, k8sattributes, attributes/insert, batch]
           exporters: [spanmetrics]
         metrics:

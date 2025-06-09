@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.MainController">
+
+    <top>
+        <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
+            <HBox spacing="15" alignment="CENTER">
+                <Button text="Start Kubernetes" onAction="#startKubernetes"/>
+                <Button text="Stop Kubernetes" onAction="#stopKubernetes"/>
+                <Button text="Delete Cluster" onAction="#deleteKubernetes"/>
+            </HBox>
+            <Label fx:id="statusLabel" style="-fx-text-fill: gray;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane>
+            <!-- Pattern Builder Tab -->
+            <Tab text="Resource Dashboard" closable="false">
+                <fx:include source="ResourceController.fxml"/>
+            </Tab>
+            <!-- Pattern Builder Tab -->
+            <Tab text="Pattern Dashboard" closable="false">
+                <fx:include source="PatternController.fxml"/>
+            </Tab>
+            <!-- Workload Manager Tab -->
+            <Tab text="Workload Dashboard" closable="false">
+                <fx:include source="WorkloadController.fxml"/>
+            </Tab>
+            <!-- Monitoring Tab -->
+            <Tab text="Monitoring Dashboard" closable="false">
+                <fx:include source="MetricsController.fxml"/>
+            </Tab>
+        </TabPane>
+    </center>
+</BorderPane>
