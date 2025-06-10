@@ -12,14 +12,14 @@ module com.example.design_pattern_prototyping {
     requires org.apache.poi.poi;
     requires org.apache.poi.ooxml;
     requires org.bouncycastle.pkix;
+    requires annotations;
 
-
-    opens com.example.design_pattern_prototyping to javafx.fxml;
-    exports com.example.design_pattern_prototyping;
-    exports com.example.design_pattern_prototyping.pattern_generator;
-    opens com.example.design_pattern_prototyping.pattern_generator to javafx.fxml;
-    exports com.example.design_pattern_prototyping.Kubernetes;
-    opens com.example.design_pattern_prototyping.Kubernetes to javafx.fxml;
-    exports com.example.design_pattern_prototyping.controller;
-    opens com.example.design_pattern_prototyping.controller to javafx.fxml;
+    opens design_pattern_prototyping to javafx.fxml;
+    exports design_pattern_prototyping;
+    exports design_pattern_prototyping.pattern_generator;
+    opens design_pattern_prototyping.pattern_generator to javafx.fxml;
+    exports design_pattern_prototyping.Kubernetes;
+    opens design_pattern_prototyping.Kubernetes to javafx.fxml;
+    exports design_pattern_prototyping.controller;
+    opens design_pattern_prototyping.controller to javafx.fxml;
 }

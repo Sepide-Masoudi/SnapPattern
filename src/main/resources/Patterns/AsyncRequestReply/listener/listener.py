@@ -7,14 +7,11 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# Configuration parameters (environment variables or defaults)
+# Configuration parameters
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', 'rabbitmq.rabbitmq.svc.cluster.local')
 RABBITMQ_PORT = int(os.getenv('RABBITMQ_PORT', '5672'))
-SERVICE_B_URL = os.getenv('SERVICE_URL', 'http://service.user.svc.cluster.local/target-endpoint')
+SERVICE_URL = os.getenv('SERVICE_URL', 'http://service.user.svc.cluster.local/target-endpoint')
 QUEUE_NAME = os.getenv('QUEUE_NAME', 'service-queue')
-EXCHANGE_NAME = os.getenv('EXCHANGE_NAME', 'service-exchange')
-ROUTING_KEY = os.getenv('ROUTING_KEY', 'service-routing-key')
-REPLY_QUEUE = os.getenv('REPLY_QUEUE', 'reply-queue')
 
 def get_rabbitmq_connection():
     return pika.BlockingConnection(
@@ -27,30 +24,26 @@ def worker_function():
             connection = get_rabbitmq_connection()
             channel = connection.channel()
 
-            # Declare the queues and exchange
-            channel.exchange_declare(exchange=EXCHANGE_NAME, exchange_type='direct', durable=True)
+            # Declare queue and bind it
             channel.queue_declare(queue=QUEUE_NAME, durable=True)
-            channel.queue_declare(queue=REPLY_QUEUE, durable=True)
-            channel.queue_bind(exchange=EXCHANGE_NAME, queue=QUEUE_NAME, routing_key=ROUTING_KEY)
 
             def callback(ch, method, properties, body):
                 try:
-                    # Parse and unwrap the incoming message
                     message = json.loads(body)
                     correlation_id = message.get("correlationId")
                     payload = message.get("payload")
+                    reply_to = properties.reply_to
 
-                    if not correlation_id or not payload:
-                        logging.warning("Message missing correlationId or payload")
+                    if not correlation_id or not payload or not reply_to:
+                        logging.warning("Missing correlationId, payload, or reply_to. Skipping.")
                         ch.basic_ack(delivery_tag=method.delivery_tag)
                         return
 
                     # Send the payload to the backend service
-                    response = requests.post(SERVICE_B_URL, json=payload, timeout=10)
-                    logging.info(f"Forwarded to service, status: {response.status_code}")
+                    response = requests.post(SERVICE_URL, json=payload, timeout=10)
+                    logging.info(f"Forwarded request, got {response.status_code}")
 
-                    # Build reply message
-                    reply_msg = {
+                    reply = {
                         "correlationId": correlation_id,
                         "response": {
                             "status": response.status_code,
@@ -58,19 +51,21 @@ def worker_function():
                         }
                     }
 
-                    # Publish response to reply queue
-                    channel.basic_publish(
+                    # Publish response to dynamic reply_to queue
+                    ch.basic_publish(
                         exchange='',
-                        routing_key=REPLY_QUEUE,
-                        body=json.dumps(reply_msg),
-                        properties=pika.BasicProperties(delivery_mode=2)
+                        routing_key=reply_to,
+                        body=json.dumps(reply),
+                        properties=pika.BasicProperties(
+                            correlation_id=correlation_id
+                        )
                     )
 
-                    logging.info(f"Published response for correlationId {correlation_id} to reply queue.")
+                    logging.info(f"Sent response to {reply_to} with correlationId {correlation_id}")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
 
                 except Exception as e:
-                    logging.error(f"Error in callback: {e}")
+                    logging.error(f"Error in listener callback: {e}")
                     ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
             channel.basic_consume(queue=QUEUE_NAME, on_message_callback=callback)
@@ -78,7 +73,7 @@ def worker_function():
             channel.start_consuming()
 
         except pika.exceptions.AMQPConnectionError as e:
-            logging.error(f"Connection to RabbitMQ failed, retrying in 5 seconds: {e}")
+            logging.error(f"RabbitMQ connection error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
