@@ -2,6 +2,9 @@ package design_pattern_prototyping.Monitoring;
 
 import design_pattern_prototyping.util.UILogger;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -35,23 +38,25 @@ public class QueryMetrics {
         Map<String, String> metrics = new HashMap<>();
         try {
             // Kepler metrics
-            metrics.put("containerJoulesTotal", queryAndExtract(
+            metrics.put("ContainerJoulesTotal", queryAndExtract(
+                    "sum(kepler_container_joules_total{container_namespace=~\"user|pattern\"}) by (container_namespace)\n"));
+            metrics.put("ContainerPowerWattsAvg", queryAndExtract(
                     "sum(rate(kepler_container_joules_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
-            metrics.put("containerCpuCyclesTotal", queryAndExtract(
+            metrics.put("ContainerCpuCyclesAvg", queryAndExtract(
                     "sum(rate(kepler_container_cpu_cycles_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
-            metrics.put("containerCacheMissTotal", queryAndExtract(
+            metrics.put("ContainerCacheMissAvg", queryAndExtract(
                     "sum(rate(kepler_container_cache_miss_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
-            metrics.put("containerCpuInstructions", queryAndExtract(
+            metrics.put("ContainerCpuInstructionsAvg", queryAndExtract(
                     "sum(rate(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)"));
-            // Span metrics
 
-            metrics.put("avg_HTTP_client_request_duration", queryAndExtract(
+            // Span metrics
+            metrics.put("MeanLatency", queryAndExtract(
                     """
                             sum(rate(http_client_request_duration_seconds_sum{exported_instance=~"user\\\\..*"}[5m]))
                             /
                             sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))
                             """));
-            metrics.put("requestRate_RPS", queryAndExtract(
+            metrics.put("RequestRate", queryAndExtract(
                     "sum(rate(http_client_request_duration_seconds_count{exported_instance=~\"user\\\\..*\"}[5m]))"));
             metrics.put("95PercentileLatency", queryAndExtract(
                     "histogram_quantile(0.95, sum(rate(http_client_request_duration_seconds_bucket{exported_instance=~\"user\\\\..*\"}[5m])) by (le))"));
@@ -71,5 +76,22 @@ public class QueryMetrics {
         }
         logger.info("Metrics: " + metrics);
         return metrics;
+    }
+
+    public String queryEnergyTimeSeries() throws Exception {
+        String promql = "sum(increase(kepler_container_joules_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)";
+        logger.info("Querying energy time series...");
+        uiLogger.info("Querying energy time series...");
+
+        String start = java.time.Instant.now().minus(java.time.Duration.ofMinutes(5)).toString();
+        String end = java.time.Instant.now().toString();
+        String step = "10s";
+
+        String response = prometheusClient.queryRange(promql, start, end, step);
+
+        logger.info("Energy time series response: " + response);
+        uiLogger.info("Energy time series response: " + response);
+
+        return response;
     }
 }

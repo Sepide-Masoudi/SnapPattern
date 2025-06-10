@@ -10,7 +10,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -95,13 +98,14 @@ public class MetricsController {
         }).start();
     }
 
-    // Query Metrics and Generate Plots and Results File
+    // Query Metrics and Results File
     @FXML
     public void generateMetrics() {
         logger.info("Generating metrics...");
         uiLogger.info("Generating metrics...");
         new Thread(() -> {
             try {
+                String energyTimeSeries = queryMetrics.queryEnergyTimeSeries();
                 Map<String, String> metrics = queryMetrics.queryAllMetrics();
 
                 if (metrics.containsKey("error")) {
@@ -119,6 +123,7 @@ public class MetricsController {
                             ? patternInput.trim()
                             : mediator.getSelectedPattern();
                     metricsExporter.exportMetricsExcel(metrics, workloadLevel, pattern);
+                    metricsExporter.exportEnergyTimeSeriesExcel(energyTimeSeries, workloadLevel, pattern);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error generating metrics", e);
@@ -127,6 +132,7 @@ public class MetricsController {
         }).start();
     }
 
+    // Generate Plots
     @FXML
     public void makePlots() {
         logger.info("Generating metrics plots...");
