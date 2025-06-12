@@ -192,12 +192,12 @@ public class MetricsExporter {
             valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("PPW", "NULL"));
             valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("PPJ", "NULL"));
             valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
-            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("MeanLatency", "NULL"));
-            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
-            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("RequestRate", "NULL"));
-            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("TotalRequests", "NULL"));
-            valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
-            valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("SpansPerRequest", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("MeanLatency", "NULL"));
+            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
+            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("RequestRate", "NULL"));
+            valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("TotalRequests", "NULL"));
+            valuesRow.createCell(15).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
+            valuesRow.createCell(16).setCellValue(flatMetrics.getOrDefault("SpansPerRequest", "NULL"));
 
             // Auto-size all columns
             for (int i = 0; i <= 15; i++) {

@@ -161,101 +161,102 @@ public class WorkloadController {
                 isAborted.set(false);
                 abortButton.setDisable(false);
 
-                new Thread(() -> {
-                    try {
-                        ProcessBuilder processBuilder = new ProcessBuilder(
-                                "java",
-                                "-jar",
-                                jmeterFile.getAbsolutePath(),
-                                "-t", selectedFile.getAbsolutePath(),
-                                "-Jhostname=" + hostname,
-                                "-Jport=" + port,
-                                "-JnumUser=" + numUsers,
-                                "-JrampUp=" + rampUp,
-                                //"-l", logFilePath,
-                                "-n"
-                        );
-                        processBuilder.redirectErrorStream(true);
-                        currentProcess = processBuilder.start();
-
-                        // Schedule task to stop the process after 10 minutes
-                        timeoutTask = scheduler.schedule(() -> {
-                            if (currentProcess != null && currentProcess.isAlive()) {
-                                timeoutTriggered.set(true);
-                                logger.info("Stopping workload...");
-                                uiLogger.info("Stopping workload...");
-                                try {
-                                    ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
-                                    stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
-                                    stopBuilder.redirectErrorStream(true);
-                                    Process stopProcess = stopBuilder.start();
-
-                                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(stopProcess.getInputStream()))) {
-                                        String line;
-                                        while ((line = reader.readLine()) != null) {
-                                            logger.info("[stoptest.sh] " + line);
-                                            uiLogger.info("[stoptest.sh] " + line);
-                                        }
-                                    }
-
-                                    stopProcess.waitFor();
-                                } catch (IOException | InterruptedException e) {
-                                    logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
-                                    uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
-                                }
-                                abortButton.setDisable(true);
-                            }
-                        }, 10, TimeUnit.MINUTES);
-
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                logger.info(line);
-                                uiLogger.info(line);
-                            }
-                        }
-
-                        int exitCode = currentProcess.waitFor();
-                        currentProcess = null;
-
-                        Platform.runLater(() -> {
-                            abortButton.setDisable(true);
-
-                            if (isAborted.get()) {
-                                logger.info("Workload was aborted by user.");
-                                uiLogger.info("Workload was aborted by user.");
-                                showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
-                            } else {
-                                ControllerMediator mediator = ControllerMediatorImpl.getInstance();
-                                mediator.getMetricsController().generateMetrics();
-
-                                if (exitCode == 0) {
-                                    if (timeoutTriggered.get()) {
-                                        logger.info("Workload stopped by timeout.");
-                                        uiLogger.info("Workload stopped by timeout.");
-                                        showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                    } else {
-                                        logger.info("Workload executed successfully.");
-                                        showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                    }
-                                } else {
-                                    logger.warning("Workload execution failed. Exit code: " + exitCode);
-                                    uiLogger.warning("Workload execution failed. Exit code: " + exitCode);
-                                    showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
-                                }
-                            }
-                        });
-                    } catch (IOException | InterruptedException e) {
-                        logger.log(Level.SEVERE, "Error during workload execution", e);
-                        uiLogger.error("Error during workload execution " + e.getMessage());
-                        Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
-                    }
-                }).start();
+                startWorkloadThread(jmeterFile, selectedFile, hostname, port, numUsers, rampUp, workloadLevel);
             } else {
                 logger.warning("Selected file does not exist: " + selectedFile.getAbsolutePath());
                 showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
             }
         }
+    }
+
+    private void startWorkloadThread(File jmeterFile, File selectedFile, String hostname, String port,
+                                     int numUsers, int rampUp, String workloadLevel) {
+        new Thread(() -> {
+            try {
+                ProcessBuilder processBuilder = new ProcessBuilder(
+                        "java", "-jar", jmeterFile.getAbsolutePath(),
+                        "-t", selectedFile.getAbsolutePath(),
+                        "-Jhostname=" + hostname,
+                        "-Jport=" + port,
+                        "-JnumUser=" + numUsers,
+                        "-JrampUp=" + rampUp,
+                        "-n"
+                );
+                processBuilder.redirectErrorStream(true);
+                currentProcess = processBuilder.start();
+
+                timeoutTask = scheduler.schedule(() -> {
+                    if (currentProcess != null && currentProcess.isAlive()) {
+                        timeoutTriggered.set(true);
+                        logger.info("Stopping workload...");
+                        uiLogger.info("Stopping workload...");
+                        try {
+                            ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
+                            stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
+                            stopBuilder.redirectErrorStream(true);
+                            Process stopProcess = stopBuilder.start();
+
+                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stopProcess.getInputStream()))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    logger.info("[stoptest.sh] " + line);
+                                    uiLogger.info("[stoptest.sh] " + line);
+                                }
+                            }
+
+                            stopProcess.waitFor();
+                        } catch (IOException | InterruptedException e) {
+                            logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
+                            uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
+                        }
+                        abortButton.setDisable(true);
+                    }
+                }, 7, TimeUnit.MINUTES);
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        logger.info(line);
+                        uiLogger.info(line);
+                    }
+                }
+
+                int exitCode = currentProcess.waitFor();
+                currentProcess = null;
+
+                Platform.runLater(() -> {
+                    abortButton.setDisable(true);
+
+                    if (isAborted.get()) {
+                        logger.info("Workload was aborted by user.");
+                        uiLogger.info("Workload was aborted by user.");
+                        showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
+                    } else {
+                        ControllerMediator mediator = ControllerMediatorImpl.getInstance();
+                        mediator.getMetricsController().generateMetrics();
+
+                        if (exitCode == 0) {
+                            if (timeoutTriggered.get()) {
+                                logger.info("Workload stopped by timeout.");
+                                uiLogger.info("Workload stopped by timeout.");
+                                showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                            } else {
+                                logger.info("Workload executed successfully.");
+                                showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                            }
+                        } else {
+                            logger.warning("Workload execution failed. Exit code: " + exitCode);
+                            uiLogger.warning("Workload execution failed. Exit code: " + exitCode);
+                            showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
+                        }
+                    }
+                });
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Error during workload execution", e);
+                uiLogger.error("Error during workload execution " + e.getMessage());
+                Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
     }
 
     @FXML
