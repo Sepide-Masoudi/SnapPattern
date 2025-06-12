@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 public class MainController {
 
 
+    @FXML private Label contextLabel;
     @FXML private ComboBox<String> contextComboBox;
     @FXML private ComboBox<String> clusterModeComboBox;
     @FXML private Button startButton;
@@ -36,18 +37,14 @@ public class MainController {
 
     private void updateClusterModeUI() {
         String mode = clusterModeComboBox.getSelectionModel().getSelectedItem();
-        boolean isMinikube = "Local".equals(mode);
+        boolean isLocal = "Local".equals(mode);
 
-        startButton.setVisible(isMinikube);
-        stopButton.setVisible(isMinikube);
-        deleteButton.setVisible(isMinikube);
-        contextComboBox.setVisible(!isMinikube);
+        startButton.setVisible(isLocal);
+        stopButton.setVisible(isLocal);
+        deleteButton.setVisible(isLocal);
 
-        if (isMinikube) {
-            KubernetesUtil.setKubeContext("minikube");
-        } else {
-            KubernetesUtil.setKubeContext(null);
-        }
+        contextLabel.setVisible(!isLocal);
+        contextComboBox.setVisible(!isLocal);
 
         logger.info("Cluster mode changed to: " + mode);
     }
