@@ -12,6 +12,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.concurrent.ScheduledFuture;
+
+import static java.util.Arrays.stream;
 
 public class WorkloadController {
 
@@ -108,7 +113,7 @@ public class WorkloadController {
     }
 
     @FXML
-    public void runWorkload() {
+    public void runWorkload() throws IOException {
         String selectedFileName = fileDropdown.getValue();
         if (selectedFileName != null && !selectedFileName.isEmpty()) {
             String hostname = hostnameField.getText();
@@ -164,10 +169,29 @@ public class WorkloadController {
                 isAborted.set(false);
                 abortButton.setDisable(false);
 
+                String java17Home = "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home";
+                File java17Executable = new File(java17Home, "bin/java");
+
+                if (!java17Executable.exists()) {
+                    showAlert("Error", "Java 17 not found at: " + java17Home, Alert.AlertType.ERROR);
+                    return;
+                }
+
+
+                logger.info("Using Java from: " + java17Executable.getAbsolutePath());
+
+
+                //store the jmeter data
+
+                Path resultsDir = Paths.get("src", "main", "resources", "jmeter-results");
+                Files.createDirectories(resultsDir);
+                String timestamp = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
+                String resultsFile = resultsDir.resolve("results_" + timestamp + ".jtl").toString();
+
                 new Thread(() -> {
                     try {
                         ProcessBuilder processBuilder = new ProcessBuilder(
-                                "java",
+                                java17Executable.getAbsolutePath(),
                                 "-jar",
                                 jmeterFile.getAbsolutePath(),
                                 "-t", selectedFile.getAbsolutePath(),
@@ -176,7 +200,7 @@ public class WorkloadController {
                                 "-JnumUser=" + numUsers,
                                 "-JrampUp=" + rampUp,
                                 "-Jduration=" + duration,
-                                //"-l", logFilePath,
+                                 "-l", resultsFile,
                                 "-n"
                         );
                         processBuilder.redirectErrorStream(true);
@@ -311,5 +335,52 @@ public class WorkloadController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+
+    private String getJavaHome() {
+        // 1. Try system environment variable first
+        String javaHome = System.getenv("JAVA_HOME");
+
+        // 2. Try macOS-specific location if on Mac
+        if (javaHome == null && System.getProperty("os.name").toLowerCase().contains("mac")) {
+            try {
+                Process process = new ProcessBuilder("/usr/libexec/java_home").start();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(process.getInputStream()))) {
+                    javaHome = reader.readLine();
+                }
+                if (process.waitFor() != 0) {
+                    javaHome = null;
+                }
+            } catch (IOException | InterruptedException e) {
+                // Ignore, we'll fall through to other methods
+            }
+        }
+
+        // 3. Try to find Java from PATH
+        if (javaHome == null) {
+            String javaPath = stream(System.getenv("PATH").split(":")).toList()
+                    .stream()
+                    .map(path -> new File(path, "java"))
+                    .filter(File::exists)
+                    .findFirst()
+                    .map(File::getAbsolutePath)
+                    .orElse(null);
+
+            if (javaPath != null) {
+                javaHome = new File(javaPath).getParentFile().getParent();
+            }
+        }
+
+        // 4. Final verification
+        if (javaHome != null) {
+            File javaExecutable = new File(javaHome, "bin/java");
+            if (!javaExecutable.exists()) {
+                javaHome = null;
+            }
+        }
+
+        return javaHome;
     }
 }
