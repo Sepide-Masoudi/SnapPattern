@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+<VBox spacing="15.0" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="design_pattern_prototyping.controller.DeploymentController"
+      style="-fx-padding: 20;">
+
+    <!-- New explanation text -->
+    <Label text="Please select the language of each deployed server for auto-instrumentation."
+           style="-fx-font-size: 14px; -fx-font-weight: bold;" wrapText="true"/>
+
+    <!-- New global language selector -->
+    <HBox spacing="10">
+        <Label text="Apply to all:"/>
+        <ComboBox fx:id="languageComboBox">
+            <items>
+                <FXCollections fx:factory="observableArrayList">
+                    <String fx:value="Java"/>
+                    <String fx:value="Python"/>
+                    <String fx:value="NodeJS"/>
+                    <String fx:value=".NET"/>
+                </FXCollections>
+            </items>
+        </ComboBox>
+
+        <Button text="Apply to All" onAction="#applyLanguageToAll"/>
+
+    </HBox>
+
+    <!-- Deployment Table -->
+    <TableView fx:id="deploymentTable" prefHeight="300" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="nameColumn" text="Deployment Name" prefWidth="250"/>
+            <TableColumn fx:id="languageColumn" text="Language" prefWidth="200"/>
+        </columns>
+    </TableView>
+
+    <Button fx:id="applyButton" text="Apply" onAction="#handleApply" disable="true" prefWidth="120"/>
+</VBox>

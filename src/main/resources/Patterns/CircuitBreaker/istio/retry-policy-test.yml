@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: service-retry
+  namespace: user
+spec:
+  hosts:
+    - teastore-auth
+  http:
+    - route:
+        - destination:
+            host: teastore-auth
+      retries:
+        attempts: 2
+        perTryTimeout: 1s
+        retryOn: gateway-error,connect-failure,refused-stream

@@ -8,13 +8,5 @@ metadata:
     konghq.com/protocols: "http, https"
 spec:
   rules:
-    http:
-      paths:
-      - path: ${SERVICE-ENDPOINT}  # Set path for async requests
-        pathType: Prefix
-        backend:
-          service:
-            name: proxy-service
-            port:
-              number: 80
-      # Ability to add more rules
+    - http:
+        paths: []
