@@ -2,15 +2,36 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.MainController">
 
     <top>
         <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
             <HBox spacing="15" alignment="CENTER">
+                <Label text="Cluster Mode:"/>
+                <ComboBox fx:id="clusterModeComboBox" onAction="#onClusterModeChanged">
+                    <items>
+                        <FXCollections fx:factory="observableArrayList">
+                            <String fx:value="Local"/>
+                            <String fx:value="Remote"/>
+                        </FXCollections>
+                    </items>
+                </ComboBox>
+            </HBox>
+            <HBox spacing="15" alignment="CENTER">
                 <Button text="Start Kubernetes" onAction="#startKubernetes"/>
                 <Button text="Stop Kubernetes" onAction="#stopKubernetes"/>
                 <Button text="Delete Cluster" onAction="#deleteKubernetes"/>
             </HBox>
+            <HBox spacing="15" alignment="CENTER">
+                <Label text="Kube Context:"/>
+                <ComboBox fx:id="contextComboBox"
+                          onMouseClicked="#onContextDropdownClicked"
+                          onAction="#onContextSelected"
+                          visible="false"/>
+            </HBox>
+
             <Label fx:id="statusLabel" style="-fx-text-fill: gray;"/>
         </VBox>
     </top>
