@@ -1,14 +1,64 @@
 package design_pattern_prototyping.Kubernetes;
 
+import design_pattern_prototyping.util.UILogger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class KubernetesUtil {
 
+    private static String kubeContext = null;
+
     private static final Logger logger = Logger.getLogger(KubernetesUtil.class.getName());
+    private final UILogger uiLogger;
+
+    public KubernetesUtil(UILogger uiLogger) {
+        this.uiLogger = uiLogger;
+    }
+
+    public static List<String> getAvailableContexts() throws IOException, InterruptedException {
+        List<String> contexts = new ArrayList<>();
+        ProcessBuilder pb = new ProcessBuilder("kubectl", "config", "get-contexts", "-o=name");
+        Process process = pb.start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.isBlank()) {
+                    contexts.add(line.trim());
+                }
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("kubectl get-contexts failed with code " + exitCode);
+        }
+
+        return contexts;
+    }
+
+    public static void setKubeContext(String context) {
+        kubeContext = context;
+    }
+
+    public static String getKubeContext() {
+        return kubeContext;
+    }
+
+    private static void injectContext(List<String> command) {
+        String context = getKubeContext();
+        if (context != null && !context.isBlank()) {
+            command.add(1, context);
+            command.add(1, "--context");
+        }
+    }
 
     public static boolean statusMinikube() {
         try {
@@ -125,7 +175,10 @@ public class KubernetesUtil {
     public static void createNamespace(String namespaceName) {
         try {
             logger.info("Creating namespace '" + namespaceName + "'...");
-            ProcessBuilder namespace = new ProcessBuilder("kubectl", "create", "namespace", namespaceName);
+            List<String> command = new ArrayList<>(List.of("kubectl", "create", "namespace", namespaceName));
+            injectContext(command);
+
+            ProcessBuilder namespace = new ProcessBuilder(command);
             Process process = namespace.start();
 
             try (BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
@@ -159,7 +212,10 @@ public class KubernetesUtil {
     public static void deleteUserNamespace() {
         try {
             logger.info("Deleting namespace 'user'...");
-            ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", "user");
+            List<String> command = new ArrayList<>(List.of("kubectl", "delete", "namespace", "user"));
+            injectContext(command);
+
+            ProcessBuilder deleteNamespace = new ProcessBuilder(command);
             Process process = deleteNamespace.start();
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
@@ -192,7 +248,10 @@ public class KubernetesUtil {
         for (String namespace : namespaces) {
             try {
                 logger.info("Deleting namespace '" + namespace + "'...");
-                ProcessBuilder deleteNamespace = new ProcessBuilder("kubectl", "delete", "namespace", namespace);
+                List<String> command = new ArrayList<>(List.of("kubectl", "delete", "namespace", namespace));
+                injectContext(command);
+
+                ProcessBuilder deleteNamespace = new ProcessBuilder(command);
                 Process process = deleteNamespace.start();
 
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
@@ -224,7 +283,10 @@ public class KubernetesUtil {
         try {
             logger.info("Applying configuration from file: " + filePath);
 
-            ProcessBuilder apply = new ProcessBuilder("kubectl", "apply", "-f", filePath, "-n", namespace);
+            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath, "-n", namespace));
+            injectContext(command);
+
+            ProcessBuilder apply = new ProcessBuilder(command);
             apply.redirectErrorStream(true);
             Process process = apply.start();
 
@@ -246,6 +308,72 @@ public class KubernetesUtil {
             logger.log(Level.SEVERE, "Process was interrupted while applying YAML.", e);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
+        }
+    }
+
+    public static void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {
+        logger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
+        //uiLogger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
+
+        List<String> command = new ArrayList<>(List.of(
+                "kubectl", "wait",
+                "--for=condition=Available",
+                "--timeout=180s",
+                "deployment/" + deploymentName,
+                "-n", namespace
+        ));
+
+        injectContext(command);
+
+        // Execute
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        Process process = processBuilder.start();
+        int exitCode = process.waitFor();
+
+        if (exitCode != 0) {
+            throw new IOException("Deployment wait failed with exit code " + exitCode);
+        }
+
+        logger.info("Deployment '" + deploymentName + "' is ready.");
+        //uiLogger.info("Deployment '" + deploymentName + "' is ready.");
+    }
+
+    public static void executeCommand(String... command) throws IOException, InterruptedException {
+        List<String> commandList = new ArrayList<>(Arrays.asList(command));
+        KubernetesUtil.injectContext(commandList);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(commandList);
+        Process process = processBuilder.start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[stdout] " + line);
+                    //uiLogger.info("[stdout] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stdout of process", e);
+                //uiLogger.warning("Error reading stdout of process: " + e.getMessage());
+            }
+        }).start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.warning("[stderr] " + line);
+                    //uiLogger.warning("[stderr] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stderr of process", e);
+                //uiLogger.warning("Error reading stderr of process: " + e.getMessage());
+            }
+        }).start();
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
         }
     }
 }
