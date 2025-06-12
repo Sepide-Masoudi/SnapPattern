@@ -103,12 +103,14 @@ public class MetricsExporter {
                 headerRow.createCell(6).setCellValue("ContainerCpuCyclesAvg");
                 headerRow.createCell(7).setCellValue("ContainerCpuInstructionsAvg");
                 headerRow.createCell(8).setCellValue("PPW");
-                headerRow.createCell(9).setCellValue("IPC");
-                headerRow.createCell(10).setCellValue("RequestRate");
+                headerRow.createCell(9).setCellValue("PPJ");
+                headerRow.createCell(10).setCellValue("IPC");
                 headerRow.createCell(11).setCellValue("MeanLatency");
                 headerRow.createCell(12).setCellValue("95PercentileLatency");
-                headerRow.createCell(13).setCellValue("TotalSpanCount");
-                //headerRow.createCell(14).setCellValue("ErrorRate");
+                headerRow.createCell(13).setCellValue("RequestRate");
+                headerRow.createCell(14).setCellValue("TotalRequests");
+                headerRow.createCell(15).setCellValue("TotalSpanCount");
+                headerRow.createCell(16).setCellValue("SpansPerRequest");
 
                 logger.info("Header row created successfully.");
             } else {
@@ -140,23 +142,36 @@ public class MetricsExporter {
                 }
             }
 
-            // Compute PPW and IPC
+            // Derived metrics
             try {
                 double watts = Double.parseDouble(flatMetrics.getOrDefault("ContainerPowerWattsAvg", "NULL"));
                 double cycles = Double.parseDouble(flatMetrics.getOrDefault("ContainerCpuCyclesAvg", "NULL"));
                 double instructions = Double.parseDouble(flatMetrics.getOrDefault("ContainerCpuInstructionsAvg", "NULL"));
 
-                // PPW: instructions per watts
-                String ppw = (watts != 0) ? String.valueOf(instructions / watts) : "NULL";
+                double instructionsTotal = Double.parseDouble(flatMetrics.getOrDefault("ContainerCpuInstructionsTotal", "NULL"));
+                double joules = Double.parseDouble(flatMetrics.getOrDefault("ContainerJoulesTotal", "NULL"));
 
-                // IPC: instructions per cycle
+                double spans = Double.parseDouble(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
+                double requests = Double.parseDouble(flatMetrics.getOrDefault("TotalRequests", "NULL"));
+
+                // PPW: instructions/s per watts
+                String ppw = (watts != 0) ? String.valueOf(instructions / watts) : "NULL";
+                // PPJ: instructions per Joules
+                String ppj = (joules != 0) ? String.valueOf(instructionsTotal / joules) : "NULL";
+                // IPC: instructions/s per cycle/s
                 String ipc = (cycles != 0) ? String.valueOf(instructions / cycles) : "NULL";
+                // Spans per Request
+                String spansReq = (cycles != 0) ? String.valueOf(spans / requests) : "NULL";
 
                 flatMetrics.put("PPW", ppw);
+                flatMetrics.put("PPJ", ppj);
                 flatMetrics.put("IPC", ipc);
+                flatMetrics.put("SpansPerRequest", spansReq);
 
                 logger.info("Computed PPW (instructions/sec per watts): " + ppw);
+                logger.info("Computed PPJ (instructions/sec per watts): " + ppj);
                 logger.info("Computed IPC (instructions per cycle): " + ipc);
+                logger.info("Computed Spans per Request: " + spansReq);
             } catch (Exception e) {
                 logger.warning("Failed to compute derived metrics: " + e.getMessage());
                 flatMetrics.put("PPW", "NULL");
@@ -175,15 +190,17 @@ public class MetricsExporter {
             valuesRow.createCell(6).setCellValue(flatMetrics.getOrDefault("ContainerCpuCyclesAvg", "NULL"));
             valuesRow.createCell(7).setCellValue(flatMetrics.getOrDefault("ContainerCpuInstructionsAvg", "NULL"));
             valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("PPW", "NULL"));
-            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
-            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("RequestRate", "NULL"));
-            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("MeanLatency", "NULL"));
-            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
-            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
-            //valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("ErrorRate", "NULL"));
+            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("PPJ", "NULL"));
+            valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
+            valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("MeanLatency", "NULL"));
+            valuesRow.createCell(13).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("RequestRate", "NULL"));
+            valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("TotalRequests", "NULL"));
+            valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("TotalSpanCount", "NULL"));
+            valuesRow.createCell(14).setCellValue(flatMetrics.getOrDefault("SpansPerRequest", "NULL"));
 
             // Auto-size all columns
-            for (int i = 0; i <= 13; i++) {
+            for (int i = 0; i <= 15; i++) {
                 sheet.autoSizeColumn(i);
             }
 
