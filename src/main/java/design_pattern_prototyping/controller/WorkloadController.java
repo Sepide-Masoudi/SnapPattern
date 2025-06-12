@@ -126,27 +126,24 @@ public class WorkloadController {
                 String workloadLevel = workloadLevelComboBox.getValue();
                 logger.info("Selected workload level: " + workloadLevel);
 
-                int numUsers, rampUp, duration;
+                int numUsers, rampUp;
                 switch (workloadLevel) {
                     case "High":
-                        numUsers = 200;
-                        rampUp = 20;
-                        duration = 120;
+                        numUsers = 500;
+                        rampUp = 120;
                         break;
                     case "Medium":
                         numUsers = 50;
-                        rampUp = 10;
-                        duration = 60;
+                        rampUp = 60;
                         break;
                     case "Low":
                     default:
                         numUsers = 10;
-                        rampUp = 5;
-                        duration = 30;
+                        rampUp = 30;
                         break;
                 }
-                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
-                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
+                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
+                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
 
                 Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
                 File jmeterFile = jmeterPath.toFile();
@@ -175,7 +172,6 @@ public class WorkloadController {
                                 "-Jport=" + port,
                                 "-JnumUser=" + numUsers,
                                 "-JrampUp=" + rampUp,
-                                "-Jduration=" + duration,
                                 //"-l", logFilePath,
                                 "-n"
                         );
