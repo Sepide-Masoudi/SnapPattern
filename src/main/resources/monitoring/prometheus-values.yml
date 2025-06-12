@@ -13,19 +13,3 @@ prometheus:
         scrape_interval: 10s
         static_configs:
           - targets: ['otel-collector.otel.svc.cluster.local:9464']
-      - job_name: 'istio-mesh'
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_istio]
-            action: keep
-            regex: pilot
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
-            replacement: /metrics
-          - source_labels: [__address__]
-            action: replace
-            target_label: __address__
-            regex: (.+):(\d+)
-            replacement: $1:15014
