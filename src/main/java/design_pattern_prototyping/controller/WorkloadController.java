@@ -136,24 +136,24 @@ public class WorkloadController {
                     case "High":
                         numUsers = 200;
                         rampUp = 20;
-                        duration = 120;
+                        duration = 3600;
                         break;
                     case "Medium":
                         numUsers = 50;
                         rampUp = 10;
-                        duration = 60;
+                        duration = 1800;
                         break;
                     case "Low":
                     default:
                         numUsers = 10;
                         rampUp = 5;
-                        duration = 30;
+                        duration = 900;
                         break;
                 }
                 logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
                 uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
 
-                Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
+               Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
                 File jmeterFile = jmeterPath.toFile();
 
                 //Path logDirectoryPath = Paths.get("src/main/resources/workloads");
@@ -197,7 +197,7 @@ public class WorkloadController {
                                 "-t", selectedFile.getAbsolutePath(),
                                 "-Jhostname=" + hostname,
                                 "-Jport=" + port,
-                                "-JnumUser=" + numUsers,
+                                "-JnumUsers=" + numUsers,
                                 "-JrampUp=" + rampUp,
                                 "-Jduration=" + duration,
                                  "-l", resultsFile,
@@ -233,7 +233,7 @@ public class WorkloadController {
                                 }
                                 abortButton.setDisable(true);
                             }
-                        }, 10, TimeUnit.MINUTES);
+                        }, (duration+ 10), TimeUnit.SECONDS);
 
                         try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
                             String line;
