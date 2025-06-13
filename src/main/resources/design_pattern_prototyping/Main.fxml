@@ -2,14 +2,41 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.MainController">
 
     <top>
         <VBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
-            <HBox spacing="15" alignment="CENTER">
-                <Button text="Start Kubernetes" onAction="#startKubernetes"/>
-                <Button text="Stop Kubernetes" onAction="#stopKubernetes"/>
-                <Button text="Delete Cluster" onAction="#deleteKubernetes"/>
+            <HBox spacing="20" alignment="CENTER" style="-fx-padding: 10;">
+                <!-- Cluster Mode on the left -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Cluster Mode:"/>
+                    <ComboBox fx:id="clusterModeComboBox" onAction="#onClusterModeChanged">
+                        <items>
+                            <FXCollections fx:factory="observableArrayList">
+                                <String fx:value="Local"/>
+                                <String fx:value="Remote"/>
+                            </FXCollections>
+                        </items>
+                    </ComboBox>
+                </HBox>
+
+                    <!-- Local buttons -->
+                    <HBox spacing="10" alignment="CENTER">
+                        <Button fx:id="startButton" text="Start Kubernetes" onAction="#startKubernetes"/>
+                        <Button fx:id="stopButton" text="Stop Kubernetes" onAction="#stopKubernetes"/>
+                        <Button fx:id="deleteButton" text="Delete Cluster" onAction="#deleteKubernetes"/>
+                    </HBox>
+
+                    <!-- Remote context selector -->
+                    <HBox spacing="10" alignment="CENTER">
+                        <Label fx:id="contextLabel" text="Kube Context:" visible="false"/>
+                        <ComboBox fx:id="contextComboBox"
+                                  onMouseClicked="#onContextDropdownClicked"
+                                  onAction="#onContextSelected"
+                                  visible="false"/>
+                    </HBox>
             </HBox>
             <Label fx:id="statusLabel" style="-fx-text-fill: gray;"/>
         </VBox>

@@ -1,11 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kong-auth-ingress
+  name: NGINX-auth-ingress
   namespace: pattern
   annotations:
-    konghq.com/strip-path: "true"
-    konghq.com/protocols: "http, https"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
   rules:
     - http:

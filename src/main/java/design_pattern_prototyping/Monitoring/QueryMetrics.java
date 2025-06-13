@@ -11,7 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class QueryMetrics {
-
+//TODO: Make Service_Name = Frontend Service parameterised
     private static final Logger logger = Logger.getLogger(QueryMetrics.class.getName());
     private UILogger uiLogger;
 
@@ -39,7 +39,7 @@ public class QueryMetrics {
         try {
             // Kepler metrics
             metrics.put("ContainerJoulesTotal", queryAndExtract(
-                    "sum(kepler_container_joules_total{container_namespace=~\"user|pattern\"}) by (container_namespace)\n"));
+                    "sum(increase(kepler_container_joules_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
             metrics.put("ContainerPowerWattsAvg", queryAndExtract(
                     "sum(rate(kepler_container_joules_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
             metrics.put("ContainerCpuCyclesAvg", queryAndExtract(
@@ -48,26 +48,26 @@ public class QueryMetrics {
                     "sum(rate(kepler_container_cache_miss_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)\n"));
             metrics.put("ContainerCpuInstructionsAvg", queryAndExtract(
                     "sum(rate(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)"));
+            metrics.put("ContainerCpuInstructionsTotal", queryAndExtract(
+                    "sum(increase(kepler_container_cpu_instructions_total{container_namespace=~\"user|pattern\"}[5m])) by (container_namespace)"));
 
             // Span metrics
             metrics.put("MeanLatency", queryAndExtract(
                     """
-                            sum(rate(http_client_request_duration_seconds_sum{exported_instance=~"user\\\\..*"}[5m]))
+                            sum(rate(span_metrics_duration_milliseconds_sum{namespace="user"}[5m]))
                             /
-                            sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))
+                            sum(rate(span_metrics_duration_milliseconds_count{namespace="user"}[5m]))
                             """));
-            metrics.put("RequestRate", queryAndExtract(
-                    "sum(rate(http_client_request_duration_seconds_count{exported_instance=~\"user\\\\..*\"}[5m]))"));
             metrics.put("95PercentileLatency", queryAndExtract(
-                    "histogram_quantile(0.95, sum(rate(http_client_request_duration_seconds_bucket{exported_instance=~\"user\\\\..*\"}[5m])) by (le))"));
-            metrics.put("ErrorRate", queryAndExtract(
-                    """
-                            sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*",http_response_status_code!~"2.."}[5m]))
-                            /
-                            sum(rate(http_client_request_duration_seconds_count{exported_instance=~"user\\\\..*"}[5m]))"""));
-            metrics.put("TotalSpanCount", queryAndExtract(
-                    "sum(increase(span_metrics_calls_total{namespace=\"user\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"
-            ));
+                    "histogram_quantile(0.95, sum(rate(span_metrics_duration_milliseconds_bucket{namespace=\"user\"}[5m])) by (le))"));
+            metrics.put("RequestRate", queryAndExtract(
+                    "sum(rate(span_metrics_calls_total{service_name=\"teastore-webui\"}[5m])) "));
+            metrics.put("TotalRequests", queryAndExtract(
+                    "sum(increase(span_metrics_calls_total{namespace=\"user\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
+            metrics.put("TotalSpans", queryAndExtract(
+                    "sum(increase(span_metrics_calls_total{service_name=\"teastore-webui\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
+            //metrics.put("TotalRequestError", queryAndExtract(
+            //        "sum(increase(span_metrics_calls_total{service_name=\"teastore-webui\", status_code=\"STATUS_CODE_ERROR\"}[10m]))"));
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to query metrics", e);

@@ -20,13 +20,13 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(AsyncRequestReplyGenerator.class.getName());
     private List<String> tempListenerPaths = new ArrayList<>();
     private String tempIngressPath;
-    private static final String INGRESS_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/kong-ingress.yml";
+    private static final String INGRESS_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/nginx-ingress.yml";
     private static final String LISTENER_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment.yml";
     private static final String NAMESPACE = "pattern";
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/Patterns/AsyncRequestReply/kong-ingress.yml";
+        return INGRESS_TEMPLATE;
     }
 
     @Override
@@ -82,7 +82,7 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
             DumperOptions options = new DumperOptions();
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
             Yaml dumper = new Yaml(options);
-            Path tempIngressFile = Files.createTempFile("kong-ingress", ".yml");
+            Path tempIngressFile = Files.createTempFile("nginx-ingress", ".yml");
             try (Writer writer = Files.newBufferedWriter(tempIngressFile)) {
                 dumper.dump(ingressMap, writer);
             }
@@ -96,23 +96,26 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     @Override
     public void deployPattern() {
         try {
-            executeCommand("helm", "repo", "add", "kong", "https://charts.konghq.com");
+            executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
             executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
             executeCommand("helm", "repo", "update");
 
             executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq",
                     "--set", "auth.username=user,auth.password=bitnami", "--namespace", NAMESPACE);
 
+            executeCommand("helm", "upgrade", "--install", "nginx-ingress", "ingress-nginx/ingress-nginx",
+                    "--namespace", NAMESPACE,
+                    "--set", "controller.publishService.enabled=false",
+                    "--set", "controller.service.type=NodePort");
+
+
+            KubernetesUtil.applyYaml(tempIngressPath, NAMESPACE);
             KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml", NAMESPACE);
             KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml", NAMESPACE);
 
             for (String listenerPath : tempListenerPaths) {
                 KubernetesUtil.applyYaml(listenerPath, NAMESPACE);
             }
-
-            executeCommand("helm", "upgrade", "--install", "kong", "kong/kong",
-                    "--set", "ingressController.installCRDs=false", "--namespace", NAMESPACE);
-            KubernetesUtil.applyYaml(tempIngressPath, NAMESPACE);
 
             for (String listenerPath : tempListenerPaths) Files.deleteIfExists(Paths.get(listenerPath));
             Files.deleteIfExists(Paths.get(tempIngressPath));

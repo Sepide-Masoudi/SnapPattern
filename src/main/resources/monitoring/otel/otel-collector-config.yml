@@ -58,6 +58,11 @@ data:
         - sources:
           - from: connection
       transform:
+        error_mode: ignore
+        trace_statements:
+         - set(span.status.code, STATUS_CODE_ERROR) where span.attributes["http.status_code"] >= 500
+         - set(span.status.code, STATUS_CODE_ERROR) where span.attributes["http.status_code"] == 429
+         - set(span.status.code, STATUS_CODE_OK) where span.attributes["http.request.status_code"] == 400
         metric_statements:
           - context: datapoint
             statements:
@@ -78,7 +83,7 @@ data:
       pipelines:
         traces:
           receivers: [otlp, jaeger]
-          processors: [memory_limiter, probabilistic_sampler, k8sattributes, attributes/insert, batch]
+          processors: [memory_limiter, probabilistic_sampler, k8sattributes, transform, attributes/insert, batch]
           exporters: [spanmetrics]
         metrics:
           receivers: [otlp]

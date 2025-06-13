@@ -42,6 +42,7 @@ public class PatternController {
     @FXML private TextArea logTextArea;
     @FXML private  Label statusLabel;
     @FXML private  VBox patternFieldsBox;
+    @FXML private Button buildPatternButton;
     @FXML private  ComboBox<String> patternDropdown;
     @FXML private  VBox asyncRequestReplyFields;
     @FXML private  VBox gatewayOffloadingFields;
@@ -280,6 +281,8 @@ public class PatternController {
         String selectedPattern = patternDropdown.getValue();
         logger.info("User selected pattern: " + selectedPattern);
         uiLogger.info("User selected pattern: " + selectedPattern);
+
+        buildPatternButton.setDisable("Baseline".equals(selectedPattern));
 
         patternFieldsBox.setVisible(!"Baseline".equals(selectedPattern));
 

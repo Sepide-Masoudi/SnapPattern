@@ -3,6 +3,8 @@ package design_pattern_prototyping.controller;
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 
 import java.util.logging.Level;
@@ -10,9 +12,63 @@ import java.util.logging.Logger;
 
 public class MainController {
 
+
+    @FXML private Label contextLabel;
+    @FXML private ComboBox<String> contextComboBox;
+    @FXML private ComboBox<String> clusterModeComboBox;
+    @FXML private Button startButton;
+    @FXML private Button stopButton;
+    @FXML private Button deleteButton;
+    @FXML private Label statusLabel;
+
+    private String selectedContext = null;
     private static final Logger logger = Logger.getLogger(MainController.class.getName());
 
-    public Label statusLabel;
+    @FXML
+    public void initialize() {
+        clusterModeComboBox.getSelectionModel().selectFirst();
+        updateClusterModeUI();
+    }
+
+    @FXML
+    public void onClusterModeChanged() {
+        updateClusterModeUI();
+    }
+
+    private void updateClusterModeUI() {
+        String mode = clusterModeComboBox.getSelectionModel().getSelectedItem();
+        boolean isLocal = "Local".equals(mode);
+
+        startButton.setVisible(isLocal);
+        stopButton.setVisible(isLocal);
+        deleteButton.setVisible(isLocal);
+
+        contextLabel.setVisible(!isLocal);
+        contextComboBox.setVisible(!isLocal);
+
+        logger.info("Cluster mode changed to: " + mode);
+    }
+
+    @FXML
+    public void onContextDropdownClicked() {
+        new Thread(() -> {
+            try {
+                var contexts = KubernetesUtil.getAvailableContexts();
+                javafx.application.Platform.runLater(() -> {
+                    contextComboBox.getItems().setAll(contexts);
+                });
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to load contexts", e);
+            }
+        }).start();
+    }
+
+    @FXML
+    public void onContextSelected() {
+        selectedContext = contextComboBox.getSelectionModel().getSelectedItem();
+        logger.info("User selected Kubernetes context: " + selectedContext);
+        KubernetesUtil.setKubeContext(selectedContext);
+    }
 
     @FXML
     public void startKubernetes() {

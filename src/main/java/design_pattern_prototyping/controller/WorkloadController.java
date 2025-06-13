@@ -12,9 +12,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +20,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.concurrent.ScheduledFuture;
-
-import static java.util.Arrays.stream;
 
 public class WorkloadController {
 
@@ -113,7 +108,7 @@ public class WorkloadController {
     }
 
     @FXML
-    public void runWorkload() throws IOException {
+    public void runWorkload() {
         String selectedFileName = fileDropdown.getValue();
         if (selectedFileName != null && !selectedFileName.isEmpty()) {
             String hostname = hostnameField.getText();
@@ -131,29 +126,26 @@ public class WorkloadController {
                 String workloadLevel = workloadLevelComboBox.getValue();
                 logger.info("Selected workload level: " + workloadLevel);
 
-                int numUsers, rampUp, duration;
+                int numUsers, rampUp;
                 switch (workloadLevel) {
                     case "High":
-                        numUsers = 200;
-                        rampUp = 20;
-                        duration = 3600;
+                        numUsers = 500;
+                        rampUp = 120;
                         break;
                     case "Medium":
                         numUsers = 50;
-                        rampUp = 10;
-                        duration = 1800;
+                        rampUp = 60;
                         break;
                     case "Low":
                     default:
                         numUsers = 10;
-                        rampUp = 5;
-                        duration = 900;
+                        rampUp = 30;
                         break;
                 }
-                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
-                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", Duration: " + duration);
+                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
+                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
 
-               Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
+                Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
                 File jmeterFile = jmeterPath.toFile();
 
                 //Path logDirectoryPath = Paths.get("src/main/resources/workloads");
@@ -169,121 +161,102 @@ public class WorkloadController {
                 isAborted.set(false);
                 abortButton.setDisable(false);
 
-                String java17Home = "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home";
-                File java17Executable = new File(java17Home, "bin/java");
-
-                if (!java17Executable.exists()) {
-                    showAlert("Error", "Java 17 not found at: " + java17Home, Alert.AlertType.ERROR);
-                    return;
-                }
-
-
-                logger.info("Using Java from: " + java17Executable.getAbsolutePath());
-
-
-                //store the jmeter data
-
-                Path resultsDir = Paths.get("src", "main", "resources", "jmeter-results");
-                Files.createDirectories(resultsDir);
-                String timestamp = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
-                String resultsFile = resultsDir.resolve("results_" + timestamp + ".jtl").toString();
-
-                new Thread(() -> {
-                    try {
-                        ProcessBuilder processBuilder = new ProcessBuilder(
-                                java17Executable.getAbsolutePath(),
-                                "-jar",
-                                jmeterFile.getAbsolutePath(),
-                                "-t", selectedFile.getAbsolutePath(),
-                                "-Jhostname=" + hostname,
-                                "-Jport=" + port,
-                                "-JnumUsers=" + numUsers,
-                                "-JrampUp=" + rampUp,
-                                "-Jduration=" + duration,
-                                 "-l", resultsFile,
-                                "-n"
-                        );
-                        processBuilder.redirectErrorStream(true);
-                        currentProcess = processBuilder.start();
-
-                        // Schedule task to stop the process after 10 minutes
-                        timeoutTask = scheduler.schedule(() -> {
-                            if (currentProcess != null && currentProcess.isAlive()) {
-                                timeoutTriggered.set(true);
-                                logger.info("Stopping workload...");
-                                uiLogger.info("Stopping workload...");
-                                try {
-                                    ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
-                                    stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
-                                    stopBuilder.redirectErrorStream(true);
-                                    Process stopProcess = stopBuilder.start();
-
-                                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(stopProcess.getInputStream()))) {
-                                        String line;
-                                        while ((line = reader.readLine()) != null) {
-                                            logger.info("[stoptest.sh] " + line);
-                                            uiLogger.info("[stoptest.sh] " + line);
-                                        }
-                                    }
-
-                                    stopProcess.waitFor();
-                                } catch (IOException | InterruptedException e) {
-                                    logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
-                                    uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
-                                }
-                                abortButton.setDisable(true);
-                            }
-                        }, (duration+ 10), TimeUnit.SECONDS);
-
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                logger.info(line);
-                                uiLogger.info(line);
-                            }
-                        }
-
-                        int exitCode = currentProcess.waitFor();
-                        currentProcess = null;
-
-                        Platform.runLater(() -> {
-                            abortButton.setDisable(true);
-
-                            if (isAborted.get()) {
-                                logger.info("Workload was aborted by user.");
-                                uiLogger.info("Workload was aborted by user.");
-                                showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
-                            } else {
-                                ControllerMediator mediator = ControllerMediatorImpl.getInstance();
-                                mediator.getMetricsController().generateMetrics();
-
-                                if (exitCode == 0) {
-                                    if (timeoutTriggered.get()) {
-                                        logger.info("Workload stopped by timeout.");
-                                        uiLogger.info("Workload stopped by timeout.");
-                                        showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                    } else {
-                                        logger.info("Workload executed successfully.");
-                                        showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
-                                    }
-                                } else {
-                                    logger.warning("Workload execution failed. Exit code: " + exitCode);
-                                    uiLogger.warning("Workload execution failed. Exit code: " + exitCode);
-                                    showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
-                                }
-                            }
-                        });
-                    } catch (IOException | InterruptedException e) {
-                        logger.log(Level.SEVERE, "Error during workload execution", e);
-                        uiLogger.error("Error during workload execution " + e.getMessage());
-                        Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
-                    }
-                }).start();
+                startWorkloadThread(jmeterFile, selectedFile, hostname, port, numUsers, rampUp, workloadLevel);
             } else {
                 logger.warning("Selected file does not exist: " + selectedFile.getAbsolutePath());
                 showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
             }
         }
+    }
+
+    private void startWorkloadThread(File jmeterFile, File selectedFile, String hostname, String port,
+                                     int numUsers, int rampUp, String workloadLevel) {
+        new Thread(() -> {
+            try {
+                ProcessBuilder processBuilder = new ProcessBuilder(
+                        "java", "-jar", jmeterFile.getAbsolutePath(),
+                        "-t", selectedFile.getAbsolutePath(),
+                        "-Jhostname=" + hostname,
+                        "-Jport=" + port,
+                        "-JnumUser=" + numUsers,
+                        "-JrampUp=" + rampUp,
+                        "-n"
+                );
+                processBuilder.redirectErrorStream(true);
+                currentProcess = processBuilder.start();
+
+                timeoutTask = scheduler.schedule(() -> {
+                    if (currentProcess != null && currentProcess.isAlive()) {
+                        timeoutTriggered.set(true);
+                        logger.info("Stopping workload...");
+                        uiLogger.info("Stopping workload...");
+                        try {
+                            ProcessBuilder stopBuilder = new ProcessBuilder("./stoptest.sh");
+                            stopBuilder.directory(new File("apache-jmeter-5.6.3/bin"));
+                            stopBuilder.redirectErrorStream(true);
+                            Process stopProcess = stopBuilder.start();
+
+                            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stopProcess.getInputStream()))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    logger.info("[stoptest.sh] " + line);
+                                    uiLogger.info("[stoptest.sh] " + line);
+                                }
+                            }
+
+                            stopProcess.waitFor();
+                        } catch (IOException | InterruptedException e) {
+                            logger.log(Level.SEVERE, "Failed to execute stoptest.sh", e);
+                            uiLogger.error("Failed to execute stoptest.sh " + e.getMessage());
+                        }
+                        abortButton.setDisable(true);
+                    }
+                }, 7, TimeUnit.MINUTES);
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        logger.info(line);
+                        uiLogger.info(line);
+                    }
+                }
+
+                int exitCode = currentProcess.waitFor();
+                currentProcess = null;
+
+                Platform.runLater(() -> {
+                    abortButton.setDisable(true);
+
+                    if (isAborted.get()) {
+                        logger.info("Workload was aborted by user.");
+                        uiLogger.info("Workload was aborted by user.");
+                        showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
+                    } else {
+                        ControllerMediator mediator = ControllerMediatorImpl.getInstance();
+                        mediator.getMetricsController().generateMetrics();
+
+                        if (exitCode == 0) {
+                            if (timeoutTriggered.get()) {
+                                logger.info("Workload stopped by timeout.");
+                                uiLogger.info("Workload stopped by timeout.");
+                                showAlert("Info", "Workload stopped automatically after timeout! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                            } else {
+                                logger.info("Workload executed successfully.");
+                                showAlert("Success", "Workload executed successfully! Check workload_results_" + workloadLevel.toLowerCase() + ".log for details.", Alert.AlertType.INFORMATION);
+                            }
+                        } else {
+                            logger.warning("Workload execution failed. Exit code: " + exitCode);
+                            uiLogger.warning("Workload execution failed. Exit code: " + exitCode);
+                            showAlert("Error", "Workload execution failed. Exit code: " + exitCode, Alert.AlertType.ERROR);
+                        }
+                    }
+                });
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Error during workload execution", e);
+                uiLogger.error("Error during workload execution " + e.getMessage());
+                Platform.runLater(() -> showAlert("Error", "Failed to execute workload: " + e.getMessage(), Alert.AlertType.ERROR));
+            }
+        }).start();
     }
 
     @FXML
@@ -335,52 +308,5 @@ public class WorkloadController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-
-    private String getJavaHome() {
-        // 1. Try system environment variable first
-        String javaHome = System.getenv("JAVA_HOME");
-
-        // 2. Try macOS-specific location if on Mac
-        if (javaHome == null && System.getProperty("os.name").toLowerCase().contains("mac")) {
-            try {
-                Process process = new ProcessBuilder("/usr/libexec/java_home").start();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream()))) {
-                    javaHome = reader.readLine();
-                }
-                if (process.waitFor() != 0) {
-                    javaHome = null;
-                }
-            } catch (IOException | InterruptedException e) {
-                // Ignore, we'll fall through to other methods
-            }
-        }
-
-        // 3. Try to find Java from PATH
-        if (javaHome == null) {
-            String javaPath = stream(System.getenv("PATH").split(":")).toList()
-                    .stream()
-                    .map(path -> new File(path, "java"))
-                    .filter(File::exists)
-                    .findFirst()
-                    .map(File::getAbsolutePath)
-                    .orElse(null);
-
-            if (javaPath != null) {
-                javaHome = new File(javaPath).getParentFile().getParent();
-            }
-        }
-
-        // 4. Final verification
-        if (javaHome != null) {
-            File javaExecutable = new File(javaHome, "bin/java");
-            if (!javaExecutable.exists()) {
-                javaHome = null;
-            }
-        }
-
-        return javaHome;
     }
 }

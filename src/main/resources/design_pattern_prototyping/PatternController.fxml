@@ -12,18 +12,27 @@
     <center>
         <VBox spacing="20.0" style="-fx-padding: 20.0;">
             <!-- Step 1: Upload YAML -->
-            <HBox spacing="10.0">
-                <Label text="Upload YAML Configuration File" />
-                <Button text="Choose File" onAction="#handleFileUpload"/>
-                <Button text="Setup Instrumentation" onAction="#openInstrumentationModal"/>
-            </HBox>
-            <HBox spacing="10.0">
-                <Button text="Deploy Microservice" onAction="#deployApplication"/>
-                <Button text="Delete Microservice" onAction="#deleteApplication"/>
-                <Button text="Delete Pattern" onAction="#deletePattern"/>
-            </HBox>
+            <Label text="Service Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+            <VBox spacing="10.0">
+                <HBox spacing="10.0">
+                    <Label text="Upload YAML Configuration File:" />
+                    <Button text="Choose File" onAction="#handleFileUpload"/>
+                </HBox>
+                <HBox spacing="10.0">
+                    <Label text="Select instrumentation language:" />
+                    <Button text="Setup Instrumentation" onAction="#openInstrumentationModal"/>
+                    <Label text=" (Configure before deployment)" />
+                </HBox>
+                <HBox spacing="10.0">
+                    <Button text="Deploy Microservice" onAction="#deployApplication"/>
+                    <Button text="Delete Microservice" onAction="#deleteApplication"/>
+                </HBox>
+            </VBox>
+
+            <Separator orientation="HORIZONTAL" />
 
             <!-- Step 2: Select Design Pattern -->
+            <Label text="Pattern Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
             <HBox spacing="10.0">
                 <Label text="Select Design Pattern" />
                 <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
@@ -39,6 +48,8 @@
                         </FXCollections>
                     </items>
                 </ComboBox>
+                <Button text="Delete Pattern" onAction="#deletePattern"/>
+                <Button fx:id="buildPatternButton" text="Build Pattern" onAction="#buildPattern" disable="true"/>
             </HBox>
 
             <!-- Step 3: Pattern-Specific Config -->
@@ -136,8 +147,6 @@
                     </VBox>
 
                 </StackPane>
-
-                <Button text="Build Pattern" onAction="#buildPattern"/>
             </VBox>
         </VBox>
     </center>

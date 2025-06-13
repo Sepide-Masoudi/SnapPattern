@@ -68,7 +68,7 @@
                 normal: [path: "pipelines/normal/", expected: [200], weight: 3],
                 flaky: [path: "pipelines/flaky/", expected: [200, 500], weight: 2],
                 slow: [path: "pipelines/slow/", expected: [200], weight: 3],
-                broken: [path: "pipelines/block/", expected: [404, 502, 504], weight: 2]
+                broken: [path: "pipelines/block/", expected: [404, 502, 504, 500], weight: 2]
             ]
 
             def weightedModes = modes.collectMany { mode, cfg -&gt; [mode] * cfg.weight }
