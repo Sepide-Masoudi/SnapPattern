@@ -22,8 +22,6 @@
                     </ComboBox>
                 </HBox>
 
-                <!-- Centered dynamic controls: buttons OR context dropdown -->
-                <StackPane alignment="CENTER">
                     <!-- Local buttons -->
                     <HBox spacing="10" alignment="CENTER">
                         <Button fx:id="startButton" text="Start Kubernetes" onAction="#startKubernetes"/>
@@ -39,7 +37,6 @@
                                   onAction="#onContextSelected"
                                   visible="false"/>
                     </HBox>
-                </StackPane>
             </HBox>
             <Label fx:id="statusLabel" style="-fx-text-fill: gray;"/>
         </VBox>
