@@ -65,13 +65,10 @@ public class DeployMonitoringStack {
                     "prometheus-community/kube-prometheus-stack",
                     "--namespace", MONITOR_NAMESPACE,
                     "-f", "src/main/resources/monitoring/prometheus-values.yml");
-            executeCommand("helm", "upgrade", "--install", "prometheus", "prometheus-community/kube-prometheus-stack", "--namespace", "monitoring", "-f", "src/main/resources/monitoring/prometheus-values.yml");
-            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/ServiceMonitor.yml");
-            executeCommand("kubectl", "apply", "-f", "src/main/resources/monitoring/PodMonitor.yml");
 
             logger.info("Installing Kepler...");
             uiLogger.info("Installing Kepler...");
-            KubernetesUtil.executeCommand("helm", "upgrade", "--install", "kepler", "kepler/kepler",
+            KubernetesUtil.executeCommand("helm", "upgrade", "-install", "kepler", "kepler/kepler",
                     "-f", "src/main/resources/monitoring/kepler-values.yml",
                     "--namespace", MONITOR_NAMESPACE,
                     "--set", "securityContext.privileged=true",

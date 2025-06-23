@@ -171,16 +171,23 @@ public class WorkloadController {
 
     private void startWorkloadThread(File jmeterFile, File selectedFile, String hostname, String port,
                                      int numUsers, int rampUp, String workloadLevel) {
+
+        String java17Path = "/opt/homebrew/opt/openjdk@17/bin/java";
+        String resultsPath = "python/results/jmeter/results.jtl";
         new Thread(() -> {
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder(
-                        "java", "-jar", jmeterFile.getAbsolutePath(),
+                        java17Path, "-jar", jmeterFile.getAbsolutePath(),
                         "-t", selectedFile.getAbsolutePath(),
                         "-Jhostname=" + hostname,
                         "-Jport=" + port,
                         "-JnumUser=" + numUsers,
                         "-JrampUp=" + rampUp,
-                        "-n"
+                        "-l", resultsPath,
+                        "-n",
+                        "-Jjmeter.save.saveservice.latency=true",
+                        "-Jjmeter.save.saveservice.connect_time=true",
+                        "-Jjmeter.save.saveservice.output_format=csv"
                 );
                 processBuilder.redirectErrorStream(true);
                 currentProcess = processBuilder.start();
