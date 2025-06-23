@@ -39,11 +39,14 @@ public class DeployMonitoringStack {
 
             logger.info("Installing Cert-Manager...");
             uiLogger.info("Installing Cert-Manager...");
-            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.17.0/cert-manager.yaml", "cert-manager");
+            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.17.0/cert-manager.yaml");//, "cert-manager");
 
             KubernetesUtil.waitForDeploymentReady("cert-manager", "cert-manager");
             KubernetesUtil.waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
             KubernetesUtil.waitForDeploymentReady("cert-manager-webhook", "cert-manager");
+
+            // Sleep briefly to ensure webhook and certs are established
+            Thread.sleep(10000);
 
             logger.info("Installing OpenTelemetry Operator...");
             uiLogger.info("Installing OpenTelemetry Operator...");

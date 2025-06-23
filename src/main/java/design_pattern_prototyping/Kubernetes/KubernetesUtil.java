@@ -96,7 +96,7 @@ public class KubernetesUtil {
                 return true;
             }
             logger.info("Starting Minikube...");
-            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker");
+            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker", "--cpus=7", "--memory=12288", "--disk-size=40g");
             Process startProcess = startBuilder.start();
 
             Thread outputThread = new Thread(() -> {
@@ -374,6 +374,39 @@ public class KubernetesUtil {
         int exitCode = process.waitFor();
         if (exitCode != 0) {
             throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
+        }
+    }
+
+
+    public static void applyYaml(String filePath) {
+        try {
+            logger.info("Applying configuration from file: " + filePath);
+
+            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
+            injectContext(command);
+
+            ProcessBuilder apply = new ProcessBuilder(command);
+            apply.redirectErrorStream(true);
+            Process process = apply.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                reader.lines().forEach(line -> logger.info("[kubectl] " + line));
+            }
+
+            int exit = process.waitFor();
+            if (exit == 0) {
+                logger.info("Configuration applied successfully.");
+            } else {
+                logger.warning("kubectl apply exited with code " + exit);
+            }
+
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "IO error while applying YAML file: " + filePath, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.log(Level.SEVERE, "Process was interrupted while applying YAML.", e);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
         }
     }
 }
