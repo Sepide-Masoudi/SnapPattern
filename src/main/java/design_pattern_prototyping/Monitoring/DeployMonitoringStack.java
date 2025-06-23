@@ -39,17 +39,19 @@ public class DeployMonitoringStack {
 
             logger.info("Installing Cert-Manager...");
             uiLogger.info("Installing Cert-Manager...");
-            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.17.0/cert-manager.yaml", "cert-manager");
+            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml", "cert-manager");
 
-            KubernetesUtil.waitForDeploymentReady("cert-manager", "cert-manager");
-            KubernetesUtil.waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
-            KubernetesUtil.waitForDeploymentReady("cert-manager-webhook", "cert-manager");
+            waitForDeploymentReady("cert-manager", "cert-manager");
+            waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
+            waitForDeploymentReady("cert-manager-webhook", "cert-manager");
+
+            Thread.sleep(15000);
 
             logger.info("Installing OpenTelemetry Operator...");
             uiLogger.info("Installing OpenTelemetry Operator...");
             KubernetesUtil.applyYaml("https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml", "opentelemetry-operator-system");
 
-            KubernetesUtil.waitForDeploymentReady("opentelemetry-operator-controller-manager", "opentelemetry-operator-system");
+            waitForDeploymentReady("opentelemetry-operator-controller-manager", "opentelemetry-operator-system");
             KubernetesUtil.applyYaml("src/main/resources/monitoring/otel/otel-operator-instrumentation.yml", OTEL_NAMESPACE);
 
             logger.info("Installing OpenTelemetry Collector...");
@@ -104,5 +106,17 @@ public class DeployMonitoringStack {
         logger.info("Labeling the ConfigMap as a Grafana dashboard...");
         uiLogger.info("Labeling the ConfigMap as a Grafana dashboard...");
         KubernetesUtil.executeCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", MONITOR_NAMESPACE, "grafana_dashboard=1", "--overwrite");
+    }
+
+    private void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {
+        logger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
+        uiLogger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
+        KubernetesUtil.executeCommand("kubectl", "wait",
+                "--for=condition=Available",
+                "--timeout=180s",
+                "deployment/" + deploymentName,
+                "-n", namespace);
+        logger.info("Deployment '" + deploymentName + "' is ready.");
+        uiLogger.info("Deployment '" + deploymentName + "' is ready.");
     }
 }

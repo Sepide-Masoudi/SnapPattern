@@ -91,13 +91,20 @@
 
                     <!-- Cache Aside Config -->
                     <VBox spacing="10.0" fx:id="cacheAsideFields" visible="false">
-                        <Label text="Cache Aside Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Cached Endpoints (comma-separated)" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="cachedEndpoints" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                            <Label text="Backend Service" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="backendService" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                        </GridPane>
+                        <Label text="Cache Aside Configuration" style="-fx-font-weight: bold;" />
+
+                        <TableView fx:id="cacheAsideTable" prefHeight="200">
+                            <columns>
+                                <TableColumn fx:id="backendService" text="Backend Service" prefWidth="200"/>
+                                <TableColumn fx:id="cachedEndpoints" text="Cached Endpoints" prefWidth="300"/>
+                            </columns>
+                        </TableView>
+
+                        <HBox spacing="10.0">
+                            <Button text="Add Entry" onAction="#handleCacheAsideAddRow"/>
+                            <Button text="Edit Entry" onAction="#handleCacheAsideEditRow"/>
+                            <Button text="Delete Entry" onAction="#handleCacheAsideDeleteRow"/>
+                        </HBox>
                     </VBox>
 
                     <!-- Gateway Aggregation Config -->

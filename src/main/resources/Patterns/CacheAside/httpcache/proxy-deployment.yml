@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-proxy-async
+  namespace: user
+  labels:
+    app: pattern
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: cache-proxy-async
+  template:
+    metadata:
+      labels:
+        app: cache-proxy-async
+        pattern-managed: "true"
+        pattern-type: "cache-aside"
+    spec:
+      containers:
+        - name: cache-proxy
+          image: cache-proxy-async:2.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              value: "http://teastore-persistence-backend.user.svc.cluster.local:8080"
+            - name: CACHED_ENDPOINTS
+              value: "/tools.descartes.teastore.persistence/rest/products"
+            - name: REDIS_URL
+              value: "redis://redis-cache-redis-cluster-headless.pattern.svc.cluster.local:6379"
+            - name: CACHE_TTL
+              value: "300"
+
+  # Build image locally
+  #docker build -t cache-proxy-async:1.0 .
+
+# Load into Minikube
+  # minikube image load cache-proxy-async:1.0
+# kubectl rollout restart deployment cache-proxy-async -n user

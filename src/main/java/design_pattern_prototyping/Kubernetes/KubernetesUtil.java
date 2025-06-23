@@ -311,33 +311,6 @@ public class KubernetesUtil {
         }
     }
 
-    public static void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {
-        logger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
-        //uiLogger.info("Waiting for deployment '" + deploymentName + "' in namespace '" + namespace + "' to be ready...");
-
-        List<String> command = new ArrayList<>(List.of(
-                "kubectl", "wait",
-                "--for=condition=Available",
-                "--timeout=180s",
-                "deployment/" + deploymentName,
-                "-n", namespace
-        ));
-
-        injectContext(command);
-
-        // Execute
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-        int exitCode = process.waitFor();
-
-        if (exitCode != 0) {
-            throw new IOException("Deployment wait failed with exit code " + exitCode);
-        }
-
-        logger.info("Deployment '" + deploymentName + "' is ready.");
-        //uiLogger.info("Deployment '" + deploymentName + "' is ready.");
-    }
-
     public static void executeCommand(String... command) throws IOException, InterruptedException {
         List<String> commandList = new ArrayList<>(Arrays.asList(command));
         KubernetesUtil.injectContext(commandList);

@@ -1,0 +1,36 @@
+# Deployment Steps__________________________
+NOTE: First deploy baseline services completely and allow teastore-persistence to run DatabaseInitialisation.java
+
+kubectl get svc teastore-db -n user -o yaml > svc-backend.yaml
+
+kubectl delete svc teastore-db -n user
+
+# In svc-backend.yaml rename metadata.name to {$DB_SERVICE}+"-backend"
+
+kubectl apply -f svc-backend.yaml
+
+kubectl create configmap proxysql-configmap -n user --from-file=proxysql.cnf
+
+kubectl apply -f proxysql.yml
+
+
+# Proxy Check_____________________________________
+kubectl exec -n user -it deploy/proxysql -- bash
+
+mysql -u admin -padmin -h 127.0.0.1 -P6032
+
+# Get proxy Requests (Not working?)
+SELECT count_star,sum_time,hostgroup,digest,digest_text FROM stats_mysql_query_digest WHERE hostgroup = -1 ORDER BY count_star DESC;
+
+
+# Example to add new cache rule directly or add rule to proxysql.cnf
+INSERT INTO mysql_query_rules (rule_id,active,digest,cache_ttl,apply)
+VALUES (5,1,'0xE8930CB2CC9E68D7',2000,1);
+
+# Get Cache Metrics
+SELECT * FROM stats_mysql_global WHERE Variable_Name LIKE 'Query_Cache%';
+
+# Reset Cache completely
+kubectl rollout restart deploy/proxysql -n user
+
+

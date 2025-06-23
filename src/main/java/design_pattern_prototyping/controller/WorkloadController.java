@@ -230,7 +230,6 @@ public class WorkloadController {
                     if (isAborted.get()) {
                         logger.info("Workload was aborted by user.");
                         uiLogger.info("Workload was aborted by user.");
-                        showAlert("Info", "Workload was aborted by the user.", Alert.AlertType.INFORMATION);
                     } else {
                         ControllerMediator mediator = ControllerMediatorImpl.getInstance();
                         mediator.getMetricsController().generateMetrics();

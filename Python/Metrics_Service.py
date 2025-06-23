@@ -78,16 +78,21 @@ def generate_metrics_standalone():
 def generate_boxplots(df):
     metric_columns = df.columns.difference(['Pattern', 'Workload Level', 'Timestamp'])
 
+    # Determine consistent pattern order with Baseline first
+    all_patterns = df['Pattern'].dropna().unique()
+    all_patterns = [p for p in all_patterns if p != 'Test' and 'Internal' not in p]
+    if 'Baseline' in all_patterns:
+        all_patterns = ['Baseline'] + [p for p in all_patterns if p != 'Baseline']
+    elif 'Baseline' in df['Pattern'].values:
+        all_patterns = ['Baseline'] + all_patterns
+
+    workload_order = ['Low', 'Medium', 'High']
+
     for metric_name in metric_columns:
         try:
             plot_df = df[['Pattern', 'Workload Level', metric_name]].dropna()
-            baseline_df = plot_df[plot_df['Pattern'] == 'Baseline']
-            plot_df = plot_df[
-                (plot_df['Pattern'] != 'Baseline') &
-                (~plot_df['Pattern'].str.contains('Internal', na=False))
-                ]
+            plot_df = plot_df[plot_df['Pattern'].isin(all_patterns)]
 
-            workload_order = ['Low', 'Medium', 'High']
             workload_levels = [w for w in workload_order if w in plot_df['Workload Level'].unique()]
 
             fig, axes = plt.subplots(1, len(workload_levels), figsize=(5 * len(workload_levels), 6), sharey=True)
@@ -96,18 +101,22 @@ def generate_boxplots(df):
 
             for ax, workload in zip(axes, workload_levels):
                 workload_df = plot_df[plot_df['Workload Level'] == workload]
-                baseline_value = baseline_df[baseline_df['Workload Level'] == workload][metric_name].mean()
 
                 sns.boxplot(
                     data=workload_df,
                     x='Pattern',
                     y=metric_name,
+                    order=all_patterns,
                     palette='colorblind',
                     ax=ax
                 )
 
-                if not np.isnan(baseline_value):
-                    ax.axhline(y=baseline_value, color='red', linestyle='--', label='Baseline')
+                # Baseline mean line (optional for reference)
+                baseline_df = workload_df[workload_df['Pattern'] == 'Baseline']
+                if not baseline_df.empty:
+                    baseline_value = baseline_df[metric_name].mean()
+                    if not np.isnan(baseline_value):
+                        ax.axhline(y=baseline_value, color='red', linestyle='--', label='Baseline')
 
                 ax.set_title(f"{workload} Workload", fontsize=12)
                 ax.set_xlabel("Pattern", fontsize=10)
@@ -115,7 +124,7 @@ def generate_boxplots(df):
                 ax.tick_params(axis='x', rotation=45)
                 ax.grid(axis='y', linestyle='--', alpha=0.7)
 
-                if not np.isnan(baseline_value):
+                if not baseline_df.empty and not np.isnan(baseline_value):
                     ax.legend(fontsize=8)
 
             plt.suptitle(f"{metric_name} Across Workloads", fontsize=16)

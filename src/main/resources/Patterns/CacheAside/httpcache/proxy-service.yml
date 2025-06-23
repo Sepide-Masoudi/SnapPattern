@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: pattern
+  name: teastore-persistence
+  namespace: user
+spec:
+  selector:
+    app: cache-proxy-async
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80
