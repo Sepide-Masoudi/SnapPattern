@@ -81,6 +81,6 @@ def generate_plots(df):
         print(f"Relative difference plot saved for {pattern} at {plot_path}")
 
 if __name__ == "__main__":
-    file_path = 'results/metrics_test.xlsx'
+    file_path = 'results/metrics_data.xlsx'
     df = pd.read_excel(file_path)
     generate_plots(df)

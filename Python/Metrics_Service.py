@@ -77,6 +77,7 @@ def generate_metrics_standalone():
 
 def generate_boxplots(df):
     metric_columns = df.columns.difference(['Pattern', 'Workload Level', 'Timestamp'])
+    latency_metrics = {'MeanLatency', '95PercentileLatency'}
 
     # Determine consistent pattern order with Baseline first
     all_patterns = df['Pattern'].dropna().unique()
@@ -94,8 +95,9 @@ def generate_boxplots(df):
             plot_df = plot_df[plot_df['Pattern'].isin(all_patterns)]
 
             workload_levels = [w for w in workload_order if w in plot_df['Workload Level'].unique()]
+            share_y = False if metric_name in latency_metrics else True
 
-            fig, axes = plt.subplots(1, len(workload_levels), figsize=(5 * len(workload_levels), 6), sharey=True)
+            fig, axes = plt.subplots(1, len(workload_levels), figsize=(5 * len(workload_levels), 6), sharey=share_y)
             if len(workload_levels) == 1:
                 axes = [axes]
 
