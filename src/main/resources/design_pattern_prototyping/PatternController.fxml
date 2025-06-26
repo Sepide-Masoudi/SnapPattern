@@ -24,6 +24,10 @@
                     <Label text=" (Configure before deployment)" />
                 </HBox>
                 <HBox spacing="10.0">
+                    <Label text="Set Frontend Service:"/>
+                    <ComboBox fx:id="userServiceDropdown" promptText="(none selected)"/>
+                </HBox>
+                <HBox spacing="10.0">
                     <Button text="Deploy Microservice" onAction="#deployApplication"/>
                     <Button text="Delete Microservice" onAction="#deleteApplication"/>
                 </HBox>
@@ -41,7 +45,6 @@
                             <String fx:value="Baseline"/>
                             <String fx:value="Async Request Reply"/>
                             <String fx:value="Gateway Offloading"/>
-                            <String fx:value="Gateway Aggregation"/>
                             <String fx:value="Request Collapsing"/>
                             <String fx:value="Cache Aside"/>
                             <String fx:value="Circuit Breaker"/>
@@ -107,24 +110,9 @@
                         </HBox>
                     </VBox>
 
-                    <!-- Gateway Aggregation Config -->
-                    <VBox spacing="10.0" fx:id="gatewayAggregationFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Service - Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                            <Label text="Service - Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label text="Service - Host" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceHost" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                            <Label text="Service - Port" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_servicePort" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
-
                     <!-- Request Collapsing Config -->
                     <VBox spacing="10.0" fx:id="requestCollapsingFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
+                        <Label text="Request Collapsing Configuration" style="-fx-font-weight: bold;"/>
                         <GridPane hgap="10.0" vgap="10.0">
                             <Label text="Backend Service" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                             <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
@@ -132,7 +120,7 @@
                     </VBox>
 
                     <!-- Circuit Breaker Config -->
-                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="true">
+                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="false">
                         <Label text="Circuit Breaker Configuration" style="-fx-font-weight: bold;" />
                         <TableView fx:id="circuitBreakerTable" prefHeight="250">
                             <columns>

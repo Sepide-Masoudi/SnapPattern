@@ -1,6 +1,7 @@
 package design_pattern_prototyping.controller;
 
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
+import design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
 import design_pattern_prototyping.pattern_generator.*;
 import design_pattern_prototyping.pattern_generator.AsyncRequestReplyGenerator;
 import design_pattern_prototyping.pattern_generator.CircuitBreakerGenerator;
@@ -12,6 +13,8 @@ import design_pattern_prototyping.util.CircuitBreaker.CBPatternConfig;
 import design_pattern_prototyping.util.CircuitBreaker.ConfigDialogUtil;
 import design_pattern_prototyping.util.UILogger;
 import design_pattern_prototyping.util.YamlEditor;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.util.Config;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -39,6 +42,7 @@ public class PatternController {
 
     private static final Logger logger = Logger.getLogger(PatternController.class.getName());
     private UILogger uiLogger;
+    private KubernetesClientAPI kubeClientAPI;
 
     @FXML private TextArea logTextArea;
     @FXML private  Label statusLabel;
@@ -51,6 +55,8 @@ public class PatternController {
     @FXML private  VBox requestCollapsingFields;
     @FXML private  VBox cacheAsideFields;
     @FXML private  VBox circuitBreakerFields;
+    @FXML private ComboBox<String> userServiceDropdown;
+    private String selectedUserService = null;
 
     // Asynch Request Reply Pattern
     @FXML private TableView<AsyncPatternConfig> asyncTable;
@@ -102,14 +108,30 @@ public class PatternController {
 
     @FXML
     public void initialize() {
-        // Register this controller with the mediator
         ControllerMediatorImpl.getInstance().registerPatternBuilderController(this);
         patternDropdown.setValue("Baseline");
 
         Logger logger = Logger.getLogger("PatternLogger");
         uiLogger = new UILogger(logTextArea, logger);
         logger.info("PatternBuilderController initialized.");
+
+        // Load services for dropdown
+        try {
+            ApiClient client = Config.defaultClient(); // Load from default kubeconfig
+            kubeClientAPI = new KubernetesClientAPI(client); // Your wrapper
+            List<String> services = kubeClientAPI.getServicesInNamespace("user");
+            userServiceDropdown.setItems(FXCollections.observableArrayList(services));
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to load services from namespace 'user'", e);
+            uiLogger.warning("Could not fetch services from 'user' namespace: " + e.getMessage());
+        }
+
+        userServiceDropdown.setOnAction(event -> {
+            selectedUserService = userServiceDropdown.getValue();
+            logger.info("Selected user service: " + selectedUserService);
+        });
     }
+
 
     private void initializeAsyncTable() {
         if (asyncTableInitialized) return;
@@ -147,6 +169,9 @@ public class PatternController {
         cacheAsideTableInitialized = true;
     }
 
+    public String getSelectedUserService() {
+        return selectedUserService;
+    }
 
     @FXML
     public void handleFileUpload() {
