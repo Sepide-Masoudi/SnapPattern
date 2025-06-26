@@ -279,11 +279,19 @@ public class KubernetesUtil {
         }
     }
 
+    public static void applyYaml(String filePath) {
+        applyYaml(filePath, null);
+    }
+
     public static void applyYaml(String filePath, String namespace) {
         try {
             logger.info("Applying configuration from file: " + filePath);
 
-            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath, "-n", namespace));
+            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
+            if (namespace != null && !namespace.isBlank()) {
+                command.add("-n");
+                command.add(namespace);
+            }
             injectContext(command);
 
             ProcessBuilder apply = new ProcessBuilder(command);
