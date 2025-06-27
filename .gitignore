@@ -35,4 +35,6 @@ build/
 .vscode/
 
 ### Mac OS ###
-.DS_Store
+.DS_StorePython/results/jmeter/
+apache-jmeter-5.6.3/
+src/main/resources/monitoring/otel/configmap
