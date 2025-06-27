@@ -96,19 +96,19 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     @Override
     public void deployPattern() {
         try {
-            executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
-            executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
-            executeCommand("helm", "repo", "update");
+            KubernetesUtil.executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
+            KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
+            KubernetesUtil.executeCommand("helm", "repo", "update");
 
-            executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq",
+            KubernetesUtil.executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq",
                     "--set", "auth.username=user,auth.password=bitnami", "--namespace", NAMESPACE);
 
-            executeCommand("helm", "upgrade", "--install", "nginx-ingress", "ingress-nginx/ingress-nginx",
+            KubernetesUtil.executeCommand("helm", "upgrade", "--install", "nginx-ingress", "ingress-nginx/ingress-nginx",
                     "--namespace", NAMESPACE,
                     "--set", "controller.publishService.enabled=false",
                     "--set", "controller.service.type=NodePort");
 
-
+            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/redis-cache-deployment.yml", "proxy");
             KubernetesUtil.applyYaml(tempIngressPath, NAMESPACE);
             KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml", NAMESPACE);
             KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml", NAMESPACE);

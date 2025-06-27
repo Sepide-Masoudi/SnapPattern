@@ -7,6 +7,7 @@ import design_pattern_prototyping.pattern_generator.CircuitBreakerGenerator;
 import design_pattern_prototyping.pattern_generator.PatternGenerator;
 import design_pattern_prototyping.pattern_generator.PatternGeneratorFactory;
 import design_pattern_prototyping.util.AsyncRequestReply.AsyncPatternConfig;
+import design_pattern_prototyping.util.CacheAside.CacheAsidePatternConfig;
 import design_pattern_prototyping.util.CircuitBreaker.CBPatternConfig;
 import design_pattern_prototyping.util.CircuitBreaker.ConfigDialogUtil;
 import design_pattern_prototyping.util.UILogger;
@@ -65,8 +66,12 @@ public class PatternController {
     public TextField go_servicePort;
 
     // Cache Aside Pattern
-    public TextField cachedEndpoints;
-    public TextField backendService;
+    @FXML private TableView<CacheAsidePatternConfig> cacheAsideTable;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> backendService;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> cachedEndpoints;
+
+    private ObservableList<CacheAsidePatternConfig> cacheAsideServiceList = FXCollections.observableArrayList();
+    private boolean cacheAsideTableInitialized = false;
 
     // Gateway Aggregation Pattern
     public TextField ga_serviceName;
@@ -130,6 +135,16 @@ public class PatternController {
 
         circuitBreakerTable.setItems(circuitBreakerServiceList);
         circuitBreakerTableInitialized = true;
+    }
+
+    private void initializecacheAsideTable() {
+        if (cacheAsideTableInitialized) return;
+
+        backendService.setCellValueFactory(cellData -> cellData.getValue().backendServiceProperty());
+        cachedEndpoints.setCellValueFactory(cellData -> cellData.getValue().cachedEndpointsProperty());
+        cacheAsideTable.setItems(cacheAsideServiceList);
+
+        cacheAsideTableInitialized = true;
     }
 
 
@@ -309,6 +324,7 @@ public class PatternController {
                 break;
             case "Cache Aside":
                 cacheAsideFields.setVisible(true);
+                initializecacheAsideTable();
                 break;
             case "Circuit Breaker":
                 circuitBreakerFields.setVisible(true);
@@ -339,7 +355,6 @@ public class PatternController {
                         return;
                     }
 
-                    // Convert ObservableList<AsyncServiceConfig> to List<Map<String, String>>
                     List<Map<String, String>> configList = asyncServiceList.stream()
                             .map(config -> {
                                 Map<String, String> map = new HashMap<>();
@@ -378,6 +393,28 @@ public class PatternController {
                     cbGen.deployPattern();
                 }
             }
+
+            else if ("Cache Aside".equals(selectedPattern)) {
+                if (generator instanceof CacheAsideGenerator caGen) {
+                    if (cacheAsideServiceList.isEmpty()) {
+                        showAlert(Alert.AlertType.WARNING, "Missing Input", "Please add at least one cache-aside service configuration.");
+                        return;
+                    }
+
+                    List<Map<String, String>> configList = cacheAsideServiceList.stream()
+                            .map(config -> Map.of(
+                                    "BACKEND_SERVICE", config.getBackendService(),
+                                    "CACHED_ENDPOINTS", config.getCachedEndpoints()
+                            )).toList();
+
+                    caGen.generatePattern(generator.getYamlFilePath(), configList);
+                    caGen.deployPattern();
+                } else {
+                    logger.severe("Pattern generator is not of expected type: CacheAsideGenerator");
+                    return;
+                }
+            }
+
             else {
                 Map<String, String> parameters = getStringStringMap(selectedPattern);
 
@@ -464,6 +501,26 @@ public class PatternController {
         }
     }
 
+    @FXML
+    public void handleCacheAsideAddRow() {
+        design_pattern_prototyping.util.CacheAside.ConfigDialogUtil.showAddDialog().ifPresent(cacheAsideServiceList::add);
+    }
+
+    @FXML
+    public void handleCacheAsideEditRow() {
+        CacheAsidePatternConfig selected = cacheAsideTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            design_pattern_prototyping.util.CacheAside.ConfigDialogUtil.showEditDialog(selected).ifPresent(cfg -> cacheAsideTable.refresh());
+        }
+    }
+
+    @FXML
+    public void handleCacheAsideDeleteRow() {
+        CacheAsidePatternConfig selected = cacheAsideTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            cacheAsideServiceList.remove(selected);
+        }
+    }
 
     private void showAlert(Alert.AlertType alertType, String title, String content) {
         Alert alert = new Alert(alertType);

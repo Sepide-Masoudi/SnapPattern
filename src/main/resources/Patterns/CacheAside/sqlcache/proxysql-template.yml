@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxysql
+  namespace: user
+  labels:
+    app: proxysql
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: proxysql
+      tier: frontend
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: proxysql
+        tier: frontend
+    spec:
+      restartPolicy: Always
+      containers:
+        - image: severalnines/proxysql:1.4.12
+          name: proxysql
+          volumeMounts:
+            - name: proxysql-config
+              mountPath: /etc/proxysql.cnf
+              subPath: proxysql.cnf
+          ports:
+            - containerPort: {$DB_PORT}
+              name: proxysql-mysql
+            - containerPort: 6032
+              name: proxysql-admin
+      volumes:
+        - name: proxysql-config
+          configMap:
+            name: proxysql-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {$DB_SERVICE}
+  namespace: user
+  labels:
+    app: proxysql
+    tier: frontend
+spec:
+  type: NodePort
+  ports:
+    - nodePort: 30036
+      port: {$DB_PORT}
+      targetPort: {$DB_PORT}
+      name: proxysql-mysql
+    - nodePort: 30032
+      port: 6032
+      targetPort: 6032
+      name: proxysql-admin
+  selector:
+    app: proxysql
+    tier: frontend

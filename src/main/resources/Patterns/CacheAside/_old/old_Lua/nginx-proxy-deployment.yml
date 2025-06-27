@@ -1,26 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-cache-proxy
+  name: ${BACKEND_SERVICE}-cache-proxy
   namespace: pattern
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nginx-cache-proxy
+      app: ${BACKEND_SERVICE}-cache-proxy
   template:
     metadata:
       labels:
-        app: nginx-cache-proxy
+        app: ${BACKEND_SERVICE}-cache-proxy
     spec:
       containers:
         - name: nginx
           image: openresty/openresty:latest
           ports:
             - containerPort: 80
-          envFrom:
-            - configMapRef:
-                name: cache-config
+          env:
+            - name: BACKEND_SERVICE
+              value: ${BACKEND_SERVICE}
+            - name: CACHED_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: cache-config
+                  key: ${BACKEND_SERVICE}_CACHED_ENDPOINTS
           volumeMounts:
             - name: nginx-config
               mountPath: /usr/local/openresty/nginx/conf/nginx.conf
@@ -33,11 +38,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-cache-proxy
+  name: ${BACKEND_SERVICE}-cache-proxy
   namespace: pattern
 spec:
   selector:
-    app: nginx-cache-proxy
+    app: ${BACKEND_SERVICE}-cache-proxy
   ports:
     - protocol: TCP
       port: 80
