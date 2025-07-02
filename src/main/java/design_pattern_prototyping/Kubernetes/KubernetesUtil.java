@@ -96,7 +96,7 @@ public class KubernetesUtil {
                 return true;
             }
             logger.info("Starting Minikube...");
-            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker", "--cpus=7", "--memory=12288", "--disk-size=40g");
+            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker");//, "--cpus=7", "--memory=12288", "--disk-size=40g");
             Process startProcess = startBuilder.start();
 
             Thread outputThread = new Thread(() -> {

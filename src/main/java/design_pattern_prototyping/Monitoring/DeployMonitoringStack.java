@@ -39,7 +39,7 @@ public class DeployMonitoringStack {
 
             logger.info("Installing Cert-Manager...");
             uiLogger.info("Installing Cert-Manager...");
-            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml", "cert-manager");
+            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml");
 
             waitForDeploymentReady("cert-manager", "cert-manager");
             waitForDeploymentReady("cert-manager-cainjector", "cert-manager");

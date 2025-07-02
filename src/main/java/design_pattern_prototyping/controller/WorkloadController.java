@@ -126,24 +126,27 @@ public class WorkloadController {
                 String workloadLevel = workloadLevelComboBox.getValue();
                 logger.info("Selected workload level: " + workloadLevel);
 
-                int numUsers, rampUp;
+                int numUsers, rampUp, durationSec;
                 switch (workloadLevel) {
                     case "High":
                         numUsers = 500;
                         rampUp = 120;
+                        durationSec = 3600;
                         break;
                     case "Medium":
                         numUsers = 50;
                         rampUp = 60;
+                        durationSec = 3600;
                         break;
                     case "Low":
                     default:
                         numUsers = 10;
                         rampUp = 30;
+                        durationSec = 60*60;
                         break;
                 }
-                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
-                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp);
+                logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", DurationSec: " + durationSec);
+                uiLogger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", DurationSec: " + durationSec);
 
                 Path jmeterPath = Paths.get("apache-jmeter-5.6.3/bin/ApacheJMeter.jar");
                 File jmeterFile = jmeterPath.toFile();
@@ -161,7 +164,7 @@ public class WorkloadController {
                 isAborted.set(false);
                 abortButton.setDisable(false);
 
-                startWorkloadThread(jmeterFile, selectedFile, hostname, port, numUsers, rampUp, workloadLevel);
+                startWorkloadThread(jmeterFile, selectedFile, hostname, port, numUsers, rampUp, durationSec, workloadLevel);
             } else {
                 logger.warning("Selected file does not exist: " + selectedFile.getAbsolutePath());
                 showAlert("Error", "Selected file does not exist. Please select a valid file.", Alert.AlertType.ERROR);
@@ -170,9 +173,9 @@ public class WorkloadController {
     }
 
     private void startWorkloadThread(File jmeterFile, File selectedFile, String hostname, String port,
-                                     int numUsers, int rampUp, String workloadLevel) {
+                                     int numUsers, int rampUp, int durationSec, String workloadLevel) {
 
-        String java17Path = "/opt/homebrew/opt/openjdk@17/bin/java";
+        String java17Path = "/usr/lib/jvm/java-17-openjdk-amd64/bin/java";
         String resultsPath = "python/results/jmeter/results.jtl";
         new Thread(() -> {
             try {
@@ -183,6 +186,7 @@ public class WorkloadController {
                         "-Jport=" + port,
                         "-JnumUser=" + numUsers,
                         "-JrampUp=" + rampUp,
+                        "-Jduration=" + durationSec,
                         "-l", resultsPath,
                         "-n",
                         "-Jjmeter.save.saveservice.latency=true",
@@ -218,7 +222,7 @@ public class WorkloadController {
                         }
                         abortButton.setDisable(true);
                     }
-                }, 7, TimeUnit.MINUTES);
+                }, durationSec + 60 * 7, TimeUnit.SECONDS);
 
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
                     String line;
