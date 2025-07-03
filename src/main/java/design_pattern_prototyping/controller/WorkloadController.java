@@ -142,7 +142,7 @@ public class WorkloadController {
                     default:
                         numUsers = 10;
                         rampUp = 30;
-                        durationSec = 60*60;
+                        durationSec = 5*60;
                         break;
                 }
                 logger.info("Workload parameters - Users: " + numUsers + ", RampUp: " + rampUp + ", DurationSec: " + durationSec);
