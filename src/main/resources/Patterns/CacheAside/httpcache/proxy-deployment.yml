@@ -31,7 +31,7 @@ spec:
             - name: CACHED_ENDPOINTS
               value: "${CACHED_ENDPOINTS}"
             - name: REDIS_URL
-              value: "redis://redis.user.svc.cluster.local:6379"
+              value: "redis://redis-cache.pattern.svc.cluster.local:6379"
             - name: CACHE_TTL
               value: "${CACHE_TTL}"
             - name: MAX_CONNECTIONS
