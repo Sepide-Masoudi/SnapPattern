@@ -1,17 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: proxy-service
-  namespace: pattern
+  name: ${DEPLOYMENT_NAME}
+  namespace: user
+  labels:
+    app: pattern
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: proxy-service
+      app: ${DEPLOYMENT_NAME}
   template:
     metadata:
       labels:
-        app: proxy-service
+        app: ${DEPLOYMENT_NAME}
       annotations:
         instrumentation.opentelemetry.io/inject-python: "otel/otel-operator-instrumentation"
     spec:
@@ -23,9 +25,19 @@ spec:
               value: "rabbitmq.pattern.svc.cluster.local"
             - name: RABBITMQ_PORT
               value: "5672"
+            - name: RABBITMQ_USER
+              value: "user"
+            - name: RABBITMQ_PASSWORD
+              value: "bitnami"
             - name: PROXY_HOST
-              value: "proxy-service.pattern.svc.cluster.local" #"0.0.0.0"
+              value: "proxy-${BACKEND_NAME}.user.svc.cluster.local"
             - name: PROXY_PORT
               value: "80"
+            - name: BACKEND_SERVICE
+              value: "${BACKEND_NAME}"
+            - name: BACKEND_PORT
+              value: "${BACKEND_PORT}"
+            - name: ENDPOINT_PATHS
+              value: "${ENDPOINT_PATHS}"
           ports:
             - containerPort: 80
