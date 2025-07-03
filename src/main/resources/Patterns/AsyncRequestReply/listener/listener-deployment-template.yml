@@ -2,7 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${LISTENER_NAME}
-  namespace: pattern
+  namespace: user
+  labels:
+    app: pattern
 spec:
   replicas: 1
   selector:
@@ -19,13 +21,23 @@ spec:
         - name: listener-container
           image: listener-service:local
           env:
-            - name: SERVICE_URL
-              value: ${SERVICE_NAME} #"http://teastore-auth.user.svc.cluster.local:8080/useractions/login"
+            - name: BACKEND_SERVICE
+              value: "${BACKEND_NAME}"
+            - name: BACKEND_PORT
+              value: "${BACKEND_PORT}"
+            - name: ENDPOINT_PATH
+              value: "${ENDPOINT_PATH}"
             - name: RABBITMQ_HOST
               value: "rabbitmq.pattern.svc.cluster.local"
             - name: RABBITMQ_PORT
               value: "5672"
-            - name: QUEUE_NAME
-              value: "service-queue"
+            - name: RABBITMQ_USER
+              value: "user"
+            - name: RABBITMQ_PASSWORD
+              value: "bitnami"
+            - name: REDIS_HOST
+              value: "redis-cache.proxy.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
           ports:
             - containerPort: 80

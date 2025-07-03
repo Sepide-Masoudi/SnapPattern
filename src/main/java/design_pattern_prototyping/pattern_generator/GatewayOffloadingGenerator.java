@@ -10,19 +10,14 @@ import java.util.logging.Logger;
 
 public class GatewayOffloadingGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(GatewayOffloadingGenerator.class.getName());
-    private String tempConfigPath;
+    private String tempConfigPath = "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
     private static final String NAMESPACE = "pattern";
 
     @Override
-    public String getYamlFilePath() {
-        return "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
-    }
-
-    @Override
-    public void generatePattern(String filePath, Map<String, String> parameters) {
+    public void generatePattern(Map<String, String> parameters) {
         try {
-            logger.info("Loading template: " + filePath);
-            Path templatePath = Paths.get(filePath);
+            logger.info("Loading template: " + tempConfigPath);
+            Path templatePath = Paths.get(tempConfigPath);
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values
@@ -58,11 +53,13 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
             executeCommand("helm", "repo", "update");
 
             // Step 3: Deploy NGINX Ingress Controller
-            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",
+            executeCommand("helm", "upgrade", "-install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",
+                    "--set", "controller.service.type=NodePort",
+                    "--set", "controller.service.nodePorts.http=32342",
                     "--set", "controller.admissionWebhooks.enabled=false");
 
             // Step 4: Apply the generated Gateway Offloading YAML
-            KubernetesUtil.applyYaml(tempConfigPath, NAMESPACE);
+            KubernetesUtil.applyYaml(tempConfigPath, "user");
 
             logger.info("Gateway Offloading Pattern setup completed successfully.");
 

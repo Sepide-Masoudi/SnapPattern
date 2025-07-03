@@ -10,19 +10,16 @@ import java.util.logging.Logger;
 
 public class GatewayAggregationGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(GatewayAggregationGenerator.class.getName());
-    private String tempConfigPath;
+    private String tempConfigPath = "src/main/resources/Patterns/GatewayAggregation/nginx/gateway-aggregation-config.yml";
     private static final String NAMESPACE = "pattern";
 
-    @Override
-    public String getYamlFilePath() {
-        return "src/main/resources/Patterns/GatewayAggregation/nginx/gateway-aggregation-config.yml";
-    }
 
     @Override
-    public void generatePattern(String filePath, Map<String, String> parameters) {
+    public void generatePattern(Map<String, String> parameters) {
         try {
-            logger.info("Loading template: " + filePath);
-            Path templatePath = Paths.get(filePath);
+            Path templatePath = null;
+            logger.info("Loading template: " + templatePath);
+            templatePath = Paths.get(templatePath.toUri());
             String yamlContent = new String(Files.readAllBytes(templatePath));
 
             // Replace placeholders with user-defined values

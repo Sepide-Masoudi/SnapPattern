@@ -29,17 +29,3 @@ spec:
         - name: envoy-config
           configMap:
             name: envoy-config-${BACKEND_SERVICE}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ${BACKEND_SERVICE}
-  namespace: user
-  labels:
-    app: envoy
-spec:
-  ports:
-    - port: ${BACKEND_PORT}
-      targetPort: ${BACKEND_PORT}
-  selector:
-    app: envoy-${BACKEND_SERVICE}
