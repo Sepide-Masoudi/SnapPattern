@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.io.File;
+import java.util.stream.Collectors;
 
 public class PatternController {
 
@@ -60,7 +61,8 @@ public class PatternController {
 
     // Asynch Request Reply Pattern
     @FXML private TableView<AsyncPatternConfig> asyncTable;
-    @FXML private TableColumn<AsyncPatternConfig, String> serviceNameColumn;
+    @FXML private TableColumn<AsyncPatternConfig, String> backendNameColumn;
+    @FXML private TableColumn<AsyncPatternConfig, String> backendPortColumn;
     @FXML private TableColumn<AsyncPatternConfig, String> endpointPathColumn;
 
     private ObservableList<AsyncPatternConfig> asyncServiceList = FXCollections.observableArrayList();
@@ -73,20 +75,30 @@ public class PatternController {
 
     // Cache Aside Pattern
     @FXML private TableView<CacheAsidePatternConfig> cacheAsideTable;
-    @FXML private TableColumn<CacheAsidePatternConfig, String> backendService;
-    @FXML private TableColumn<CacheAsidePatternConfig, String> cachedEndpoints;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> ca_backendService;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> ca_backendPort;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> ca_cachedEndpoints;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> ca_cacheTTL;
+    @FXML private TableColumn<CacheAsidePatternConfig, String> ca_maxConnections;
+    @FXML private TextField ca_redisReplicas;
+    @FXML private TextField ca_redisNodes;
 
     private ObservableList<CacheAsidePatternConfig> cacheAsideServiceList = FXCollections.observableArrayList();
     private boolean cacheAsideTableInitialized = false;
 
-    // Gateway Aggregation Pattern
-    public TextField ga_serviceName;
-    public TextField ga_serviceEndpoint;
-    public TextField ga_serviceHost;
-    public TextField ga_servicePort;
-
     // Request Collapsing Pattern
-    public TextField rc_backendService;
+    @FXML private TextField rc_backendService;
+    @FXML private TextField rc_backendPort;
+    @FXML private TextField rc_endpointPath;
+    @FXML private TextField rc_queryParam;
+    @FXML private TextField rc_idField;
+    @FXML private TextField rc_batchQuery;
+
+    @FXML private TextField rc_dbHost;
+    @FXML private TextField rc_dbPort;
+    @FXML private TextField rc_dbName;
+    @FXML private TextField rc_dbUser;
+    @FXML private TextField rc_dbPass;
 
     //Circuit Breaker Pattern
     @FXML private TableView<CBPatternConfig> circuitBreakerTable;
@@ -115,20 +127,29 @@ public class PatternController {
         uiLogger = new UILogger(logTextArea, logger);
         logger.info("PatternBuilderController initialized.");
 
-        // Load services for dropdown
-        try {
-            ApiClient client = Config.defaultClient(); // Load from default kubeconfig
-            kubeClientAPI = new KubernetesClientAPI(client); // Your wrapper
-            List<String> services = kubeClientAPI.getServicesInNamespace("user");
-            userServiceDropdown.setItems(FXCollections.observableArrayList(services));
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to load services from namespace 'user'", e);
-            uiLogger.warning("Could not fetch services from 'user' namespace: " + e.getMessage());
-        }
+        userServiceDropdown.setOnMouseClicked(event -> {
+            if (userServiceDropdown.getItems().isEmpty()) {
+                try {
+                    ApiClient client = Config.defaultClient();
+                    kubeClientAPI = new KubernetesClientAPI(client);
+                    List<String> services = kubeClientAPI.getServicesInNamespace("user");
+
+                    userServiceDropdown.setItems(FXCollections.observableArrayList(services));
+
+                    if (services.isEmpty()) {
+                        logger.warning("No services found in 'user' namespace.");
+                        uiLogger.warning("No services found in 'user' namespace.");
+                    }
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to load services from namespace 'user'", e);
+                    uiLogger.warning("Could not fetch services from 'user' namespace: " + e.getMessage());
+                }
+            }
+        });
 
         userServiceDropdown.setOnAction(event -> {
             selectedUserService = userServiceDropdown.getValue();
-            logger.info("Selected user service: " + selectedUserService);
+            logger.info("User changed selection to: " + selectedUserService);
         });
     }
 
@@ -136,7 +157,8 @@ public class PatternController {
     private void initializeAsyncTable() {
         if (asyncTableInitialized) return;
 
-        serviceNameColumn.setCellValueFactory(cellData -> cellData.getValue().serviceNameProperty());
+        backendNameColumn.setCellValueFactory(cellData -> cellData.getValue().serviceNameProperty());
+        backendPortColumn.setCellValueFactory(cellData -> cellData.getValue().servicePortProperty());
         endpointPathColumn.setCellValueFactory(cellData -> cellData.getValue().endpointPathProperty());
         asyncTable.setItems(asyncServiceList);
 
@@ -162,8 +184,11 @@ public class PatternController {
     private void initializecacheAsideTable() {
         if (cacheAsideTableInitialized) return;
 
-        backendService.setCellValueFactory(cellData -> cellData.getValue().backendServiceProperty());
-        cachedEndpoints.setCellValueFactory(cellData -> cellData.getValue().cachedEndpointsProperty());
+        ca_backendService.setCellValueFactory(cellData -> cellData.getValue().backendServiceProperty());
+        ca_backendPort.setCellValueFactory(cellData -> cellData.getValue().backendPortProperty());
+        ca_cachedEndpoints.setCellValueFactory(cellData -> cellData.getValue().cachedEndpointsProperty());
+        ca_cacheTTL.setCellValueFactory(cellData -> cellData.getValue().cacheTTLProperty());
+        ca_maxConnections.setCellValueFactory(cellData -> cellData.getValue().maxConnectionsProperty());
         cacheAsideTable.setItems(cacheAsideServiceList);
 
         cacheAsideTableInitialized = true;
@@ -238,7 +263,7 @@ public class PatternController {
                 boolean minikubeStarted = KubernetesUtil.startMinikube();
                 if (minikubeStarted) {
                     KubernetesUtil.deleteUserNamespace();
-                    KubernetesUtil.deletePatternNamespace();
+                    KubernetesUtil.deletePattern();
                     logger.info("User application services deleted successfully...");
                     uiLogger.info("User application services deleted successfully...");
                     javafx.application.Platform.runLater(() -> statusLabel.setText("user application deleted successfully."));
@@ -265,7 +290,7 @@ public class PatternController {
             try {
                 boolean minikubeStarted = KubernetesUtil.startMinikube();
                 if (minikubeStarted) {
-                    KubernetesUtil.deletePatternNamespace();
+                    KubernetesUtil.deletePattern();
                     uiLogger.info("Pattern deleted successfully.");
                     javafx.application.Platform.runLater(() -> statusLabel.setText("Pattern deleted successfully."));
                 } else {
@@ -328,7 +353,7 @@ public class PatternController {
 
         asyncRequestReplyFields.setVisible(false);
         gatewayOffloadingFields.setVisible(false);
-        gatewayAggregationFields.setVisible(false);
+        //gatewayAggregationFields.setVisible(false);
         requestCollapsingFields.setVisible(false);
         cacheAsideFields.setVisible(false);
         circuitBreakerFields.setVisible(false);
@@ -340,9 +365,6 @@ public class PatternController {
                 break;
             case "Gateway Offloading":
                 gatewayOffloadingFields.setVisible(true);
-                break;
-            case "Gateway Aggregation":
-                gatewayAggregationFields.setVisible(true);
                 break;
             case "Request Collapsing":
                 requestCollapsingFields.setVisible(true);
@@ -369,7 +391,6 @@ public class PatternController {
 
         try {
             PatternGenerator generator = PatternGeneratorFactory.getGenerator(selectedPattern);
-            String yamlFilePath = generator.getYamlFilePath();
 
             KubernetesUtil.createNamespace("pattern");
 
@@ -383,12 +404,13 @@ public class PatternController {
                     List<Map<String, String>> configList = asyncServiceList.stream()
                             .map(config -> {
                                 Map<String, String> map = new HashMap<>();
-                                map.put("SERVICE_NAME", config.getServiceName());
+                                map.put("BACKEND_NAME", config.getServiceName());
+                                map.put("BACKEND_PORT", config.getServicePort());
                                 map.put("ENDPOINT_PATH", config.getEndpointPath());
                                 return map;
                             }).toList();
 
-                    asyncGen.generatePattern(yamlFilePath, configList);
+                    asyncGen.generatePattern(configList);
                     asyncGen.deployPattern();
                 } else {
                     logger.severe("Pattern generator is not of expected type: AsyncRequestReplyGenerator");
@@ -414,11 +436,10 @@ public class PatternController {
                                     "PER_TRY_TIMEOUT", config.getPerTryTimeout()
                             )).toList();
 
-                    cbGen.generatePattern(generator.getYamlFilePath(), configList);
+                    cbGen.generatePattern(configList);
                     cbGen.deployPattern();
                 }
             }
-
             else if ("Cache Aside".equals(selectedPattern)) {
                 if (generator instanceof CacheAsideGenerator caGen) {
                     if (cacheAsideServiceList.isEmpty()) {
@@ -429,21 +450,28 @@ public class PatternController {
                     List<Map<String, String>> configList = cacheAsideServiceList.stream()
                             .map(config -> Map.of(
                                     "BACKEND_SERVICE", config.getBackendService(),
-                                    "CACHED_ENDPOINTS", config.getCachedEndpoints()
-                            )).toList();
+                                    "BACKEND_PORT", config.getBackendPort(),
+                                    "CACHED_ENDPOINTS", config.getCachedEndpoints(),
+                                    "CACHE_TTL", config.getCacheTTL(),
+                                    "MAX_CONNECTIONS", config.getMaxConnections()
+                            ))
+                            .collect(Collectors.toList());
 
-                    caGen.generatePattern(generator.getYamlFilePath(), configList);
+                    if (!configList.isEmpty()) {
+                        Map<String, String> enriched = new HashMap<>(configList.get(0));
+                        enriched.put("REDIS_REPLICAS", ca_redisReplicas.getText());
+                        enriched.put("REDIS_NODES", ca_redisNodes.getText());
+                        configList.set(0, enriched);
+                    }
+
+                    caGen.generatePattern(configList);
                     caGen.deployPattern();
-                } else {
-                    logger.severe("Pattern generator is not of expected type: CacheAsideGenerator");
-                    return;
                 }
             }
-
             else {
                 Map<String, String> parameters = getStringStringMap(selectedPattern);
 
-                generator.generatePattern(yamlFilePath, parameters);
+                generator.generatePattern(parameters);
                 generator.deployPattern();
             }
 
@@ -466,16 +494,19 @@ public class PatternController {
             parameters.put("SERVICE_HOST", go_servicePort.getText());
             parameters.put("SERVICE_ENDPOINT", go_serviceEndpoint.getText());
             parameters.put("SERVICE_NAME", go_serviceName.getText());
-        } else if ("Gateway Aggregation".equals(selectedPattern)) {
-            parameters.put("SERVICE_1_NAME", ga_serviceName.getText());
-            parameters.put("SERVICE_1_ENDPOINT", ga_serviceEndpoint.getText());
-            parameters.put("SERVICE_1_HOST", ga_serviceHost.getText());
-            parameters.put("SERVICE_1_PORT", ga_servicePort.getText());
         } else if ("Request Collapsing".equals(selectedPattern)) {
-            parameters.put("BACKEND_SERVICE", rc_backendService.getText());
-        } else if ("Cache Aside".equals(selectedPattern)) {
-            parameters.put("CACHED_ENDPOINTS", cachedEndpoints.getText());
-            parameters.put("BACKEND_SERVICE", backendService.getText());
+            parameters.put("SERVICE_NAME", rc_backendService.getText());  // Needed by generator
+            parameters.put("SERVICE_PORT", rc_backendPort.getText());
+            parameters.put("ENDPOINT_PATH", rc_endpointPath.getText());
+            parameters.put("COLLAPSER_PATH", rc_endpointPath.getText());
+            parameters.put("QUERY_PARAM", rc_queryParam.getText());
+            parameters.put("ID_FIELD", rc_idField.getText());
+            parameters.put("DB_HOST", rc_dbHost.getText());
+            parameters.put("DB_PORT", rc_dbPort.getText());
+            parameters.put("DB_NAME", rc_dbName.getText());
+            parameters.put("DB_USER", rc_dbUser.getText());
+            parameters.put("DB_PASS", rc_dbPass.getText());
+            parameters.put("BATCH_QUERY", rc_batchQuery.getText());
         }
         return parameters;
     }

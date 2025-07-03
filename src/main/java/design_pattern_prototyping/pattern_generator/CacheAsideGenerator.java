@@ -1,8 +1,6 @@
 package design_pattern_prototyping.pattern_generator;
 
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.DumperOptions;
 
 import java.io.*;
 import java.nio.file.*;
@@ -13,99 +11,119 @@ import java.util.logging.Logger;
 public class CacheAsideGenerator implements PatternGenerator {
 
     private static final Logger logger = Logger.getLogger(CacheAsideGenerator.class.getName());
-    private static final String CONFIG_TEMPLATE = "src/main/resources/Patterns/CacheAside/cache-config-base.yml";
-    private static final String PROXY_TEMPLATE = "src/main/resources/Patterns/CacheAside/nginx-proxy-deployment.yml";
-    private static final String REDIS_DEPLOYMENT = "src/main/resources/Patterns/CacheAside/redis-cache-deployment.yml";
+    private static final String PROXY_SERVICE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-service.yml";
+    private static final String PROXY_TEMPLATE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-deployment.yml";
     private static final String NAMESPACE = "pattern";
+    private String redisReplicaCount = "2";
+    private String redisClusterNodes = "6";
 
-    private final List<String> tempProxyPaths = new ArrayList<>();
-    private String tempConfigMapPath;
+    private final List<String> tempDeploymentPaths = new ArrayList<>();
+    private final List<String> tempServicePaths = new ArrayList<>();
 
     @Override
-    public String getYamlFilePath() {
-        return CONFIG_TEMPLATE;
+    public void generatePattern(Map<String, String> parameters) {
+        generatePattern(List.of(parameters));
     }
 
     @Override
-    public void generatePattern(String filePath, List<Map<String, String>> configs) {
-        try {
-            // Build combined ConfigMap
-            Map<String, Object> configMap = new LinkedHashMap<>();
-            configMap.put("apiVersion", "v1");
-            configMap.put("kind", "ConfigMap");
-            configMap.put("metadata", Map.of("name", "cache-config", "namespace", NAMESPACE));
+    public void generatePattern(List<Map<String, String>> configs) {
+        // Clear old files
+        tempDeploymentPaths.clear();
+        tempServicePaths.clear();
 
-            Map<String, String> data = new LinkedHashMap<>();
+        try {
+            buildDockerImage("src/main/resources/Patterns/CacheAside/httpcache/Dockerfile.proxy", "cache-proxy-async:1.0");
+            loadImageMinikube("cache-proxy-async:1.0");
+
+            if (!configs.isEmpty()) {
+                Map<String, String> firstConfig = configs.get(0);
+                redisReplicaCount = firstConfig.getOrDefault("REDIS_REPLICAS", redisReplicaCount);
+                redisClusterNodes = firstConfig.getOrDefault("REDIS_NODES", redisClusterNodes);
+            }
+
+
+            // Rename each backend service
+            for (Map<String, String> entry : configs) {
+                String backendName = entry.get("BACKEND_NAME");
+                renameBackendService(backendName);
+            }
 
             for (Map<String, String> entry : configs) {
                 String service = entry.get("BACKEND_SERVICE");
+                String port = entry.get("BACKEND_PORT");
                 String endpoints = entry.get("CACHED_ENDPOINTS");
+                String maxConnections = entry.get("MAX_CONNECTIONS");
+                String ttl = entry.get("CACHE_TTL");
 
-                data.put(service + "_CACHED_ENDPOINTS", endpoints);
-                data.put(service + "_BACKEND_SERVICE", service);
-
-                // Generate proxy deployment YAML for this service
+                // Generate proxy deployment YAML for each backend
                 String proxyYaml = Files.readString(Paths.get(PROXY_TEMPLATE))
-                        .replace("${BACKEND_SERVICE}", service);
-                Path tempProxyFile = Files.createTempFile("proxy-" + service + "-", ".yml");
+                        .replace("${BACKEND_SERVICE}", service)
+                        .replace("${BACKEND_PORT}", port)
+                        .replace("${CACHE_TTL}", ttl)
+                        .replace("${MAX_CONNECTIONS}", maxConnections)
+                        .replace("${CACHED_ENDPOINTS}", endpoints);
+
+                Path tempProxyFile = Files.createTempFile("proxy-deployment-" + service + "-", ".yml");
                 Files.writeString(tempProxyFile, proxyYaml);
-                tempProxyPaths.add(tempProxyFile.toString());
+                tempDeploymentPaths.add(tempProxyFile.toString());
+
+                // Generate Proxy Service YAML for each backend
+                String proxyServiceYaml = Files.readString(Paths.get(PROXY_SERVICE))
+                        .replace("${SERVICE_NAME}", service)
+                        .replace("${SERVICE_PORT}", port);
+
+                Path tempProxyService = Files.createTempFile("proxy-service-" + service, ".yml");
+                Files.writeString(tempProxyService, proxyServiceYaml);
+                tempServicePaths.add(tempProxyService.toString());
             }
 
-            configMap.put("data", data);
-
-            // Dump ConfigMap YAML to temp file
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
-
-            Path tempConfigFile = Files.createTempFile("cache-config-", ".yml");
-            try (Writer writer = Files.newBufferedWriter(tempConfigFile)) {
-                yaml.dump(configMap, writer);
-            }
-            tempConfigMapPath = tempConfigFile.toString();
-
-            logger.info("Generated combined cache-config at: " + tempConfigMapPath);
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Failed to generate Cache-Aside pattern config", e);
         }
     }
 
     @Override
-    public void generatePattern(String filePath, Map<String, String> parameters) {
-        generatePattern(filePath, List.of(parameters));
-    }
-
-    @Override
     public void deployPattern() {
         try {
-            if (tempConfigMapPath == null) {
-                throw new IOException("Temp config path is null. Pattern not generated.");
-            }
 
-            // Apply ConfigMap
-            KubernetesUtil.applyYaml(tempConfigMapPath, NAMESPACE);
-
-            // Deploy Redis once
-            KubernetesUtil.applyYaml(REDIS_DEPLOYMENT, NAMESPACE);
+            // Deploy Redis
+            KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
+            KubernetesUtil.executeCommand("helm", "repo", "update");
+            KubernetesUtil.executeCommand("helm", "upgrade", "-install", "redis-cache", "bitnami/redis-cluster",
+                    "-n", "pattern",
+                    "--create-namespace",
+                    "--set", "usePassword=false",
+                    "--set", "replica.replicaCount=2",
+                    "--set", "cluster.nodes=6");
 
             // Deploy each proxy service
-            for (String proxyPath : tempProxyPaths) {
+            for (String proxyPath : tempServicePaths) {
+                KubernetesUtil.applyYaml(proxyPath, NAMESPACE);
+            }
+
+            // Deploy each proxy deployment
+            for (String proxyPath : tempDeploymentPaths) {
                 KubernetesUtil.applyYaml(proxyPath, NAMESPACE);
             }
 
             logger.info("Cache-Aside Pattern deployed successfully.");
 
             // Cleanup temp files
-            Files.deleteIfExists(Paths.get(tempConfigMapPath));
-            for (String proxyPath : tempProxyPaths) {
+            for (String proxyPath : tempServicePaths) {
+                Files.deleteIfExists(Paths.get(proxyPath));
+            }
+
+            for (String proxyPath : tempDeploymentPaths) {
                 Files.deleteIfExists(Paths.get(proxyPath));
             }
 
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Deployment failed for Cache-Aside pattern", e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
+
     private void buildDockerImage(String dockerfilePath, String imageName) {
         try {
             Path dockerfile = Paths.get(dockerfilePath);
@@ -141,5 +159,30 @@ public class CacheAsideGenerator implements PatternGenerator {
         } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error loading image into Minikube: " + imageName, e);
         }
+    }
+
+    private void renameBackendService(String serviceName) throws IOException, InterruptedException {
+        Path svcPath = Paths.get("svc-" + serviceName + ".yaml");
+
+        // Get original YAML
+        KubernetesUtil.getServiceYamlToFile(serviceName, "user", svcPath);
+
+        // Delete the original service
+        KubernetesUtil.executeCommand("kubectl", "delete", "svc", serviceName, "-n", "user");
+
+        // Modify the service name
+        List<String> lines = Files.readAllLines(svcPath);
+        List<String> modifiedLines = new ArrayList<>();
+        for (String line : lines) {
+            if (line.trim().startsWith("name:")) {
+                modifiedLines.add("  name: " + serviceName + "-backend");
+            } else {
+                modifiedLines.add(line);
+            }
+        }
+        Files.write(svcPath, modifiedLines);
+
+        // Apply updated YAML
+        KubernetesUtil.executeCommand("kubectl", "apply", "-f", svcPath.toString());
     }
 }
