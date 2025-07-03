@@ -63,7 +63,7 @@ public class QueryMetrics {
             metrics.put("RequestRate", queryAndExtract(
                     String.format("sum(rate(span_metrics_calls_total{service_name=\"%s\",span_kind=\"SPAN_KIND_SERVER\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))", frontendServiceName)));
             metrics.put("TotalRequests", queryAndExtract(
-                    String.format("sum(rate(span_metrics_calls_total{service_name=\"%s\",span_kind=\"SPAN_KIND_SERVER\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))", frontendServiceName)));
+                    String.format("sum(increase(span_metrics_calls_total{service_name=\"%s\",span_kind=\"SPAN_KIND_SERVER\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))", frontendServiceName)));
             metrics.put("TotalSpans", queryAndExtract(
                     "sum(increase(span_metrics_calls_total{namespace=~\"user|pattern\",status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
             //metrics.put("TotalRequestError", queryAndExtract(
