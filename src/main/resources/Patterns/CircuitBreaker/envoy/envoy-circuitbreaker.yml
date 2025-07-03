@@ -27,7 +27,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: envoy-config
+            name:  envoy-circuitbreaker-config #envoy-config
 ---
 apiVersion: v1
 kind: Service
