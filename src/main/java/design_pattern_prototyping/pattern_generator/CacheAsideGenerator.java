@@ -77,7 +77,7 @@ public class CacheAsideGenerator implements PatternGenerator {
     }
 
     @Override
-    public void deployPattern() {
+    public void deployPattern() throws InterruptedException {
         try {
             if (tempConfigMapPath == null) {
                 throw new IOException("Temp config path is null. Pattern not generated.");

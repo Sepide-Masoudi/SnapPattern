@@ -189,7 +189,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
     /* ---------------------------------------------------------------------- */
 
     @Override
-    public void deployPattern() {
+    public void deployPattern() throws InterruptedException {
         try {
             if (tempConfigPath == null || tempConfigPath.isBlank()) {
                 throw new IOException("Temporary ConfigMap file path does not exist.");

@@ -10,6 +10,6 @@ public interface PatternGenerator {
         throw new UnsupportedOperationException("Not implemented for this pattern.");
     }
 
-    void deployPattern();
+    void deployPattern() throws InterruptedException;
     String getYamlFilePath();
 }

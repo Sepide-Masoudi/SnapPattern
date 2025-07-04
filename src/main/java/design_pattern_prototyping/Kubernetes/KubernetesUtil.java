@@ -279,7 +279,36 @@ public class KubernetesUtil {
         }
     }
 
-    public static void applyYaml(String filePath, String namespace) {
+    public static void applyYaml(String file, String namespace) throws IOException, InterruptedException {
+        logger.info("Applying YAML: " + file + " -> ns=" + namespace);
+        ExecResult res = exec("kubectl", "apply", "-f", file, "-n", namespace);
+        if (res.exitCode != 0) {
+            throw new IOException("'kubectl apply' failed: res.stderr " );
+        }
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* 3. Convenience wrappers                                                */
+    /* ---------------------------------------------------------------------- */
+    public static ExecResult exec(String... cmd) throws IOException, InterruptedException {
+        logger.info(" " + String.join(" ", cmd));
+        Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
+        var out = new String(p.getInputStream().readAllBytes());
+        int exit = p.waitFor();
+        if (exit != 0) logger.warning("Command failed (" + exit + "): " + out);
+        return new ExecResult(exit, out);
+    }
+
+    public static String execAndCapture(String... cmd) throws IOException, InterruptedException {
+        return exec(cmd).stdout;
+    }
+
+    public record ExecResult(int exitCode, String stdout) {
+        public String stderr() {
+            return stdout;
+        }    }
+
+   /* public static void applyYaml(String filePath, String namespace) {
         try {
             logger.info("Applying configuration from file: " + filePath);
 
@@ -309,7 +338,7 @@ public class KubernetesUtil {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
         }
-    }
+    }*/
 
     public static void executeCommand(String... command) throws IOException, InterruptedException {
         List<String> commandList = new ArrayList<>(Arrays.asList(command));
@@ -351,7 +380,7 @@ public class KubernetesUtil {
     }
 
 
-    public static void applyYaml(String filePath) {
+    /*public static void applyYaml(String filePath) {
         try {
             logger.info("Applying configuration from file: " + filePath);
 
@@ -381,5 +410,5 @@ public class KubernetesUtil {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
         }
-    }
+    }*/
 }
