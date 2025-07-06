@@ -5,6 +5,8 @@ import design_pattern_prototyping.util.UILogger;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -411,4 +413,24 @@ public class KubernetesUtil {
             logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
         }
     }*/
+    public static void getServiceYamlToFile(String serviceName, String namespace, Path targetFile) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>(List.of("kubectl", "get", "svc", serviceName, "-n", namespace, "-o", "yaml"));
+        ProcessBuilder builder = new ProcessBuilder(command);
+        Process process = builder.start();
+
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Failed to get service YAML for " + serviceName + ", exit code: " + exitCode);
+        }
+
+        Files.writeString(targetFile, output.toString());
+    }
 }
