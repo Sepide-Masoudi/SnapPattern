@@ -288,6 +288,13 @@ public class KubernetesUtil {
             throw new IOException("'kubectl apply' failed: res.stderr " );
         }
     }
+    public static void applyYaml(String file) throws IOException, InterruptedException {
+        logger.info("Applying YAML: " + file);
+        ExecResult res = exec("kubectl", "apply", "-f", file);
+        if (res.exitCode != 0) {
+            throw new IOException("'kubectl apply' failed: res.stderr " );
+        }
+    }
 
     /* ---------------------------------------------------------------------- */
     /* 3. Convenience wrappers                                                */
