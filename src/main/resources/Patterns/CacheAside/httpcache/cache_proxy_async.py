@@ -13,9 +13,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cache-proxy")
 
 # Config
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis.user.svc.cluster.local:6379")
+BACKEND_SERVICE = os.getenv("BACKEND_SERVICE")
+BACKEND_PORT = os.getenv("BACKEND_PORT")
+BACKEND_URL = BACKEND_SERVICE + "-backend.user.svc.cluster.local:" + BACKEND_PORT
 CACHE_TTL = int(os.getenv("CACHE_TTL", "300"))
+MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "5000"))
 CACHED_ENDPOINTS = [e.strip() for e in os.getenv("CACHED_ENDPOINTS", "/rest/products").split(",") if e.strip()]
 
 # Global clients
@@ -28,7 +31,7 @@ async def startup():
 
     redis_client = redis.RedisCluster.from_url(
         REDIS_URL,
-        max_connections=5000,
+        max_connections=MAX_CONNECTIONS,
         decode_responses=True
     )
 
@@ -46,7 +49,7 @@ def should_cache(path: str) -> bool:
 
 def make_cache_key(path: str) -> str:
     hashed = hashlib.sha256(path.encode()).hexdigest()
-    return f"teastore-cache:{hashed}"
+    return f"Backend-cache:{hashed}"
 
 @app.get("/healthz")
 async def health():

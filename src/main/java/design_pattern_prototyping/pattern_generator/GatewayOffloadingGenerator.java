@@ -5,80 +5,110 @@ import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GatewayOffloadingGenerator implements PatternGenerator {
+
     private static final Logger logger = Logger.getLogger(GatewayOffloadingGenerator.class.getName());
+
+    // Path to your static template in the repo
+    private static final String TEMPLATE_PATH =
+            "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
+
+    // Namespaces
+    private static final String INGRESS_NS = "pattern";  // where ingress‑nginx lives
+    private static final String USER_NS     = "user";    // where micro‑services live
+
+    // NodePort you chose for Ingress
+    private static final String NODE_PORT = "32342";
+
+    // Holds the path to the temp YAML
     private String tempConfigPath;
-    private static final String NAMESPACE = "pattern";
+
+    // -------------------------------------------------------------------------
+    // PatternGenerator interface
+    // -------------------------------------------------------------------------
 
     @Override
     public String getYamlFilePath() {
-        return "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
+        return TEMPLATE_PATH;
     }
 
     @Override
-    public void generatePattern(String filePath, Map<String, String> parameters) {
+    public void generatePattern(String ignored, Map<String, String> params) {
         try {
-            logger.info("Loading template: " + filePath);
-            Path templatePath = Paths.get(filePath);
-            String yamlContent = new String(Files.readAllBytes(templatePath));
+            logger.info(() -> "Loading template: " + TEMPLATE_PATH);
+            Path template = Paths.get(TEMPLATE_PATH);
 
-            // Replace placeholders with user-defined values
-            //yamlContent = yamlContent.replace("${SERVICE_HOST}", parameters.getOrDefault("SERVICE_HOST", "default-host"));
-            yamlContent = yamlContent.replace("${SERVICE_ENDPOINT}", parameters.getOrDefault("SERVICE_ENDPOINT", "/default-endpoint"));
-            yamlContent = yamlContent.replace("${SERVICE_NAME}", parameters.getOrDefault("SERVICE_NAME", "default-service"));
-            yamlContent = yamlContent.replace("${SERVICE_PORT}", parameters.getOrDefault("SERVICE_PORT", "8080"));
+            String yaml = Files.readString(template);
 
-            // Create temp file to store the modified YAML
-            Path tempFile = Files.createTempFile("gateway-offloading-config-", ".yml");
-            Files.write(tempFile, yamlContent.getBytes());
-            tempConfigPath = tempFile.toString();
+            // Replace placeholders
+            yaml = yaml
+                    .replace("${SERVICE_ENDPOINT}", params.getOrDefault("SERVICE_ENDPOINT", "/"))
+                    .replace("${SERVICE_NAME}",     params.getOrDefault("SERVICE_NAME", "default-service"))
+                    .replace("${SERVICE_PORT}",     params.getOrDefault("SERVICE_PORT", "8080"))
+                    .replace("${USER_NAMESPACE}",   USER_NS);
 
-            logger.info("Temporary Gateway Offloading pattern config generated at: " + tempFile);
+            // Deterministic temp file path under /tmp
+            Path tmp = Files.createTempFile(Paths.get("/tmp"), "gateway-offloading-config-", ".yml");
+            Files.writeString(tmp, yaml);
+            tempConfigPath = tmp.toString();
 
-            // Store the temporary file path for use in deployment
-            parameters.put("TEMP_CONFIG_PATH", tempFile.toString());
+            logger.info("Generated YAML at: " + tempConfigPath);
+            System.out.println("YAML path: " + tempConfigPath);
+            Thread.sleep(5_000);
 
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error generating Gateway Offloading pattern configuration.", e);
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Error generating Gateway Offloading YAML", e);
+            tempConfigPath = null;
         }
     }
 
     @Override
     public void deployPattern() {
+        if (tempConfigPath == null || !Files.exists(Paths.get(tempConfigPath))) {
+            logger.severe("YAML file missing – aborting deployment.");
+            return;
+        }
+
         try {
-            if (tempConfigPath == null || tempConfigPath.isEmpty()) {
-                throw new IOException("Temporary ConfigMap file path does not exist.");
-            }
+            KubernetesUtil.createNamespace(INGRESS_NS);
+            waitUntilNamespaceActive(INGRESS_NS);
 
-            // Step 1: Add Helm repositories and update
-            executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
-            executeCommand("helm", "repo", "update");
+            KubernetesUtil.exec("helm", "repo", "add", "ingress-nginx",
+                    "https://kubernetes.github.io/ingress-nginx");
+            KubernetesUtil.exec("helm", "repo", "update");
 
-            // Step 3: Deploy NGINX Ingress Controller
-            executeCommand("helm", "install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",
+            KubernetesUtil.exec("helm", "upgrade", "--install", "nginx-ingress",
+                    "ingress-nginx/ingress-nginx",
+                    "--namespace", INGRESS_NS,
+                    "--set", "controller.service.type=NodePort",
+                    "--set", "controller.service.nodePorts.http=" + NODE_PORT,
                     "--set", "controller.admissionWebhooks.enabled=false");
 
-            // Step 4: Apply the generated Gateway Offloading YAML
-            KubernetesUtil.applyYaml(tempConfigPath, NAMESPACE);
+            KubernetesUtil.applyYaml(tempConfigPath, USER_NS);
 
-            logger.info("Gateway Offloading Pattern setup completed successfully.");
-
-            // Delete temporary file
-            Files.deleteIfExists(Paths.get(tempConfigPath));
-            logger.info("Temporary file deleted: " + tempConfigPath);
+            logger.info("Gateway Offloading pattern deployed!");
 
         } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error executing build steps for Gateway Offloading Pattern.", e);
+            logger.log(Level.SEVERE, "Deployment failed", e);
+        } finally {
+            // Comment this out while debugging if you want to keep the file
+            // try { Files.deleteIfExists(Paths.get(tempConfigPath)); } catch (IOException ignored) {}
         }
     }
 
-    private void executeCommand(String... command) throws IOException, InterruptedException {
-        logger.info("Executing command: " + String.join(" ", command));
-        ProcessBuilder processBuilder = new ProcessBuilder(command).inheritIO();
-        Process process = processBuilder.start();
-        process.waitFor();
+    /* Helper: wait until a namespace phase == Active */
+    private void waitUntilNamespaceActive(String ns) throws IOException, InterruptedException {
+        for (int i = 0; i < 30; i++) {
+            String phase = KubernetesUtil.execAndCapture(
+                    "kubectl", "get", "ns", ns, "-o", "jsonpath={.status.phase}").trim();
+            if ("Active".equalsIgnoreCase(phase)) return;
+            logger.info(() -> "Namespace '" + ns + "' phase=" + phase + " – waiting …");
+            Thread.sleep(1_000);
+        }
+        throw new IOException("Namespace '" + ns + "' did not become Active in 30 s");
     }
 }

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.io.File;
+import java.util.stream.Collectors;
 
 public class PatternController {
 
@@ -51,6 +52,8 @@ public class PatternController {
     @FXML private  VBox requestCollapsingFields;
     @FXML private  VBox cacheAsideFields;
     @FXML private  VBox circuitBreakerFields;
+    @FXML private TextField ca_redisReplicas;
+    @FXML private TextField ca_redisNodes;
 
     // Asynch Request Reply Pattern
     @FXML private TableView<AsyncPatternConfig> asyncTable;
@@ -404,14 +407,22 @@ public class PatternController {
                     List<Map<String, String>> configList = cacheAsideServiceList.stream()
                             .map(config -> Map.of(
                                     "BACKEND_SERVICE", config.getBackendService(),
-                                    "CACHED_ENDPOINTS", config.getCachedEndpoints()
-                            )).toList();
+                                    "BACKEND_PORT", config.getBackendPort(),
+                                    "CACHED_ENDPOINTS", config.getCachedEndpoints(),
+                                    "CACHE_TTL", config.getCacheTTL(),
+                                    "MAX_CONNECTIONS", config.getMaxConnections()
+                            ))
+                            .collect(Collectors.toList());
 
-                    caGen.generatePattern(generator.getYamlFilePath(), configList);
+                    if (!configList.isEmpty()) {
+                        Map<String, String> enriched = new HashMap<>(configList.get(0));
+                        enriched.put("REDIS_REPLICAS", "3");
+                        enriched.put("REDIS_NODES", "9");
+                        configList.set(0, enriched);
+                    }
+
+                    caGen.generatePattern(null,configList);
                     caGen.deployPattern();
-                } else {
-                    logger.severe("Pattern generator is not of expected type: CacheAsideGenerator");
-                    return;
                 }
             }
 

@@ -3,12 +3,12 @@ kind: Service
 metadata:
   labels:
     app: pattern
-  name: teastore-persistence
-  namespace: user
+  name: ${SERVICE_NAME}
+  namespace: ${NAMESPACE}
 spec:
   selector:
     app: cache-proxy-async
   ports:
     - protocol: TCP
-      port: 8080
+      port: ${SERVICE_PORT}
       targetPort: 80

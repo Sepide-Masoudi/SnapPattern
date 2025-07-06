@@ -46,7 +46,7 @@ public class RequestCollapsingGenerator implements PatternGenerator {
     }
 
     @Override
-    public void deployPattern() {
+    public void deployPattern() throws InterruptedException {
         try {
             if (tempConfigPath == null || tempConfigPath.isEmpty()) {
                 throw new IOException("Temporary ConfigMap file path does not exist.");
