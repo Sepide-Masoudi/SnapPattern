@@ -61,11 +61,11 @@ public class QueryMetrics {
             metrics.put("95PercentileLatency", queryAndExtract(
                     "histogram_quantile(0.95, sum(rate(span_metrics_duration_milliseconds_bucket{namespace=\"user\"}[5m])) by (le))"));
             metrics.put("RequestRate", queryAndExtract(
-                    "sum(rate(span_metrics_calls_total{service_name=\"teastore-webui\"}[5m])) "));
+                    "sum(rate(span_metrics_calls_total{service_name=\"coordinator-service\", namespace=\"user\"}[5m]))"));
             metrics.put("TotalRequests", queryAndExtract(
                     "sum(increase(span_metrics_calls_total{namespace=\"user\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
             metrics.put("TotalSpans", queryAndExtract(
-                    "sum(increase(span_metrics_calls_total{service_name=\"teastore-webui\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
+                    "sum(increase(span_metrics_calls_total{service_name=\"coordinator-service\", namespace=\"user\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))"));
             //metrics.put("TotalRequestError", queryAndExtract(
             //        "sum(increase(span_metrics_calls_total{service_name=\"teastore-webui\", status_code=\"STATUS_CODE_ERROR\"}[10m]))"));
 

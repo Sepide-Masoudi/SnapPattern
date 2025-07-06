@@ -129,14 +129,14 @@ public class WorkloadController {
                 int numUsers, rampUp, durationSec;
                 switch (workloadLevel) {
                     case "High":
-                        numUsers = 500;
-                        rampUp = 120;
-                        durationSec = 3600;
+                        numUsers = 40;
+                        rampUp = 30;
+                        durationSec = 5*60;
                         break;
                     case "Medium":
-                        numUsers = 50;
-                        rampUp = 60;
-                        durationSec = 3600;
+                        numUsers = 20;
+                        rampUp = 30;
+                        durationSec = 5*60;
                         break;
                     case "Low":
                     default:
