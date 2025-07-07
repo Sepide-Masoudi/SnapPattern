@@ -54,12 +54,12 @@ public class QueryMetrics {
             // Span metrics
             metrics.put("MeanLatency", queryAndExtract(
                     """
-                            sum(rate(span_metrics_duration_milliseconds_sum{namespace="user"}[5m]))
+                            sum(rate(span_metrics_duration_milliseconds_sum{namespace="user|pattern"}[5m]))
                             /
-                            sum(rate(span_metrics_duration_milliseconds_count{namespace="user"}[5m]))
+                            sum(rate(span_metrics_duration_milliseconds_count{namespace="user|pattern"}[5m]))
                             """));
             metrics.put("95PercentileLatency", queryAndExtract(
-                    "histogram_quantile(0.95, sum(rate(span_metrics_duration_milliseconds_bucket{namespace=\"user\"}[5m])) by (le))"));
+                    "histogram_quantile(0.95, sum(rate(span_metrics_duration_milliseconds_bucket{namespace=\"user|pattern\"}[5m])) by (le))"));
             metrics.put("RequestRate", queryAndExtract(
                     String.format("sum(rate(span_metrics_calls_total{service_name=\"%s\",span_kind=\"SPAN_KIND_SERVER\", status_code!~\"STATUS_CODE_ERROR\"}[5m]))", frontendServiceName)));
             metrics.put("TotalRequests", queryAndExtract(
