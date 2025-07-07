@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 def generate_plots(df):
-    RESULTS_FOLDER = "results/pattern"
+    RESULTS_FOLDER = "results/differences"
     os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
     metric_columns = df.columns.difference(['Pattern', 'Workload Level', 'Timestamp'])
@@ -12,7 +12,7 @@ def generate_plots(df):
     patterns = [p for p in patterns if p != 'Baseline' and 'Internal' not in p]
 
     workload_order = ['Low', 'Medium', 'High']
-    better_if_higher = ['IPC', 'requestRate_RPS']
+    better_if_higher = ['IPC', 'requestRate_RPS', 'PPW', 'RW']
 
     for pattern in patterns:
         fig, axes = plt.subplots(1, len(workload_order), figsize=(5 * len(workload_order), 6), sharey=True)

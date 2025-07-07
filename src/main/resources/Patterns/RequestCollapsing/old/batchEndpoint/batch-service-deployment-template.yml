@@ -33,6 +33,8 @@ spec:
               value: "${DB_PASS}"     # teapassword
             - name: BATCH_QUERY
               value: "${BATCH_QUERY}" # SELECT id, name, description FROM Product WHERE id IN (%s)
+            - name: QUERY_PARAM
+              value: "${QUERY_PARAM}"
           ports:
             - containerPort: 80
 ---
