@@ -32,7 +32,7 @@ public class CacheAsideGenerator implements PatternGenerator {
         tempServicePaths.clear();
 
         try {
-            buildDockerImage("src/main/resources/Patterns/CacheAside/httpcache/Dockerfile.proxy", "cache-proxy-async:1.0");
+            buildDockerImage("src/main/resources/Patterns/CacheAside/httpcache/Dockerfile", "cache-proxy-async:1.0");
             loadImageMinikube("cache-proxy-async:1.0");
 
             if (!configs.isEmpty()) {

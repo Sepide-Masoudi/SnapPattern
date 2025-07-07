@@ -41,8 +41,8 @@ public class Main extends Application {
     private static void startMetricsService() {
         try {
             // Path to Python executable and Python service file
-            //String pythonPath =  "Python/.venv/bin/python3.12";
-            String pythonPath = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3";
+            String pythonPath =  "Python/env/bin/python3.11";
+            //String pythonPath = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3";
             String flaskAppPath = "Python/Metrics_Service.py";
 
             // Start the metrics service using ProcessBuilder

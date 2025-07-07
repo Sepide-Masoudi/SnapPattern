@@ -4,6 +4,5 @@ pandas
 matplotlib
 numpy
 openpyxl
-traceback
 scipy
 statsmodels
