@@ -109,6 +109,6 @@ def generate_relative_difference_per_pattern(file_path, output_folder):
 
 
 if __name__ == '__main__':
-    input_excel_file = "results/metrics_diff.xlsx"
+    input_excel_file = "results/validation/metrics_diff.xlsx"
     output_folder = "results/differences"
     generate_relative_difference_per_pattern(input_excel_file, output_folder)

@@ -134,7 +134,7 @@
                             <TextField fx:id="rc_backendPort" GridPane.rowIndex="1" GridPane.columnIndex="1" text="8080"/>
 
                             <Label text="Endpoint Path" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="rc_endpointPath" GridPane.rowIndex="2" GridPane.columnIndex="1" text="/tools.descartes.teastore.persistence/product?id="/>
+                            <TextField fx:id="rc_endpointPath" GridPane.rowIndex="2" GridPane.columnIndex="1" text="/tools.descartes.teastore.persistence/product"/>
 
                             <Label text="Query Parameter" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
                             <TextField fx:id="rc_queryParam" GridPane.rowIndex="3" GridPane.columnIndex="1" text="id"/>
@@ -143,7 +143,7 @@
                             <TextField fx:id="rc_idField" GridPane.rowIndex="4" GridPane.columnIndex="1" text="id"/>
 
                             <Label text="Batch Query" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                            <TextField fx:id="rc_batchQuery" GridPane.rowIndex="5" GridPane.columnIndex="1" text="SELECT id, name, description FROM Product WHERE id IN (%s)"/>
+                            <TextField fx:id="rc_batchQuery" GridPane.rowIndex="5" GridPane.columnIndex="1" text="SELECT ID, NAME, DESCRIPTION, LISTPRICEINCENTS, CATEGORY_ID FROM PERSISTENCEPRODUCT WHERE ID IN (%s)"/>
 
                             <!-- Right column: DB connection parameters -->
                             <Label text="DB Host" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
