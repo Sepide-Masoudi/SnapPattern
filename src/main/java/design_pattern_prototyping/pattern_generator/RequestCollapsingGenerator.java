@@ -23,16 +23,10 @@ public class RequestCollapsingGenerator implements PatternGenerator {
     private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
     private static final int ENVOY_PORT = 8081;
 
-    private static final String COLLAPSER_CONFIG_TEMPLATE = "src/main/resources/Patterns/RequestCollapsing/collapser/collapser-config.yml";
     private static final String COLLAPSER_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/RequestCollapsing/collapser/collapser-deployment.yml";
-    private static final String PROXY_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/RequestCollapsing/batchEndpoint/batch-service-deployment-template.yml";
 
     Path tempEnvoyConfig = null;
-    Path tempEnvoyDeployment = null;
-    Path tempEnvoyService = null;
     Path tempCollapserDeployment = null;
-    Path tempCollapserConfig = null;
-    Path tempBatchDeployment = null;
 
     @Override
     public void generatePattern(Map<String, String> parameters) {
@@ -42,9 +36,9 @@ public class RequestCollapsingGenerator implements PatternGenerator {
             String path = parameters.get("ENDPOINT_PATH");
             String deploymentName = "request-collapser";
 
-            // --------- Batch Processor Image Generation ---------
-            buildDockerImage("src/main/resources/Patterns/RequestCollapsing/batchEndpoint/Dockerfile", "batch-proxy-service:local");
-            loadImageMinikube("batch-proxy-service:local");
+            // Batch Processor Image Generation
+            buildDockerImage("src/main/resources/Patterns/RequestCollapsing/collapser/Dockerfile", "request-collapser:1.0");
+            loadImageMinikube("request-collapser:1.0");
 
 
             // Fetch and inject Envoy sidecar
@@ -52,53 +46,31 @@ public class RequestCollapsingGenerator implements PatternGenerator {
             KubernetesUtil.getDeploymentYamlToFile(serviceName, "user", deployPath);
             injectEnvoySidecar(deployPath, "envoy-config-" + serviceName, ENVOY_IMAGE);
 
-            // --------- Envoy ConfigMap Generation ---------
+            // Envoy ConfigMap Generation
             tempEnvoyConfig = generateEnvoyConfigMap(serviceName, servicePort, path, deploymentName);
             logger.info("Temporary Envoy ConfigMap YAML generated at: " + tempEnvoyConfig);
 
             // Patch the service targetPort to envoy port ENVOY_PORT
             patchServicePortToEnvoy(serviceName, ENVOY_PORT);
 
-            // --------- Collapser Deployment Generation ---------
+            // Collapser Deployment Generation
             logger.info("Loading deployment template: " + COLLAPSER_DEPLOYMENT_TEMPLATE);
             Path deploymentPath = Paths.get(COLLAPSER_DEPLOYMENT_TEMPLATE);
             String deploymentYaml = new String(Files.readAllBytes(deploymentPath));
 
             deploymentYaml = deploymentYaml
-                    .replace("${QUERY_PARAM}", parameters.get("QUERY_PARAM"))
-                    .replace("${ID_FIELD}", parameters.get("ID_FIELD"));
-
-            tempCollapserDeployment = Files.createTempFile("collapser-deployment-", ".yml");
-            Files.write(tempCollapserDeployment, deploymentYaml.getBytes());
-            logger.info("Temporary collapser deployment YAML generated at: " + tempCollapserDeployment);
-
-            // --------- Collapser ConfigMap Generation ---------
-            logger.info("Loading configmap template: " + COLLAPSER_CONFIG_TEMPLATE);
-            Path configPath = Paths.get(COLLAPSER_CONFIG_TEMPLATE);
-            String configYaml = new String(Files.readAllBytes(configPath));
-
-            configYaml = configYaml.replace("${COLLAPSER_PATH}", parameters.get("COLLAPSER_PATH"));
-
-            tempCollapserConfig = Files.createTempFile("collapser-configmap-", ".yml");
-            Files.write(tempCollapserConfig, configYaml.getBytes());
-            logger.info("Temporary collapser configmap YAML generated at: " + tempCollapserConfig);
-
-            // --------- Batch Service Deployment + Service Generation ---------
-            logger.info("Loading deployment template: " + COLLAPSER_DEPLOYMENT_TEMPLATE);
-            Path proxyDeploymentPath = Paths.get(PROXY_DEPLOYMENT_TEMPLATE);
-            String batchTemplate = new String(Files.readAllBytes(proxyDeploymentPath));
-
-            batchTemplate = batchTemplate
+                    .replace("${ENDPOINT_PATH}", parameters.get("ENDPOINT_PATH"))
                     .replace("${DB_HOST}", parameters.get("DB_HOST"))
                     .replace("${DB_PORT}", parameters.get("DB_PORT"))
                     .replace("${DB_NAME}", parameters.get("DB_NAME"))
                     .replace("${DB_USER}", parameters.get("DB_USER"))
                     .replace("${DB_PASS}", parameters.get("DB_PASS"))
+                    .replace("${QUERY_PARAM}", parameters.get("QUERY_PARAM"))
                     .replace("${BATCH_QUERY}", parameters.get("BATCH_QUERY"));
 
-            tempBatchDeployment = Files.createTempFile("batch-service-deployment-", ".yml");
-            Files.writeString(tempBatchDeployment, batchTemplate);
-            logger.info("Temporary batch service deployment YAML generated at: " + tempBatchDeployment);
+            tempCollapserDeployment = Files.createTempFile("collapser-deployment-", ".yml");
+            Files.write(tempCollapserDeployment, deploymentYaml.getBytes());
+            logger.info("Temporary collapser deployment YAML generated at: " + tempCollapserDeployment);
 
 
         } catch (IOException e) {
@@ -113,19 +85,11 @@ public class RequestCollapsingGenerator implements PatternGenerator {
         try {
             // Apply YAMLs using their string paths
             KubernetesUtil.applyYaml(tempEnvoyConfig.toString());
-            KubernetesUtil.applyYaml(tempEnvoyService.toString());
-            KubernetesUtil.applyYaml(tempEnvoyDeployment.toString());
-            KubernetesUtil.applyYaml(tempCollapserConfig.toString(), NAMESPACE);
             KubernetesUtil.applyYaml(tempCollapserDeployment.toString(), NAMESPACE);
-            KubernetesUtil.applyYaml(tempBatchDeployment.toString(), NAMESPACE);
 
             // Cleanup temp files
             Files.deleteIfExists(tempEnvoyConfig);
-            Files.deleteIfExists(tempEnvoyService);
-            Files.deleteIfExists(tempEnvoyDeployment);
-            Files.deleteIfExists(tempCollapserConfig);
             Files.deleteIfExists(tempCollapserDeployment);
-            Files.deleteIfExists(tempBatchDeployment);
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Pattern deployment failed", e);
@@ -178,8 +142,8 @@ public class RequestCollapsingGenerator implements PatternGenerator {
         List<Map<String, Object>> routes = new ArrayList<>();
 
         // Collapser cluster
-        String collapserClusterName = deploymentName + collapserPath.replace("/", "-");
-        String collapserService = deploymentName + ".pattern.svc.cluster.local";
+        String collapserClusterName = deploymentName + "-" + backendName;
+        String collapserService = deploymentName + "." + NAMESPACE + ".svc.cluster.local";
 
         Map<String, Object> collapserCluster = Map.of(
                 "name", collapserClusterName,
@@ -204,14 +168,25 @@ public class RequestCollapsingGenerator implements PatternGenerator {
         );
 
         Map<String, Object> collapserRoute = Map.of(
-                "match", Map.of("prefix", collapserPath),
+                "match", Map.of(
+                        "prefix", "/tools.descartes.teastore.persistence/rest/products/",
+                        "headers", List.of(
+                                Map.of(
+                                        "name", ":path",
+                                        "safe_regex_match", Map.of(
+                                                "google_re2", Map.of(),  // required empty map
+                                                "regex", "^/tools\\.descartes\\.teastore\\.persistence/rest/products/[0-9]+$"
+                                        )
+                                )
+                        )
+                ),
                 "route", Map.of("cluster", collapserClusterName)
         );
 
         clusters.add(collapserCluster);
         routes.add(collapserRoute);
 
-
+        // Default Cluster
         Map<String, Object> backendCluster = Map.of(
                 "name", backendName,
                 "connect_timeout", "1s",
@@ -242,7 +217,38 @@ public class RequestCollapsingGenerator implements PatternGenerator {
         clusters.add(backendCluster);
         routes.add(defaultRoute);
 
-        // Listener
+        // OTEL Collector cluster (required for tracing)
+        Map<String, Object> otelCollectorCluster = Map.of(
+                "name", "opentelemetry_collector",
+                "type", "STRICT_DNS",
+                "lb_policy", "ROUND_ROBIN",
+                "typed_extension_protocol_options", Map.of(
+                        "envoy.extensions.upstreams.http.v3.HttpProtocolOptions", Map.of(
+                                "@type", "type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions",
+                                "explicit_http_config", Map.of(
+                                        "http2_protocol_options", new HashMap<>()
+                                )
+                        )
+                ),
+                "load_assignment", Map.of(
+                        "cluster_name", "opentelemetry_collector",
+                        "endpoints", List.of(Map.of(
+                                "lb_endpoints", List.of(Map.of(
+                                        "endpoint", Map.of(
+                                                "address", Map.of(
+                                                        "socket_address", Map.of(
+                                                                "address", "otel-collector.otel.svc.cluster.local",
+                                                                "port_value", 4317
+                                                        )
+                                                )
+                                        )
+                                ))
+                        ))
+                )
+        );
+        clusters.add(otelCollectorCluster);
+
+        // Listener with Envoy OpenTelemetry tracer
         Map<String, Object> listener = Map.of(
                 "name", "listener_http",
                 "address", Map.of("socket_address", Map.of("address", "0.0.0.0", "port_value", ENVOY_PORT)),
@@ -253,6 +259,19 @@ public class RequestCollapsingGenerator implements PatternGenerator {
                                         "@type", "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager",
                                         "stat_prefix", "ingress_http",
                                         "codec_type", "AUTO",
+                                        "tracing", Map.of(
+                                                "provider", Map.of(
+                                                        "name", "envoy.tracers.opentelemetry",
+                                                        "typed_config", Map.of(
+                                                                "@type", "type.googleapis.com/envoy.config.trace.v3.OpenTelemetryConfig",
+                                                                "grpc_service", Map.of(
+                                                                        "envoy_grpc", Map.of("cluster_name", "opentelemetry_collector"),
+                                                                        "timeout", "0.250s"
+                                                                ),
+                                                                "service_name", "envoy-sidecar"
+                                                        )
+                                                )
+                                        ),
                                         "route_config", Map.of(
                                                 "name", "local_route",
                                                 "virtual_hosts", List.of(Map.of(
@@ -340,7 +359,7 @@ public class RequestCollapsingGenerator implements PatternGenerator {
 
         Map<String, Object> metadata = (Map<String, Object>) originalYaml.get("metadata");
         String name = (String) metadata.get("name");
-        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "default";
+        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "user";
 
         new ProcessBuilder("kubectl", "delete", "deployment", name, "-n", namespace).inheritIO().start().waitFor();
         new ProcessBuilder("kubectl", "apply", "-f", updatedFile.toAbsolutePath().toString()).inheritIO().start().waitFor();
@@ -360,7 +379,7 @@ public class RequestCollapsingGenerator implements PatternGenerator {
                 "service",
                 serviceName,
                 "-n",
-                NAMESPACE,
+                "user",
                 "--type=json",
                 "-p",
                 patchJson

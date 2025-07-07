@@ -2,6 +2,7 @@ package design_pattern_prototyping.pattern_generator;
 
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
@@ -11,24 +12,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 public class AsyncRequestReplyGenerator implements PatternGenerator {
 
     private static final Logger logger = Logger.getLogger(AsyncRequestReplyGenerator.class.getName());
     private final List<String> tempEnvoyConfigs = new ArrayList<>();
-    private final List<String> tempEnvoyDeployments = new ArrayList<>();
-    private final List<String> tempEnvoyServices = new ArrayList<>();
     private final List<String> tempProxyDeployments = new ArrayList<>();
     private final List<String> tempProxyServices = new ArrayList<>();
     private final List<String> tempListenerPaths = new ArrayList<>();
 
     private static final String NAMESPACE = "pattern";
+    private static final int ENVOY_PORT = 8081;
+    private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
 
     private static final String LISTENER_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment-template.yml";
     private static final String PROXY_SERVICE_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service-template.yml";
     private static final String PROXY_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment-template.yml";
-    private static final String ENVOY_SERVICE_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/envoy/envoy-service-template.yml";
-    private static final String ENVOY_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/envoy/envoy-deployment-template.yml";
     private static final String ENVOY_CONFIG_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/envoy/envoy-configmap-template.yml";
     private static final String REDIS_CACHE_YAML = "src/main/resources/Patterns/AsyncRequestReply/proxy/redis-cache-deployment.yml";
 
@@ -40,8 +40,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     @Override
     public void generatePattern(List<Map<String, String>> configs) {
         tempEnvoyConfigs.clear();
-        tempEnvoyDeployments.clear();
-        tempEnvoyServices.clear();
         tempProxyDeployments.clear();
         tempProxyServices.clear();
         tempListenerPaths.clear();
@@ -54,7 +52,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
 
             Map<String, List<String>> serviceToPaths = new HashMap<>();
             Map<String, String> serviceToPort = new HashMap<>();
-            Set<String> renamedServices = new HashSet<>();
 
             for (Map<String, String> entry : configs) {
                 String backendName = entry.get("BACKEND_NAME");
@@ -66,10 +63,13 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
                 serviceToPaths.computeIfAbsent(backendName, k -> new ArrayList<>()).add(path);
                 serviceToPort.put(backendName, backendPort);
 
-                if (!renamedServices.contains(backendName)) {
-                    renameBackendService(backendName);
-                    renamedServices.add(backendName);
-                }
+                // Fetch and inject Envoy sidecar
+                Path deployPath = Paths.get("deploy-" + backendName + ".yaml");
+                KubernetesUtil.getDeploymentYamlToFile(backendName, "user", deployPath);
+                injectEnvoySidecar(deployPath, "envoy-config-" + backendName, ENVOY_IMAGE);
+
+                // Patch the service targetPort to envoy port ENVOY_PORT
+                patchServicePortToEnvoy(backendName, ENVOY_PORT);
             }
 
             for (String backendName : serviceToPaths.keySet()) {
@@ -115,24 +115,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
                 // Envoy ConfigMap generation
                 Path envoyPath = generateEnvoyConfigMap(backendName, backendPort, paths, deploymentName);
                 tempEnvoyConfigs.add(envoyPath.toString());
-
-                // Envoy Service
-                String envoyServiceYaml = Files.readString(Paths.get(ENVOY_SERVICE_TEMPLATE))
-                        .replace("${BACKEND_SERVICE}", backendName)
-                        .replace("${BACKEND_PORT}", backendPort);
-
-                Path tempEnvoyService= Files.createTempFile("envoy-Service-" + backendName, ".yml");
-                Files.writeString(tempEnvoyService, envoyServiceYaml);
-                tempEnvoyServices.add(tempEnvoyService.toString());
-
-                // Envoy Deployment
-                String envoyDeploymentYaml = Files.readString(Paths.get(ENVOY_DEPLOYMENT_TEMPLATE))
-                        .replace("${BACKEND_SERVICE}", backendName)
-                        .replace("${BACKEND_PORT}", backendPort);
-
-                Path tempEnvoyDeployment = Files.createTempFile("envoy-deployment-" + backendName, ".yml");
-                Files.writeString(tempEnvoyDeployment, envoyDeploymentYaml);
-                tempEnvoyDeployments.add(tempEnvoyDeployment.toString());
             }
 
         } catch (Exception e) {
@@ -155,30 +137,20 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
                 KubernetesUtil.applyYaml(yaml);
             }
 
-            for (String yaml : tempEnvoyServices) {
-                KubernetesUtil.applyYaml(yaml);
-            }
-
-            for (String yaml : tempEnvoyDeployments) {
-                KubernetesUtil.applyYaml(yaml);
-            }
-
             for (String yaml : tempProxyDeployments) {
-                KubernetesUtil.applyYaml(yaml);
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
             }
 
             for (String yaml : tempProxyServices) {
-                KubernetesUtil.applyYaml(yaml);
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
             }
 
             for (String yaml : tempListenerPaths) {
-                KubernetesUtil.applyYaml(yaml);
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
             }
 
             // Cleanup
             for (String yaml : tempEnvoyConfigs) Files.deleteIfExists(Paths.get(yaml));
-            for (String yaml : tempEnvoyServices) Files.deleteIfExists(Paths.get(yaml));
-            for (String yaml : tempEnvoyDeployments) Files.deleteIfExists(Paths.get(yaml));
             for (String yaml : tempProxyServices) Files.deleteIfExists(Paths.get(yaml));
             for (String yaml : tempProxyDeployments) Files.deleteIfExists(Paths.get(yaml));
             for (String yaml : tempListenerPaths) Files.deleteIfExists(Paths.get(yaml));
@@ -224,31 +196,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
         }
     }
 
-    private void renameBackendService(String serviceName) throws IOException, InterruptedException {
-        Path svcPath = Paths.get("svc-" + serviceName + ".yaml");
-
-        // Get original YAML
-        KubernetesUtil.getServiceYamlToFile(serviceName, "user", svcPath);
-
-        // Delete the original service
-        KubernetesUtil.executeCommand("kubectl", "delete", "svc", serviceName, "-n", "user");
-
-        // Modify the service name
-        List<String> lines = Files.readAllLines(svcPath);
-        List<String> modifiedLines = new ArrayList<>();
-        for (String line : lines) {
-            if (line.trim().startsWith("name:")) {
-                modifiedLines.add("  name: " + serviceName + "-backend");
-            } else {
-                modifiedLines.add(line);
-            }
-        }
-        Files.write(svcPath, modifiedLines);
-
-        // Apply updated YAML
-        KubernetesUtil.executeCommand("kubectl", "apply", "-f", svcPath.toString());
-    }
-
     private Path generateEnvoyConfigMap(String backendName, String backendPort, List<String> endpointPaths, String proxyDeploymentName) throws IOException {
         DumperOptions opts = new DumperOptions();
         opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
@@ -258,10 +205,10 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
         List<Map<String, Object>> clusters = new ArrayList<>();
         List<Map<String, Object>> routes = new ArrayList<>();
 
-        // Proxy routes for given endpoint paths
+        // Proxy Clusters for each endpoint path
         for (String path : endpointPaths) {
             String clusterName = proxyDeploymentName + path.replace("/", "-");
-            String proxyService = proxyDeploymentName + ".user.svc.cluster.local";
+            String proxyService = proxyDeploymentName + "." + NAMESPACE + ".svc.cluster.local";
 
             Map<String, Object> cluster = Map.of(
                     "name", clusterName,
@@ -294,23 +241,20 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
             routes.add(route);
         }
 
-        // Default/fallback cluster to original backend
-        String backendClusterName = backendName + "-backend";
-        String backendService = backendClusterName + ".user.svc.cluster.local";
-
+        // Default cluster to original backend
         Map<String, Object> backendCluster = Map.of(
-                "name", backendClusterName,
+                "name", backendName,
                 "connect_timeout", "1s",
                 "type", "STRICT_DNS",
                 "lb_policy", "ROUND_ROBIN",
                 "load_assignment", Map.of(
-                        "cluster_name", backendClusterName,
+                        "cluster_name", backendName,
                         "endpoints", List.of(Map.of(
                                 "lb_endpoints", List.of(Map.of(
                                         "endpoint", Map.of(
                                                 "address", Map.of(
                                                         "socket_address", Map.of(
-                                                                "address", backendService,
+                                                                "address", "127.0.0.1",
                                                                 "port_value", Integer.parseInt(backendPort)
                                                         )
                                                 )
@@ -322,16 +266,40 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
 
         Map<String, Object> defaultRoute = Map.of(
                 "match", Map.of("prefix", "/"),  // Catch-all fallback
-                "route", Map.of("cluster", backendClusterName)
+                "route", Map.of("cluster", backendName)
         );
 
         clusters.add(backendCluster);
         routes.add(defaultRoute);  // Add fallback route last
 
-        // Define listener with updated route list
+        // Create OpenTelemetry HTTP filter config
+        Map<String, Object> otelFilter = Map.of(
+                "name", "envoy.filters.http.open_telemetry",
+                "typed_config", Map.of(
+                        "@type", "type.googleapis.com/envoy.extensions.filters.http.open_telemetry.v3.OpenTelemetry",
+                        "trace_config", Map.of(
+                                "common_config", Map.of(
+                                        "service_name", "envoy-sidecar",
+                                        "otel_collector_address", "otel-collector.otel.svc.cluster.local:4317"
+                                )
+                        )
+                )
+        );
+
+        // Create HTTP filters list: OTEL filter first, then router filter
+        List<Map<String, Object>> httpFilters = new ArrayList<>();
+        httpFilters.add(otelFilter);
+        httpFilters.add(Map.of(
+                "name", "envoy.filters.http.router",
+                "typed_config", Map.of(
+                        "@type", "type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"
+                )
+        ));
+
+        // Define listener with http connection manager using the filters list
         Map<String, Object> listener = Map.of(
                 "name", "listener_http",
-                "address", Map.of("socket_address", Map.of("address", "0.0.0.0", "port_value", 8080)),
+                "address", Map.of("socket_address", Map.of("address", "0.0.0.0", "port_value", ENVOY_PORT)),
                 "filter_chains", List.of(Map.of(
                         "filters", List.of(Map.of(
                                 "name", "envoy.filters.network.http_connection_manager",
@@ -347,12 +315,7 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
                                                         "routes", routes
                                                 ))
                                         ),
-                                        "http_filters", List.of(Map.of(
-                                                "name", "envoy.filters.http.router",
-                                                "typed_config", Map.of(
-                                                        "@type", "type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"
-                                                )
-                                        ))
+                                        "http_filters", httpFilters
                                 )
                         ))
                 ))
@@ -367,7 +330,7 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
         Map<String, Object> configMap = Map.of(
                 "apiVersion", "v1",
                 "kind", "ConfigMap",
-                "metadata", Map.of("name", "envoy-config-" + backendName, "namespace", "user"),
+                "metadata", Map.of("name", "envoy-config-" + backendName, "namespace", NAMESPACE),
                 "data", Map.of("envoy.yaml", envoyYaml)
         );
 
@@ -377,5 +340,88 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
         }
 
         return tempFile;
+    }
+
+    public void injectEnvoySidecar(Path yamlFile, String envoyConfigMapName, String envoyImage) throws IOException, InterruptedException {
+        LoaderOptions loadOptions = new LoaderOptions();
+        Yaml yaml = new Yaml(new SafeConstructor(loadOptions));
+        Map<String, Object> originalYaml;
+
+        try (InputStream input = Files.newInputStream(yamlFile)) {
+            originalYaml = yaml.load(input);
+        }
+
+        Map<String, Object> spec = (Map<String, Object>) ((Map<String, Object>) originalYaml.get("spec")).get("template");
+        Map<String, Object> podSpec = (Map<String, Object>) spec.get("spec");
+        List<Map<String, Object>> containers = (List<Map<String, Object>>) podSpec.get("containers");
+
+        Map<String, Object> envoyContainer = new LinkedHashMap<>();
+        envoyContainer.put("name", "envoy");
+        envoyContainer.put("image", envoyImage);
+        envoyContainer.put("ports", List.of(Map.of("containerPort", ENVOY_PORT)));
+        envoyContainer.put("command", List.of("envoy"));
+        envoyContainer.put("args", List.of("-c", "/etc/envoy/envoy.yaml", "--log-level", "warn"));
+        envoyContainer.put("volumeMounts", List.of(Map.of(
+                "name", "envoy-config",
+                "mountPath", "/etc/envoy",
+                "readOnly", true
+        )));
+        containers.add(envoyContainer);
+
+        List<Map<String, Object>> volumes = (List<Map<String, Object>>) podSpec.get("volumes");
+        if (volumes == null) {
+            volumes = new ArrayList<>();
+            podSpec.put("volumes", volumes);
+        }
+        volumes.add(Map.of(
+                "name", "envoy-config",
+                "configMap", Map.of("name", envoyConfigMapName)
+        ));
+
+        DumperOptions dumperOptions = new DumperOptions();
+        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        Yaml outputYaml = new Yaml(dumperOptions);
+
+        Path updatedFile = Files.createTempFile("deployment-with-envoy", ".yml");
+        try (BufferedWriter writer = Files.newBufferedWriter(updatedFile)) {
+            outputYaml.dump(originalYaml, writer);
+        }
+
+        Map<String, Object> metadata = (Map<String, Object>) originalYaml.get("metadata");
+        String name = (String) metadata.get("name");
+        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "user";
+
+        new ProcessBuilder("kubectl", "delete", "deployment", name, "-n", namespace).inheritIO().start().waitFor();
+        new ProcessBuilder("kubectl", "apply", "-f", updatedFile.toAbsolutePath().toString()).inheritIO().start().waitFor();
+
+        System.out.println("Envoy sidecar injected and deployment applied: " + name);
+    }
+
+    private void patchServicePortToEnvoy(String serviceName, int envoyPort) throws IOException, InterruptedException {
+        logger.info("Patching service " + serviceName + " targetPort to Envoy port " + envoyPort);
+
+        // Build patch JSON for Kubernetes service
+        String patchJson = "[{\"op\": \"replace\", \"path\": \"/spec/ports/0/targetPort\", \"value\": " + envoyPort + "}]";
+
+        ProcessBuilder patchProcess = new ProcessBuilder(
+                "kubectl",
+                "patch",
+                "service",
+                serviceName,
+                "-n",
+                "user",
+                "--type=json",
+                "-p",
+                patchJson
+        );
+        patchProcess.inheritIO();
+        Process process = patchProcess.start();
+        int exitCode = process.waitFor();
+
+        if (exitCode == 0) {
+            logger.info("Successfully patched service " + serviceName);
+        } else {
+            logger.warning("Failed to patch service " + serviceName + ". Exit code: " + exitCode);
+        }
     }
 }

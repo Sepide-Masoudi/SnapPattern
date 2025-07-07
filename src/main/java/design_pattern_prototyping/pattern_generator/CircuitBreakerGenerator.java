@@ -84,7 +84,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
                 "service",
                 serviceName,
                 "-n",
-                NAMESPACE,
+                "user",
                 "--type=json",
                 "-p",
                 patchJson
@@ -300,7 +300,7 @@ public class CircuitBreakerGenerator implements PatternGenerator {
 
         Map<String, Object> metadata = (Map<String, Object>) originalYaml.get("metadata");
         String name = (String) metadata.get("name");
-        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "default";
+        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "user";
 
         new ProcessBuilder("kubectl", "delete", "deployment", name, "-n", namespace).inheritIO().start().waitFor();
         new ProcessBuilder("kubectl", "apply", "-f", updatedFile.toAbsolutePath().toString()).inheritIO().start().waitFor();

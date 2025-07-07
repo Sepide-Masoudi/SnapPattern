@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${LISTENER_NAME}
-  namespace: user
   labels:
     app: pattern
 spec:
