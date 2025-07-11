@@ -7,12 +7,22 @@ def generate_plots(df):
     RESULTS_FOLDER = "results/differences"
     os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
-    metric_columns = df.columns.difference(['Pattern', 'Workload Level', 'Timestamp'])
+    workload_order = ['Low', 'Medium', 'High']
+    better_if_higher = ['IPC', 'RequestRate', 'TotalRequests', 'TotalSpans', 'PPW', 'RW']
+
+    # Metric order
+    preferred_order = [
+        "ContainerJoulesTotal", "ContainerPowerWattsAvg", "ContainerCpuCyclesAvg",
+        "ContainerCacheMissAvg", "ContainerCpuInstructionsAvg", "ContainerCpuInstructionsTotal",
+        "MeanLatency", "95PercentileLatency", "RequestRate", "TotalRequests", "TotalSpans",
+        "IPC", "PPW", "RW"
+    ]
+
+    available_metrics = [col for col in preferred_order if col in df.columns]
+    metric_columns = available_metrics
+
     patterns = df['Pattern'].unique()
     patterns = [p for p in patterns if p != 'Baseline' and 'Internal' not in p]
-
-    workload_order = ['Low', 'Medium', 'High']
-    better_if_higher = ['IPC', 'requestRate_RPS', 'PPW', 'RW']
 
     for pattern in patterns:
         fig, axes = plt.subplots(1, len(workload_order), figsize=(5 * len(workload_order), 6), sharey=True)
@@ -24,10 +34,8 @@ def generate_plots(df):
             pattern_values = workload_df[workload_df['Pattern'] == pattern][metric_columns].mean()
             baseline_values = workload_df[workload_df['Pattern'] == 'Baseline'][metric_columns].mean()
 
-            metrics = metric_columns
             rel_diff = []
-
-            for metric in metrics:
+            for metric in metric_columns:
                 try:
                     pattern_val = float(pattern_values[metric])
                     baseline_val = float(baseline_values[metric])
@@ -41,7 +49,7 @@ def generate_plots(df):
 
             # Decide bar colors based on metric type
             colors = []
-            for metric, diff in zip(metrics, rel_diff):
+            for metric, diff in zip(metric_columns, rel_diff):
                 if np.isnan(diff):
                     colors.append('grey')
                 elif metric in better_if_higher:
@@ -49,12 +57,11 @@ def generate_plots(df):
                 else:
                     colors.append('green' if diff < 0 else 'red')
 
-            x = np.arange(len(metrics))
+            x = np.arange(len(metric_columns))
             width = 0.6
 
             bars = ax.bar(x, rel_diff, width, color=colors)
 
-            # Add labels on top
             for bar in bars:
                 height = bar.get_height()
                 if not np.isnan(height):
@@ -66,7 +73,7 @@ def generate_plots(df):
 
             ax.set_title(f"{workload} Workload")
             ax.set_xticks(x)
-            ax.set_xticklabels(metrics, rotation=45, ha='right', fontsize=8)
+            ax.set_xticklabels(metric_columns, rotation=45, ha='right', fontsize=8)
             ax.set_ylabel("Relative Difference (%) vs Baseline")
             ax.axhline(0, color='black', linewidth=1)
             ax.grid(axis='y', linestyle='--', alpha=0.7)

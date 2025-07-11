@@ -5,33 +5,40 @@ import os
 def run_analysis(df, output_path):
     # Identify all numeric metric columns
     numeric_metrics = df.select_dtypes(include=[np.number]).columns.tolist()
+    workloads = ['Low', 'Medium', 'High']
+    records = []
 
-    # Initialize result dictionary
-    summary = {}
+    for metric in numeric_metrics:
+        for workload in workloads:
+            row = {
+                'Metric': metric,
+                'Workload': workload
+            }
 
-    # Compute baseline means
-    baseline_means = df[df['Pattern'] == 'Baseline'][numeric_metrics].mean()
-    summary['Baseline'] = baseline_means
+            baseline_val = df[(df['Pattern'] == 'Baseline') & (df['Workload Level'] == workload)][metric].mean()
+            row['Baseline'] = baseline_val
 
-    # Compute relative differences for each pattern
-    for pattern in df['Pattern'].unique():
-        if pattern == 'Baseline' or 'Internal' in pattern:
-            continue
-        pattern_means = df[df['Pattern'] == pattern][numeric_metrics].mean()
-        rel_diff = ((pattern_means - baseline_means) / baseline_means * 100).round(2)
-        summary[pattern] = rel_diff
+            for pattern in df['Pattern'].unique():
+                if pattern == 'Baseline' or 'Internal' in pattern:
+                    continue
+                pattern_val = df[(df['Pattern'] == pattern) & (df['Workload Level'] == workload)][metric].mean()
+                if pd.notna(baseline_val) and baseline_val != 0:
+                    diff_pct = ((pattern_val - baseline_val) / baseline_val) * 100
+                else:
+                    diff_pct = np.nan
+                row[pattern] = round(diff_pct, 2)
 
-    # Create summary DataFrame and save to Excel
-    summary_df = pd.DataFrame(summary).T
-    summary_df.index.name = 'Pattern'
+            records.append(row)
+
+    result_df = pd.DataFrame(records)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    summary_df.to_excel(output_path)
-    print(f"Aggregated metrics saved to '{output_path}'")
+    result_df.to_excel(output_path, index=False)
+    print(f"Separated metric/workload format saved to '{output_path}'")
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     input_path = os.path.join(BASE_DIR, 'results', 'metrics_data.xlsx')
-    output_path = os.path.join(BASE_DIR, 'results', 'differences', 'avg_metrics_diff.xlsx')
+    output_path = os.path.join(BASE_DIR, 'results', 'differences', 'avg_metrics_diff_per_workload.xlsx')
 
     if not os.path.exists(input_path):
         print(f"ERROR: Input file not found at '{input_path}'")
