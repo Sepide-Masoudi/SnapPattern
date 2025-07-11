@@ -38,6 +38,17 @@ spec:
                 value: "${BATCH_QUERY}" # SELECT id, name, description FROM Product WHERE id IN (%s)
               - name: QUERY_PARAM
                 value: "${QUERY_PARAM}"
+              - name: REDIS_HOST
+                value: redis-master.pattern.svc.cluster.local
+              - name: REDIS_PORT
+                value: "6379"
+              - name: REDIS_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: redis
+                    key: redis-password
+              - name: CACHE_TTL
+                value: "300"
 ---
 apiVersion: v1
 kind: Service

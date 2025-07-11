@@ -20,32 +20,17 @@ public class JaegerClient {
     private static final Logger logger = Logger.getLogger(MetricsController.class.getName());
     private static final String JAEGER_ENDPOINT = "http://localhost:16686";
     private static final String NAMESPACE = "monitoring";
-    private static final String SERVICE_NAME = "jaeger";
+    private static final String SERVICE_NAME = "jaeger-query";
     private static final int LOCAL_PORT = 16686; // Port on localhost
     private static final int TARGET_PORT = 16686; // Port on the Jaeger pod
     private static Process jaegerProcess;
-
-    /**
-    public static void startJaegerPortForwarding() {
-        try {
-            // Initialize the Kubernetes API client
-            ApiClient client = Config.defaultClient();
-            KubernetesClientAPI kubernetesClientAPI = new KubernetesClientAPI(client);
-
-            // Call the generalized port-forwarding method
-            kubernetesClientAPI.startPortForwarding(NAMESPACE, SERVICE_NAME, LOCAL_PORT, TARGET_PORT);
-
-        } catch (Exception e) {
-            logger.severe("Failed to initialize Jaeger port forwarding: " + e.getMessage());
-        }
-    }**/
 
     public static void startPortForwarding() {
         new Thread(() -> {
             try {
                 // Start the port-forwarding process and keep a reference to it
                 jaegerProcess = new ProcessBuilder(
-                        "kubectl", "port-forward", "svc/jaeger-query", "16686:16686", "-n", "monitoring"
+                        "kubectl", "port-forward", "svc/"+SERVICE_NAME, TARGET_PORT+":"+LOCAL_PORT, "-n", NAMESPACE
                 ).start();
                 logger.info("Jaeger port forwarding started on http://localhost:16686");
 
@@ -97,6 +82,7 @@ public class JaegerClient {
         connection.disconnect();
         return response.toString();
     }
+
     public void collectTraceData(String namespace, String outputFile) {
         try (FileWriter writer = new FileWriter(outputFile)) {
             // Initialize the Kubernetes API client

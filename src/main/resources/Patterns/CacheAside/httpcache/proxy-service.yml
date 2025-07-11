@@ -3,12 +3,12 @@ kind: Service
 metadata:
   labels:
     app: pattern
-  name: ${SERVICE_NAME}
-  namespace: user
+  name: cache-proxy-${BACKEND_SERVICE}
+  namespace: pattern
 spec:
   selector:
-    app: cache-proxy-async
+    app: cache-proxy-${BACKEND_SERVICE}
   ports:
     - protocol: TCP
-      port: ${SERVICE_NAME}
+      port: 80
       targetPort: 80

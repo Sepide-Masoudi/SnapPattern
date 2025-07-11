@@ -304,44 +304,34 @@ public class KubernetesUtil {
         }
     }
 
-    public static void applyYaml(String filePath) {
+    public static void applyYaml(String filePath) throws IOException, InterruptedException {
         applyYaml(filePath, null);
     }
 
-    public static void applyYaml(String filePath, String namespace) {
-        try {
-            logger.info("Applying configuration from file: " + filePath);
+    public static void applyYaml(String filePath, String namespace) throws IOException, InterruptedException {
+        logger.info("Applying configuration from file: " + filePath);
 
-            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
-            if (namespace != null && !namespace.isBlank()) {
-                command.add("-n");
-                command.add(namespace);
-            }
-            injectContext(command);
-
-            ProcessBuilder apply = new ProcessBuilder(command);
-            apply.redirectErrorStream(true);
-            Process process = apply.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                reader.lines().forEach(line -> logger.info("[kubectl] " + line));
-            }
-
-            int exit = process.waitFor();
-            if (exit == 0) {
-                logger.info("Configuration applied successfully.");
-            } else {
-                logger.warning("kubectl apply exited with code " + exit);
-            }
-
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "IO error while applying YAML file: " + filePath, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.log(Level.SEVERE, "Process was interrupted while applying YAML.", e);
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
+        List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
+        if (namespace != null && !namespace.isBlank()) {
+            command.add("-n");
+            command.add(namespace);
         }
+        injectContext(command);
+
+        ProcessBuilder apply = new ProcessBuilder(command);
+        apply.redirectErrorStream(true);
+        Process process = apply.start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            reader.lines().forEach(line -> logger.info("[kubectl] " + line));
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("kubectl apply failed (exit code " + exitCode + ") for file: " + filePath);
+        }
+
+        logger.info("Configuration applied successfully.");
     }
 
     public static void executeCommand(String... command) throws IOException, InterruptedException {

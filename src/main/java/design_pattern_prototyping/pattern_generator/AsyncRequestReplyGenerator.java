@@ -29,7 +29,6 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     private static final String LISTENER_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment-template.yml";
     private static final String PROXY_SERVICE_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service-template.yml";
     private static final String PROXY_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment-template.yml";
-    private static final String ENVOY_CONFIG_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/envoy/envoy-configmap-template.yml";
     private static final String REDIS_CACHE_YAML = "src/main/resources/Patterns/AsyncRequestReply/proxy/redis-cache-deployment.yml";
 
     @Override
@@ -123,41 +122,79 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
     }
 
     @Override
-    public void deployPattern() {
+    public void deployPattern() throws IOException {
+        logger.info("Starting deployment of Async Request-Reply pattern...");
+
+        // Install RabbitMQ via Helm
         try {
             KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
             KubernetesUtil.executeCommand("helm", "repo", "update");
             KubernetesUtil.executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq",
                     "--set", "auth.username=user,auth.password=bitnami", "--namespace", NAMESPACE);
-
-            KubernetesUtil.createNamespace("proxy");
-            KubernetesUtil.applyYaml(REDIS_CACHE_YAML);
-
-            for (String yaml : tempEnvoyConfigs) {
-                KubernetesUtil.applyYaml(yaml);
-            }
-
-            for (String yaml : tempProxyDeployments) {
-                KubernetesUtil.applyYaml(yaml, NAMESPACE);
-            }
-
-            for (String yaml : tempProxyServices) {
-                KubernetesUtil.applyYaml(yaml, NAMESPACE);
-            }
-
-            for (String yaml : tempListenerPaths) {
-                KubernetesUtil.applyYaml(yaml, NAMESPACE);
-            }
-
-            // Cleanup
-            for (String yaml : tempEnvoyConfigs) Files.deleteIfExists(Paths.get(yaml));
-            for (String yaml : tempProxyServices) Files.deleteIfExists(Paths.get(yaml));
-            for (String yaml : tempProxyDeployments) Files.deleteIfExists(Paths.get(yaml));
-            for (String yaml : tempListenerPaths) Files.deleteIfExists(Paths.get(yaml));
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Pattern deployment failed", e);
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to install RabbitMQ via Helm.", e);
+            return;
         }
+
+        // Create namespace
+        KubernetesUtil.createNamespace("proxy");
+
+        // Apply Redis
+        try {
+            KubernetesUtil.applyYaml(REDIS_CACHE_YAML);
+            logger.info("Applied Redis cache YAML: " + REDIS_CACHE_YAML);
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to apply Redis cache YAML: " + REDIS_CACHE_YAML, e);
+            return;
+        }
+
+        // Apply Envoy configs
+        for (String yaml : tempEnvoyConfigs) {
+            try {
+                KubernetesUtil.applyYaml(yaml);
+                logger.info("Applied Envoy config: " + yaml);
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Failed to apply Envoy config: " + yaml, e);
+            }
+        }
+
+        // Apply Proxy Deployments
+        for (String yaml : tempProxyDeployments) {
+            try {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+                logger.info("Applied Proxy Deployment: " + yaml);
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Failed to apply Proxy Deployment: " + yaml, e);
+            }
+        }
+
+        // Apply Proxy Services
+        for (String yaml : tempProxyServices) {
+            try {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+                logger.info("Applied Proxy Service: " + yaml);
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Failed to apply Proxy Service: " + yaml, e);
+            }
+        }
+
+        // Apply Listeners
+        for (String yaml : tempListenerPaths) {
+            try {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+                logger.info("Applied Listener Deployment: " + yaml);
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Failed to apply Listener Deployment: " + yaml, e);
+            }
+        }
+
+        // Cleanup
+        for (String yaml : tempEnvoyConfigs) Files.deleteIfExists(Paths.get(yaml));
+        for (String yaml : tempProxyServices) Files.deleteIfExists(Paths.get(yaml));
+        for (String yaml : tempProxyDeployments) Files.deleteIfExists(Paths.get(yaml));
+        for (String yaml : tempListenerPaths) Files.deleteIfExists(Paths.get(yaml));
+
+        logger.info("Async Request-Reply pattern deployment completed.");
     }
 
     private void buildDockerImage(String dockerfilePath, String imageName) {

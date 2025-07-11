@@ -1,5 +1,6 @@
 package design_pattern_prototyping.pattern_generator;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -10,5 +11,5 @@ public interface PatternGenerator {
         throw new UnsupportedOperationException("Not implemented for this pattern.");
     }
 
-    void deployPattern();
+    void deployPattern() throws IOException;
 }

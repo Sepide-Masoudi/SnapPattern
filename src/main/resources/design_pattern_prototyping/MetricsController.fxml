@@ -4,7 +4,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.MetricsController">
     <top>
-        <Label text="Monitoring Dashboard" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
+        <Label text="Metrics Collector" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
     </top>
 
     <center>
@@ -34,19 +34,11 @@
 
                         <!-- Port Forwarding Controls -->
                         <HBox spacing="10.0">
-                            <Button fx:id="exposeServicesButton" text="Expose monitoring services" onAction="#exposeMonitoringServices"/>
+                            <Button fx:id="exportMetricsButton" text="Export Metrics Data" onAction="#exportMetrics"/>
                         </HBox>
                     </VBox>
                 </VBox>
             </Tab>
-
-            <!-- Grafana Dashboard Tab
-            <Tab text="Grafana Dashboard" closable="false">
-                <VBox spacing="15.0" style="-fx-padding: 20.0;">
-                    <Button fx:id="loadDashboard" text="Load Grafana Dashboard" onAction="#loadGrafanaDashboard"/>
-                </VBox>
-            </Tab>
-            -->
         </TabPane>
 
     </center>

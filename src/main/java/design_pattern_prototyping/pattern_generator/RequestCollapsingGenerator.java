@@ -42,9 +42,10 @@ public class RequestCollapsingGenerator implements PatternGenerator {
 
 
             // Fetch and inject Envoy sidecar
-            Path deployPath = Paths.get("deploy-" + serviceName + ".yaml");
-            KubernetesUtil.getDeploymentYamlToFile(serviceName, "user", deployPath);
-            injectEnvoySidecar(deployPath, "envoy-config-" + serviceName, ENVOY_IMAGE);
+            Path tempDeployFile = Files.createTempFile("deployment-" + serviceName + "-", ".yml");
+            KubernetesUtil.getDeploymentYamlToFile(serviceName, "user", tempDeployFile);
+            injectEnvoySidecar(tempDeployFile, "envoy-config-" + serviceName, ENVOY_IMAGE);
+            Files.deleteIfExists(tempDeployFile);
 
             // Envoy ConfigMap Generation
             tempEnvoyConfig = generateEnvoyConfigMap(serviceName, servicePort, path, deploymentName);
@@ -83,17 +84,45 @@ public class RequestCollapsingGenerator implements PatternGenerator {
     @Override
     public void deployPattern() {
         try {
-            // Apply YAMLs using their string paths
-            KubernetesUtil.applyYaml(tempEnvoyConfig.toString());
-            KubernetesUtil.applyYaml(tempCollapserDeployment.toString(), NAMESPACE);
+            // Install Redis via Helm
+            KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
+            KubernetesUtil.executeCommand("helm", "repo", "update");
+            KubernetesUtil.executeCommand("helm", "upgrade", "-install", "redis", "bitnami/redis",
+                    "-n", "pattern",
+                    "--create-namespace",
+                    "--set", "usePassword=false",
+                    "--set", "architecture=standalone");
 
-            // Cleanup temp files
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to install Redis via Helm.", e);
+            return;
+        }
+
+        // Apply Envoy config
+        try {
+            KubernetesUtil.applyYaml(tempEnvoyConfig.toString());
+            logger.info("Applied Envoy config: " + tempEnvoyConfig);
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to apply Envoy config: " + tempEnvoyConfig, e);
+        }
+
+        // Apply Collapser deployment
+        try {
+            KubernetesUtil.applyYaml(tempCollapserDeployment.toString(), NAMESPACE);
+            logger.info("Applied Request Collapser deployment: " + tempCollapserDeployment);
+        } catch (IOException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to apply Request Collapser deployment: " + tempCollapserDeployment, e);
+        }
+
+        // Cleanup without error handling
+        try {
             Files.deleteIfExists(tempEnvoyConfig);
             Files.deleteIfExists(tempCollapserDeployment);
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Pattern deployment failed", e);
+        } catch (IOException e) {
+            logger.log(Level.WARNING, "Failed to delete temporary files", e);
         }
+
+        logger.info("Request Collapsing pattern deployment completed.");
     }
 
     private void buildDockerImage(String dockerfilePath, String imageName) {
