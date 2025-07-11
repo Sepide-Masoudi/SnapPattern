@@ -1,13 +1,31 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: nginx-ingress
+  name: gateway-ingress
   namespace: user
+  labels:
+    app: pattern
   annotations:
-    nginx.ingress.kubernetes.io/limit-req-zone: '$binary_remote_addr zone=mylimit:10m rate=5r/s'
-    nginx.ingress.kubernetes.io/limit-req: "5"
-    nginx.ingress.kubernetes.io/limit-req-burst: "10"
+    # Rate Limiter
+    nginx.ingress.kubernetes.io/limit-req-zone: '$binary_remote_addr zone=webuilimit:10m rate=10r/s'
+    nginx.ingress.kubernetes.io/limit-req: "550"
+    nginx.ingress.kubernetes.io/limit-req-burst: "1000"
+
+    # Request Body Size Limiter
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+    # Response Compression
+    nginx.ingress.kubernetes.io/enable-modules: gzip
+    nginx.ingress.kubernetes.io/use-gzip: "true"
+    nginx.ingress.kubernetes.io/gzip-level: "1"
+    nginx.ingress.kubernetes.io/gzip-types: "text/html text/css application/javascript application/json"
+
+    # Caching
+    nginx.ingress.kubernetes.io/proxy-cache: "my-cache"
+    nginx.ingress.kubernetes.io/proxy-cache-key: "$scheme$request_method$host$request_uri"
+    nginx.ingress.kubernetes.io/proxy-cache-use-stale: "error timeout updating http_500 http_502 http_503 http_504"
+    nginx.ingress.kubernetes.io/proxy-cache-valid: "200 302 10m"
+    nginx.ingress.kubernetes.io/proxy-cache-invalid: "404 1m"
 
 spec:
   ingressClassName: nginx

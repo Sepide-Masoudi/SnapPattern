@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"data-product-service","namespace":"user"},"spec":{"ports":[{"port":8089,"targetPort":8089}],"selector":{"app":"data-product-service"},"type":"ClusterIP"}}
+  creationTimestamp: "2025-07-06T13:16:59Z"
+  name: data-product-service
+  namespace: user
+  resourceVersion: "59434"
+  uid: dd81ae3a-afeb-4452-aa87-561db9b9f5eb
+spec:
+  clusterIP: 10.96.214.151
+  clusterIPs:
+  - 10.96.214.151
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 8089
+    protocol: TCP
+    targetPort: 8089
+  selector:
+    app: data-product-service
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}

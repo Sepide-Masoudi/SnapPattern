@@ -24,6 +24,10 @@
                     <Label text=" (Configure before deployment)" />
                 </HBox>
                 <HBox spacing="10.0">
+                    <Label text="Set Frontend Service:"/>
+                    <ComboBox fx:id="userServiceDropdown" promptText="(none selected)"/>
+                </HBox>
+                <HBox spacing="10.0">
                     <Button text="Deploy Microservice" onAction="#deployApplication"/>
                     <Button text="Delete Microservice" onAction="#deleteApplication"/>
                 </HBox>
@@ -41,7 +45,6 @@
                             <String fx:value="Baseline"/>
                             <String fx:value="Async Request Reply"/>
                             <String fx:value="Gateway Offloading"/>
-                            <String fx:value="Gateway Aggregation"/>
                             <String fx:value="Request Collapsing"/>
                             <String fx:value="Cache Aside"/>
                             <String fx:value="Circuit Breaker"/>
@@ -64,7 +67,8 @@
 
                         <TableView fx:id="asyncTable" prefHeight="200">
                             <columns>
-                                <TableColumn fx:id="serviceNameColumn" text="Service Name" prefWidth="150"/>
+                                <TableColumn fx:id="backendNameColumn" text="Consumer Service Name" prefWidth="200"/>
+                                <TableColumn fx:id="backendPortColumn" text="Consumer Service Port" prefWidth="200"/>
                                 <TableColumn fx:id="endpointPathColumn" text="Endpoint Path" prefWidth="200"/>
                             </columns>
                         </TableView>
@@ -95,10 +99,20 @@
 
                         <TableView fx:id="cacheAsideTable" prefHeight="200">
                             <columns>
-                                <TableColumn fx:id="backendService" text="Backend Service" prefWidth="200"/>
-                                <TableColumn fx:id="cachedEndpoints" text="Cached Endpoints" prefWidth="300"/>
+                                <TableColumn fx:id="ca_backendService" text="Backend Service" prefWidth="200"/>
+                                <TableColumn fx:id="ca_backendPort" text="Backend Port" prefWidth="200"/>
+                                <TableColumn fx:id="ca_cachedEndpoints" text="Cached Endpoints" prefWidth="300"/>
+                                <TableColumn fx:id="ca_cacheTTL" text="Cache TTL (sec)" prefWidth="200"/>
+                                <TableColumn fx:id="ca_maxConnections" text="Max Redis Connections" prefWidth="200"/>
                             </columns>
                         </TableView>
+
+                        <HBox spacing="10.0">
+                            <Label text="Redis Replicas:"/>
+                            <TextField fx:id="ca_redisReplicas" promptText="2"/>
+                            <Label text="Redis Nodes:"/>
+                            <TextField fx:id="ca_redisNodes" promptText="6"/>
+                        </HBox>
 
                         <HBox spacing="10.0">
                             <Button text="Add Entry" onAction="#handleCacheAsideAddRow"/>
@@ -107,32 +121,51 @@
                         </HBox>
                     </VBox>
 
-                    <!-- Gateway Aggregation Config -->
-                    <VBox spacing="10.0" fx:id="gatewayAggregationFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Service - Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                            <Label text="Service - Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label text="Service - Host" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceHost" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                            <Label text="Service - Port" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_servicePort" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
-
-                    <!-- Request Collapsing Config -->
+                    <!-- CRequest Collapsing Config -->
                     <VBox spacing="10.0" fx:id="requestCollapsingFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
+                        <Label text="Request Collapsing Configuration" style="-fx-font-weight: bold;" />
+                        <GridPane hgap="20.0" vgap="10.0">
+
+                            <!-- Left column: Pattern parameters -->
                             <Label text="Backend Service" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1" text="teastore-persistence"/>
+
+                            <Label text="Backend Port" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                            <TextField fx:id="rc_backendPort" GridPane.rowIndex="1" GridPane.columnIndex="1" text="8080"/>
+
+                            <Label text="Endpoint Path" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                            <TextField fx:id="rc_endpointPath" GridPane.rowIndex="2" GridPane.columnIndex="1" text="/tools.descartes.teastore.persistence/product"/>
+
+                            <Label text="Query Parameter" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                            <TextField fx:id="rc_queryParam" GridPane.rowIndex="3" GridPane.columnIndex="1" text="id"/>
+
+                            <Label text="ID Field" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                            <TextField fx:id="rc_idField" GridPane.rowIndex="4" GridPane.columnIndex="1" text="id"/>
+
+                            <Label text="Batch Query" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                            <TextField fx:id="rc_batchQuery" GridPane.rowIndex="5" GridPane.columnIndex="1" text="SELECT ID, NAME, DESCRIPTION, LISTPRICEINCENTS, CATEGORY_ID FROM PERSISTENCEPRODUCT WHERE ID IN (%s)"/>
+
+                            <!-- Right column: DB connection parameters -->
+                            <Label text="DB Host" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                            <TextField fx:id="rc_dbHost" GridPane.rowIndex="0" GridPane.columnIndex="3" text="teastore-db.user.svc.cluster.local"/>
+
+                            <Label text="DB Port" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                            <TextField fx:id="rc_dbPort" GridPane.rowIndex="1" GridPane.columnIndex="3" text="3306"/>
+
+                            <Label text="DB Name" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                            <TextField fx:id="rc_dbName" GridPane.rowIndex="2" GridPane.columnIndex="3" text="teadb"/>
+
+                            <Label text="DB Username" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                            <TextField fx:id="rc_dbUser" GridPane.rowIndex="3" GridPane.columnIndex="3" text="teauser"/>
+
+                            <Label text="DB Password" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+                            <TextField fx:id="rc_dbPass" GridPane.rowIndex="4" GridPane.columnIndex="3" text="teapassword"/>
+
                         </GridPane>
                     </VBox>
 
                     <!-- Circuit Breaker Config -->
-                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="true">
+                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="false">
                         <Label text="Circuit Breaker Configuration" style="-fx-font-weight: bold;" />
                         <TableView fx:id="circuitBreakerTable" prefHeight="250">
                             <columns>

@@ -3,7 +3,9 @@ package design_pattern_prototyping.Monitoring;
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import design_pattern_prototyping.util.UILogger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,11 +41,11 @@ public class DeployMonitoringStack {
 
             logger.info("Installing Cert-Manager...");
             uiLogger.info("Installing Cert-Manager...");
-            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml", "cert-manager");
+            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml");
 
-            waitForDeploymentReady("cert-manager", "cert-manager");
-            waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
-            waitForDeploymentReady("cert-manager-webhook", "cert-manager");
+            //waitForDeploymentReady("cert-manager", "cert-manager");
+            //waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
+            //waitForDeploymentReady("cert-manager-webhook", "cert-manager");
 
             Thread.sleep(15000);
 
@@ -52,7 +54,7 @@ public class DeployMonitoringStack {
 
             logger.info("Installing OpenTelemetry Operator...");
             uiLogger.info("Installing OpenTelemetry Operator...");
-            KubernetesUtil.applyYaml("https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml", "opentelemetry-operator-system");
+            KubernetesUtil.applyYaml("https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.126.0/opentelemetry-operator.yaml", "opentelemetry-operator-system");
 
             waitForDeploymentReady("opentelemetry-operator-controller-manager", "opentelemetry-operator-system");
             KubernetesUtil.applyYaml("src/main/resources/monitoring/otel/otel-operator-instrumentation.yml", OTEL_NAMESPACE);
@@ -79,6 +81,13 @@ public class DeployMonitoringStack {
                     "--set", "securityContext.privileged=true",
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
+
+            /**
+            System.out.println("Installing Jaeger...");
+            KubernetesUtil.executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
+                    "--namespace", "monitoring",
+                    "-f", "src/main/resources/monitoring/jaeger-values.yaml");
+            **/
 
             logger.info("Monitoring stack deployed successfully.");
             uiLogger.info("Monitoring stack deployed successfully.");
@@ -109,6 +118,42 @@ public class DeployMonitoringStack {
         logger.info("Labeling the ConfigMap as a Grafana dashboard...");
         uiLogger.info("Labeling the ConfigMap as a Grafana dashboard...");
         KubernetesUtil.executeCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", MONITOR_NAMESPACE, "grafana_dashboard=1", "--overwrite");
+    }
+
+    private void executeCommand(String... command) throws IOException, InterruptedException {
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        Process process = processBuilder.start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[stdout] " + line);
+                    uiLogger.info("[stdout] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stdout of process", e);
+                uiLogger.warning("Error reading stdout of process: " + e.getMessage());
+            }
+        }).start();
+
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.warning("[stderr] " + line);
+                    uiLogger.warning("[stderr] " + line);
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error reading stderr of process", e);
+                uiLogger.warning("Error reading stderr of process: " + e.getMessage());
+            }
+        }).start();
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
+        }
     }
 
     private void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {

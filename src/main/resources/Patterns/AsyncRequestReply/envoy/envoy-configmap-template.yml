@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-config-<BACKEND_NAME>  # e.g. envoy-config-teastore-recommender
+  namespace: proxy
+data:
+  envoy.yaml: |
+    static_resources:
+     clusters:
+    {{#each ENDPOINT_PATHS}}
+    - name: proxy-<BACKEND_NAME>{{ this | pathSuffix }}   # e.g. proxy-teastore-recommender-recommend
+              connect_timeout: 1s
+              type: STRICT_DNS
+              lb_policy: ROUND_ROBIN
+              load_assignment:
+                cluster_name: proxy-<BACKEND_NAME>{{ this | pathSuffix }}
+                endpoints:
+                  - lb_endpoints:
+                      - endpoint:
+                          address:
+                            socket_address:
+                              address: proxy-<BACKEND_NAME>.user.svc.cluster.local
+                              port_value: <BACKEND_PORT>
+    {{/each}}
+    listeners:
+      - name: listener_http
+        address:
+          socket_address:
+            address: 0.0.0.0
+            port_value: 8080
+        filter_chains:
+          - filters:
+              - name: envoy.filters.network.http_connection_manager
+                typed_config:
+                  "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                  stat_prefix: ingress_http
+                  codec_type: AUTO
+                  route_config:
+                    name: local_route
+                    virtual_hosts:
+                      - name: <BACKEND_NAME>-vh
+                        domains: ["*"]
+                        routes:
+      {{#each ENDPOINT_PATHS}}
+         - match:
+             prefix: "{{ this }}"
+             route:
+               cluster: proxy-<BACKEND_NAME>{{ this | pathSuffix }}
+        {{/each}}
+    http_filters:
+      - name: envoy.filters.http.router

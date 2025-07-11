@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 public class GatewayOffloadingGenerator implements PatternGenerator {
 
     private static final Logger logger = Logger.getLogger(GatewayOffloadingGenerator.class.getName());
+<<<<<<< HEAD
 
     // Path to your static template in the repo
     private static final String TEMPLATE_PATH =
@@ -41,6 +42,17 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
         try {
             logger.info(() -> "Loading template: " + TEMPLATE_PATH);
             Path template = Paths.get(TEMPLATE_PATH);
+=======
+    private String tempConfigPath = "src/main/resources/Patterns/GatewayOffloading/nginx-ingress.yml";
+    private static final String NAMESPACE = "pattern";
+
+    @Override
+    public void generatePattern(Map<String, String> parameters) {
+        try {
+            logger.info("Loading template: " + tempConfigPath);
+            Path templatePath = Paths.get(tempConfigPath);
+            String yamlContent = new String(Files.readAllBytes(templatePath));
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 
             String yaml = Files.readString(template);
 
@@ -81,6 +93,7 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
                     "https://kubernetes.github.io/ingress-nginx");
             KubernetesUtil.exec("helm", "repo", "update");
 
+<<<<<<< HEAD
             KubernetesUtil.exec("helm", "upgrade", "--install", "nginx-ingress",
                     "ingress-nginx/ingress-nginx",
                     "--namespace", INGRESS_NS,
@@ -89,6 +102,16 @@ public class GatewayOffloadingGenerator implements PatternGenerator {
                     "--set", "controller.admissionWebhooks.enabled=false");
 
             KubernetesUtil.applyYaml(tempConfigPath, USER_NS);
+=======
+            // Step 3: Deploy NGINX Ingress Controller
+            executeCommand("helm", "upgrade", "-install", "nginx-ingress", "ingress-nginx/ingress-nginx", "--namespace", "pattern",
+                    "--set", "controller.service.type=NodePort",
+                    "--set", "controller.service.nodePorts.http=32342",
+                    "--set", "controller.admissionWebhooks.enabled=false");
+
+            // Step 4: Apply the generated Gateway Offloading YAML
+            KubernetesUtil.applyYaml(tempConfigPath, "user");
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 
             logger.info("Gateway Offloading pattern deployed!");
 

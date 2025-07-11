@@ -1,138 +1,162 @@
 package design_pattern_prototyping.pattern_generator;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Writer;
-import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import org.yaml.snakeyaml.Yaml;
+import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 public class AsyncRequestReplyGenerator implements PatternGenerator {
 
     private static final Logger logger = Logger.getLogger(AsyncRequestReplyGenerator.class.getName());
-    private List<String> tempListenerPaths = new ArrayList<>();
-    private String tempIngressPath;
-    private static final String INGRESS_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/nginx-ingress.yml";
-    private static final String LISTENER_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment.yml";
+    private final List<String> tempEnvoyConfigs = new ArrayList<>();
+    private final List<String> tempProxyDeployments = new ArrayList<>();
+    private final List<String> tempProxyServices = new ArrayList<>();
+    private final List<String> tempListenerPaths = new ArrayList<>();
+
     private static final String NAMESPACE = "pattern";
+    private static final int ENVOY_PORT = 8081;
+    private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
+
+    private static final String LISTENER_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/listener/listener-deployment-template.yml";
+    private static final String PROXY_SERVICE_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service-template.yml";
+    private static final String PROXY_DEPLOYMENT_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment-template.yml";
+    private static final String ENVOY_CONFIG_TEMPLATE = "src/main/resources/Patterns/AsyncRequestReply/envoy/envoy-configmap-template.yml";
+    private static final String REDIS_CACHE_YAML = "src/main/resources/Patterns/AsyncRequestReply/proxy/redis-cache-deployment.yml";
 
     @Override
-    public String getYamlFilePath() {
-        return INGRESS_TEMPLATE;
+    public void generatePattern(Map<String, String> parameters) {
+        generatePattern(Collections.singletonList(parameters));
     }
 
     @Override
-    public void generatePattern(String yamlFilePath, Map<String, String> parameters) {
-        List<Map<String, String>> singleConfig = new ArrayList<>();
-        singleConfig.add(parameters);
-        generatePattern(yamlFilePath, singleConfig);
-    }
+    public void generatePattern(List<Map<String, String>> configs) {
+        tempEnvoyConfigs.clear();
+        tempProxyDeployments.clear();
+        tempProxyServices.clear();
+        tempListenerPaths.clear();
 
-    @Override
-    public void generatePattern(String filePath, List<Map<String, String>> configs) {
         try {
-            // --- Build Docker images once
             buildDockerImage("src/main/resources/Patterns/AsyncRequestReply/proxy/Dockerfile.proxy", "proxy-service:local");
             buildDockerImage("src/main/resources/Patterns/AsyncRequestReply/listener/Dockerfile.listener", "listener-service:local");
             loadImageMinikube("proxy-service:local");
             loadImageMinikube("listener-service:local");
 
-            // --- Load base Ingress YAML and add paths dynamically
-            InputStream ingressInput = new FileInputStream(INGRESS_TEMPLATE);
-            Yaml yaml = new Yaml();
-            Map<String, Object> ingressMap = yaml.load(ingressInput);
+            Map<String, List<String>> serviceToPaths = new HashMap<>();
+            Map<String, String> serviceToPort = new HashMap<>();
 
-            List<Map<String, Object>> paths = new ArrayList<>();
             for (Map<String, String> entry : configs) {
+                String backendName = entry.get("BACKEND_NAME");
+                String backendPort = entry.get("BACKEND_PORT");
                 String path = entry.get("ENDPOINT_PATH");
-                String normalizedPath = path.startsWith("/") ? path : "/" + path;
 
-                Map<String, Object> pathEntry = Map.of(
-                        "path", normalizedPath,
-                        "pathType", "Prefix",
-                        "backend", Map.of("service", Map.of("name", "proxy-service", "port", Map.of("number", 80)))
-                );
-                paths.add(pathEntry);
+                logger.info("Mapping: " + backendName + " -> " + path + " (port: " + backendPort + ")");
 
-                // --- Generate listener YAML for this service
-                String serviceName = entry.get("SERVICE_NAME");
-                String fullUrl = "http://" + serviceName + ".user.svc.cluster.local/" + path;
-                String listenerName = serviceName + "-listener";
+                serviceToPaths.computeIfAbsent(backendName, k -> new ArrayList<>()).add(path);
+                serviceToPort.put(backendName, backendPort);
+
+                // Fetch and inject Envoy sidecar
+                Path deployPath = Paths.get("deploy-" + backendName + ".yaml");
+                KubernetesUtil.getDeploymentYamlToFile(backendName, "user", deployPath);
+                injectEnvoySidecar(deployPath, "envoy-config-" + backendName, ENVOY_IMAGE);
+
+                // Patch the service targetPort to envoy port ENVOY_PORT
+                patchServicePortToEnvoy(backendName, ENVOY_PORT);
+            }
+
+            for (String backendName : serviceToPaths.keySet()) {
+                List<String> paths = serviceToPaths.get(backendName);
+                String backendPort = serviceToPort.get(backendName);
+                String joinedPaths = String.join(",", paths);
+
+                String deploymentName = "proxy-" + backendName;
+
+                // Listener (per service, using first path for URL)
+                String listenerName = "listener-" + backendName;
                 String listenerYaml = Files.readString(Paths.get(LISTENER_TEMPLATE))
-                        .replace("${SERVICE_NAME}", fullUrl)
-                        .replace("${LISTENER_NAME}", listenerName);
-                Path tempListener = Files.createTempFile("listener-" + serviceName, ".yml");
+                        .replace("${LISTENER_NAME}", listenerName)
+                        .replace("${BACKEND_NAME}", backendName)
+                        .replace("${BACKEND_PORT}", backendPort)
+                        .replace("${ENDPOINT_PATHS}", joinedPaths);
+
+                Path tempListener = Files.createTempFile("listener-" + backendName, ".yml");
                 Files.writeString(tempListener, listenerYaml);
                 tempListenerPaths.add(tempListener.toString());
-            }
 
-            // Inject paths into ingress
-            Map<String, Object> rules = (Map<String, Object>) ((List<?>) ((Map<?, ?>) ingressMap.get("spec")).get("rules")).get(0);
-            ((Map<String, Object>) rules.get("http")).put("paths", paths);
+                // Proxy Deployment
+                String proxyDeploymentYaml = Files.readString(Paths.get(PROXY_DEPLOYMENT_TEMPLATE))
+                        .replace("${DEPLOYMENT_NAME}", deploymentName)
+                        .replace("${BACKEND_NAME}", backendName)
+                        .replace("${BACKEND_PORT}", backendPort)
+                        .replace("${ENDPOINT_PATHS}", joinedPaths);
 
-            // Write ingress YAML
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml dumper = new Yaml(options);
-            Path tempIngressFile = Files.createTempFile("nginx-ingress", ".yml");
-            try (Writer writer = Files.newBufferedWriter(tempIngressFile)) {
-                dumper.dump(ingressMap, writer);
+                Path tempProxyDeployment = Files.createTempFile("proxy-deployment-" + backendName, ".yml");
+                Files.writeString(tempProxyDeployment, proxyDeploymentYaml);
+                tempProxyDeployments.add(tempProxyDeployment.toString());
+
+                // Proxy Service
+                String proxyServiceYaml = Files.readString(Paths.get(PROXY_SERVICE_TEMPLATE))
+                        .replace("${DEPLOYMENT_NAME}", deploymentName)
+                        .replace("${BACKEND_NAME}", backendName)
+                        .replace("${BACKEND_PORT}", backendPort);
+
+                Path tempProxyService = Files.createTempFile("proxy-service-" + backendName, ".yml");
+                Files.writeString(tempProxyService, proxyServiceYaml);
+                tempProxyServices.add(tempProxyService.toString());
+
+                // Envoy ConfigMap generation
+                Path envoyPath = generateEnvoyConfigMap(backendName, backendPort, paths, deploymentName);
+                tempEnvoyConfigs.add(envoyPath.toString());
             }
-            tempIngressPath = tempIngressFile.toString();
 
         } catch (Exception e) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Pattern generation failed", e);
+            logger.log(Level.SEVERE, "Pattern generation failed", e);
         }
     }
 
     @Override
     public void deployPattern() {
         try {
-            KubernetesUtil.executeCommand("helm", "repo", "add", "ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
             KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
             KubernetesUtil.executeCommand("helm", "repo", "update");
-
             KubernetesUtil.executeCommand("helm", "upgrade", "--install", "rabbitmq", "bitnami/rabbitmq",
                     "--set", "auth.username=user,auth.password=bitnami", "--namespace", NAMESPACE);
 
-            KubernetesUtil.executeCommand("helm", "upgrade", "--install", "nginx-ingress", "ingress-nginx/ingress-nginx",
-                    "--namespace", NAMESPACE,
-                    "--set", "controller.publishService.enabled=false",
-                    "--set", "controller.service.type=NodePort");
+            KubernetesUtil.createNamespace("proxy");
+            KubernetesUtil.applyYaml(REDIS_CACHE_YAML);
 
-            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/redis-cache-deployment.yml", "proxy");
-            KubernetesUtil.applyYaml(tempIngressPath, NAMESPACE);
-            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-deployment.yml", NAMESPACE);
-            KubernetesUtil.applyYaml("src/main/resources/Patterns/AsyncRequestReply/proxy/proxy-service.yml", NAMESPACE);
-
-            for (String listenerPath : tempListenerPaths) {
-                KubernetesUtil.applyYaml(listenerPath, NAMESPACE);
+            for (String yaml : tempEnvoyConfigs) {
+                KubernetesUtil.applyYaml(yaml);
             }
 
-            for (String listenerPath : tempListenerPaths) Files.deleteIfExists(Paths.get(listenerPath));
-            Files.deleteIfExists(Paths.get(tempIngressPath));
+            for (String yaml : tempProxyDeployments) {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+            }
+
+            for (String yaml : tempProxyServices) {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+            }
+
+            for (String yaml : tempListenerPaths) {
+                KubernetesUtil.applyYaml(yaml, NAMESPACE);
+            }
+
+            // Cleanup
+            for (String yaml : tempEnvoyConfigs) Files.deleteIfExists(Paths.get(yaml));
+            for (String yaml : tempProxyServices) Files.deleteIfExists(Paths.get(yaml));
+            for (String yaml : tempProxyDeployments) Files.deleteIfExists(Paths.get(yaml));
+            for (String yaml : tempListenerPaths) Files.deleteIfExists(Paths.get(yaml));
 
         } catch (Exception e) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Pattern deployment failed", e);
-        }
-    }
-
-    private void executeCommand(String... command) throws IOException, InterruptedException {
-        logger.info("Running command: " + String.join(" ", command));
-        Process process = new ProcessBuilder(command).inheritIO().start();
-        int exitCode = process.waitFor();
-        if (exitCode == 0) {
-            logger.info("Command succeeded: " + String.join(" ", command));
-        } else {
-            logger.warning("Command failed: " + String.join(" ", command));
+            logger.log(Level.SEVERE, "Pattern deployment failed", e);
         }
     }
 
@@ -142,8 +166,7 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
             String buildContext = dockerfile.getParent().toString();
 
             logger.info("Building Docker image: " + imageName);
-            Process process = new ProcessBuilder(
-                    "docker", "build", "-t", imageName, "-f", dockerfilePath, buildContext)
+            Process process = new ProcessBuilder("docker", "build", "-t", imageName, "-f", dockerfilePath, buildContext)
                     .inheritIO()
                     .start();
 
@@ -170,6 +193,235 @@ public class AsyncRequestReplyGenerator implements PatternGenerator {
             }
         } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error loading image into Minikube: " + imageName, e);
+        }
+    }
+
+    private Path generateEnvoyConfigMap(String backendName, String backendPort, List<String> endpointPaths, String proxyDeploymentName) throws IOException {
+        DumperOptions opts = new DumperOptions();
+        opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        opts.setPrettyFlow(true);
+        Yaml yaml = new Yaml(opts);
+
+        List<Map<String, Object>> clusters = new ArrayList<>();
+        List<Map<String, Object>> routes = new ArrayList<>();
+
+        // Proxy Clusters for each endpoint path
+        for (String path : endpointPaths) {
+            String clusterName = proxyDeploymentName + path.replace("/", "-");
+            String proxyService = proxyDeploymentName + "." + NAMESPACE + ".svc.cluster.local";
+
+            Map<String, Object> cluster = Map.of(
+                    "name", clusterName,
+                    "connect_timeout", "1s",
+                    "type", "STRICT_DNS",
+                    "lb_policy", "ROUND_ROBIN",
+                    "load_assignment", Map.of(
+                            "cluster_name", clusterName,
+                            "endpoints", List.of(Map.of(
+                                    "lb_endpoints", List.of(Map.of(
+                                            "endpoint", Map.of(
+                                                    "address", Map.of(
+                                                            "socket_address", Map.of(
+                                                                    "address", proxyService,
+                                                                    "port_value", Integer.parseInt(backendPort)
+                                                            )
+                                                    )
+                                            )
+                                    ))
+                            ))
+                    )
+            );
+
+            Map<String, Object> route = Map.of(
+                    "match", Map.of("prefix", path),
+                    "route", Map.of("cluster", clusterName)
+            );
+
+            clusters.add(cluster);
+            routes.add(route);
+        }
+
+        // Default cluster to original backend
+        Map<String, Object> backendCluster = Map.of(
+                "name", backendName,
+                "connect_timeout", "1s",
+                "type", "STRICT_DNS",
+                "lb_policy", "ROUND_ROBIN",
+                "load_assignment", Map.of(
+                        "cluster_name", backendName,
+                        "endpoints", List.of(Map.of(
+                                "lb_endpoints", List.of(Map.of(
+                                        "endpoint", Map.of(
+                                                "address", Map.of(
+                                                        "socket_address", Map.of(
+                                                                "address", "127.0.0.1",
+                                                                "port_value", Integer.parseInt(backendPort)
+                                                        )
+                                                )
+                                        )
+                                ))
+                        ))
+                )
+        );
+
+        Map<String, Object> defaultRoute = Map.of(
+                "match", Map.of("prefix", "/"),  // Catch-all fallback
+                "route", Map.of("cluster", backendName)
+        );
+
+        clusters.add(backendCluster);
+        routes.add(defaultRoute);  // Add fallback route last
+
+        // Create OpenTelemetry HTTP filter config
+        Map<String, Object> otelFilter = Map.of(
+                "name", "envoy.filters.http.open_telemetry",
+                "typed_config", Map.of(
+                        "@type", "type.googleapis.com/envoy.extensions.filters.http.open_telemetry.v3.OpenTelemetry",
+                        "trace_config", Map.of(
+                                "common_config", Map.of(
+                                        "service_name", "envoy-sidecar",
+                                        "otel_collector_address", "otel-collector.otel.svc.cluster.local:4317"
+                                )
+                        )
+                )
+        );
+
+        // Create HTTP filters list: OTEL filter first, then router filter
+        List<Map<String, Object>> httpFilters = new ArrayList<>();
+        httpFilters.add(otelFilter);
+        httpFilters.add(Map.of(
+                "name", "envoy.filters.http.router",
+                "typed_config", Map.of(
+                        "@type", "type.googleapis.com/envoy.extensions.filters.http.router.v3.Router"
+                )
+        ));
+
+        // Define listener with http connection manager using the filters list
+        Map<String, Object> listener = Map.of(
+                "name", "listener_http",
+                "address", Map.of("socket_address", Map.of("address", "0.0.0.0", "port_value", ENVOY_PORT)),
+                "filter_chains", List.of(Map.of(
+                        "filters", List.of(Map.of(
+                                "name", "envoy.filters.network.http_connection_manager",
+                                "typed_config", Map.of(
+                                        "@type", "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager",
+                                        "stat_prefix", "ingress_http",
+                                        "codec_type", "AUTO",
+                                        "route_config", Map.of(
+                                                "name", "local_route",
+                                                "virtual_hosts", List.of(Map.of(
+                                                        "name", "default-vh",
+                                                        "domains", List.of("*"),
+                                                        "routes", routes
+                                                ))
+                                        ),
+                                        "http_filters", httpFilters
+                                )
+                        ))
+                ))
+        );
+
+        Map<String, Object> finalConfig = Map.of("static_resources", Map.of(
+                "clusters", clusters,
+                "listeners", List.of(listener)
+        ));
+
+        String envoyYaml = yaml.dump(finalConfig);
+        Map<String, Object> configMap = Map.of(
+                "apiVersion", "v1",
+                "kind", "ConfigMap",
+                "metadata", Map.of("name", "envoy-config-" + backendName, "namespace", NAMESPACE),
+                "data", Map.of("envoy.yaml", envoyYaml)
+        );
+
+        Path tempFile = Files.createTempFile("envoy-config-" + backendName, ".yml");
+        try (Writer writer = Files.newBufferedWriter(tempFile)) {
+            yaml.dump(configMap, writer);
+        }
+
+        return tempFile;
+    }
+
+    public void injectEnvoySidecar(Path yamlFile, String envoyConfigMapName, String envoyImage) throws IOException, InterruptedException {
+        LoaderOptions loadOptions = new LoaderOptions();
+        Yaml yaml = new Yaml(new SafeConstructor(loadOptions));
+        Map<String, Object> originalYaml;
+
+        try (InputStream input = Files.newInputStream(yamlFile)) {
+            originalYaml = yaml.load(input);
+        }
+
+        Map<String, Object> spec = (Map<String, Object>) ((Map<String, Object>) originalYaml.get("spec")).get("template");
+        Map<String, Object> podSpec = (Map<String, Object>) spec.get("spec");
+        List<Map<String, Object>> containers = (List<Map<String, Object>>) podSpec.get("containers");
+
+        Map<String, Object> envoyContainer = new LinkedHashMap<>();
+        envoyContainer.put("name", "envoy");
+        envoyContainer.put("image", envoyImage);
+        envoyContainer.put("ports", List.of(Map.of("containerPort", ENVOY_PORT)));
+        envoyContainer.put("command", List.of("envoy"));
+        envoyContainer.put("args", List.of("-c", "/etc/envoy/envoy.yaml", "--log-level", "warn"));
+        envoyContainer.put("volumeMounts", List.of(Map.of(
+                "name", "envoy-config",
+                "mountPath", "/etc/envoy",
+                "readOnly", true
+        )));
+        containers.add(envoyContainer);
+
+        List<Map<String, Object>> volumes = (List<Map<String, Object>>) podSpec.get("volumes");
+        if (volumes == null) {
+            volumes = new ArrayList<>();
+            podSpec.put("volumes", volumes);
+        }
+        volumes.add(Map.of(
+                "name", "envoy-config",
+                "configMap", Map.of("name", envoyConfigMapName)
+        ));
+
+        DumperOptions dumperOptions = new DumperOptions();
+        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        Yaml outputYaml = new Yaml(dumperOptions);
+
+        Path updatedFile = Files.createTempFile("deployment-with-envoy", ".yml");
+        try (BufferedWriter writer = Files.newBufferedWriter(updatedFile)) {
+            outputYaml.dump(originalYaml, writer);
+        }
+
+        Map<String, Object> metadata = (Map<String, Object>) originalYaml.get("metadata");
+        String name = (String) metadata.get("name");
+        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "user";
+
+        new ProcessBuilder("kubectl", "delete", "deployment", name, "-n", namespace).inheritIO().start().waitFor();
+        new ProcessBuilder("kubectl", "apply", "-f", updatedFile.toAbsolutePath().toString()).inheritIO().start().waitFor();
+
+        System.out.println("Envoy sidecar injected and deployment applied: " + name);
+    }
+
+    private void patchServicePortToEnvoy(String serviceName, int envoyPort) throws IOException, InterruptedException {
+        logger.info("Patching service " + serviceName + " targetPort to Envoy port " + envoyPort);
+
+        // Build patch JSON for Kubernetes service
+        String patchJson = "[{\"op\": \"replace\", \"path\": \"/spec/ports/0/targetPort\", \"value\": " + envoyPort + "}]";
+
+        ProcessBuilder patchProcess = new ProcessBuilder(
+                "kubectl",
+                "patch",
+                "service",
+                serviceName,
+                "-n",
+                "user",
+                "--type=json",
+                "-p",
+                patchJson
+        );
+        patchProcess.inheritIO();
+        Process process = patchProcess.start();
+        int exitCode = process.waitFor();
+
+        if (exitCode == 0) {
+            logger.info("Successfully patched service " + serviceName);
+        } else {
+            logger.warning("Failed to patch service " + serviceName + ". Exit code: " + exitCode);
         }
     }
 }

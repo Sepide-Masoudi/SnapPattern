@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import pandas as pd
@@ -14,12 +15,14 @@ def cohens_d(x, y):
 
 def run_analysis(df, output_path):
     metrics = [
-        'containerJoulesTotal',
-        'avg_HTTP_client_request_duration',
+        'ContainerPowerWattsAvg',
+        'MeanLatency',
         '95PercentileLatency',
-        'requestRate_RPS',
+        'RequestRate',
+        'TotalRequests',
         'IPC',
-        'energyEfficiency'
+        'PPW',
+        'RW'
     ]
     workloads = ['Low', 'Medium', 'High']
     baseline = 'Baseline'
@@ -47,12 +50,24 @@ def run_analysis(df, output_path):
                             if np.isfinite(d) and abs(d) > 0 else None
                         )
 
+                        # Compute percentage difference
+                        try:
+                            baseline_median = float(group1.median())
+                            pattern_median = float(group2.median())
+                            if pd.notna(baseline_median) and pd.notna(pattern_median) and baseline_median != 0:
+                                diff_pct = ((pattern_median - baseline_median) / baseline_median) * 100
+                            else:
+                                diff_pct = np.nan
+                        except:
+                            diff_pct = np.nan
+
                         results.append({
                             'Compared Pattern': pattern,
                             'Workload Level': workload,
                             'Metric': metric,
-                            f'{baseline} Median': group1.median(),
-                            f'{pattern} Median': group2.median(),
+                            f'{baseline} Median': baseline_median,
+                            f'{pattern} Median': pattern_median,
+                            'Relative Difference (%)': diff_pct,
                             'U-statistic': stat,
                             'p-value': p_val,
                             "Cohen's d": d,
@@ -67,8 +82,8 @@ def run_analysis(df, output_path):
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    input_path = os.path.join(BASE_DIR, 'results', 'metrics_agg.xlsx')
-    output_path = os.path.join(BASE_DIR, 'results', 'pattern', 'mann_whitney_results.xlsx')
+    input_path = os.path.join(BASE_DIR, 'results', 'metrics_data.xlsx')
+    output_path = os.path.join(BASE_DIR, 'results', 'significance', 'stat_results.xlsx')
 
     if not os.path.exists(input_path):
         print(f"ERROR: Input file not found at '{input_path}'")

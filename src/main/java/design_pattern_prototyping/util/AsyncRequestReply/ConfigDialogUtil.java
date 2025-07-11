@@ -13,6 +13,7 @@ public class ConfigDialogUtil {
         dialog.setTitle("Add Async Request Reply Configuration");
 
         TextField serviceField = new TextField();
+        TextField portField = new TextField();
         TextField endpointField = new TextField();
 
         GridPane grid = new GridPane();
@@ -20,10 +21,12 @@ public class ConfigDialogUtil {
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 150, 10, 10));
 
-        grid.add(new Label("Service Name:"), 0, 0);
+        grid.add(new Label("Consumer Service Name:"), 0, 0);
         grid.add(serviceField, 1, 0);
-        grid.add(new Label("Endpoint Path:"), 0, 1);
-        grid.add(endpointField, 1, 1);
+        grid.add(new Label("Consumer Service Port:"), 0, 1);
+        grid.add(portField, 1, 1);
+        grid.add(new Label("Endpoint Path:"), 0, 2);
+        grid.add(endpointField, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -31,9 +34,10 @@ public class ConfigDialogUtil {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 String service = serviceField.getText().trim();
+                String port = portField.getText().trim();
                 String endpoint = endpointField.getText().trim();
                 if (!service.isEmpty() && !endpoint.isEmpty()) {
-                    return new AsyncPatternConfig(service, endpoint);
+                    return new AsyncPatternConfig(service, port, endpoint);
                 }
             }
             return null;
@@ -47,6 +51,7 @@ public class ConfigDialogUtil {
         dialog.setTitle("Edit Async Request Reply Configuration");
 
         TextField serviceField = new TextField(config.getServiceName());
+        TextField portField = new TextField(config.getServicePort());
         TextField endpointField = new TextField(config.getEndpointPath());
 
         GridPane grid = new GridPane();
@@ -54,10 +59,12 @@ public class ConfigDialogUtil {
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 150, 10, 10));
 
-        grid.add(new Label("Service Name:"), 0, 0);
+        grid.add(new Label("Consumer Service Name:"), 0, 0);
         grid.add(serviceField, 1, 0);
-        grid.add(new Label("Endpoint Path:"), 0, 1);
-        grid.add(endpointField, 1, 1);
+        grid.add(new Label("Consumer Sevice Port:"), 0, 1);
+        grid.add(portField, 1, 1);
+        grid.add(new Label("Endpoint Path:"), 0, 2);
+        grid.add(endpointField, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -65,6 +72,7 @@ public class ConfigDialogUtil {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 config.setServiceName(serviceField.getText().trim());
+                config.setServicePort(portField.getText().trim());
                 config.setEndpointPath(endpointField.getText().trim());
                 return config;
             }

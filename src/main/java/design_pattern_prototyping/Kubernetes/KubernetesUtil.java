@@ -244,8 +244,31 @@ public class KubernetesUtil {
         }
     }
 
-    public static void deletePatternNamespace() {
+    public static void deletePattern() {
         String[] namespaces = {"pattern", "proxy"};
+
+        try {
+            logger.info("Deleting all resources with label app=pattern...");
+            List<String> deleteLabeledResources = new ArrayList<>(List.of(
+                    "kubectl", "delete", "all,svc,cm,secret,deploy,pod", "-l", "app=pattern", "--all-namespaces"
+            ));
+            injectContext(deleteLabeledResources);
+
+            ProcessBuilder deleteResourcesProcess = new ProcessBuilder(deleteLabeledResources);
+            Process process = deleteResourcesProcess.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[INFO] " + line);
+                }
+            }
+
+            process.waitFor();
+            logger.info("Labeled resources deleted.");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error deleting labeled resources.", e);
+        }
 
         for (String namespace : namespaces) {
             try {
@@ -281,6 +304,7 @@ public class KubernetesUtil {
         }
     }
 
+<<<<<<< HEAD
     public static void applyYaml(String file, String namespace) throws IOException, InterruptedException {
         logger.info("Applying YAML: " + file + " -> ns=" + namespace);
         ExecResult res = exec("kubectl", "apply", "-f", file, "-n", namespace);
@@ -311,10 +335,21 @@ public class KubernetesUtil {
         }    }
 
    /* public static void applyYaml(String filePath, String namespace) {
+=======
+    public static void applyYaml(String filePath) {
+        applyYaml(filePath, null);
+    }
+
+    public static void applyYaml(String filePath, String namespace) {
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
         try {
             logger.info("Applying configuration from file: " + filePath);
 
-            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath, "-n", namespace));
+            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
+            if (namespace != null && !namespace.isBlank()) {
+                command.add("-n");
+                command.add(namespace);
+            }
             injectContext(command);
 
             ProcessBuilder apply = new ProcessBuilder(command);
@@ -381,6 +416,7 @@ public class KubernetesUtil {
         }
     }
 
+<<<<<<< HEAD
 
     /*public static void applyYaml(String filePath) {
         try {
@@ -413,6 +449,8 @@ public class KubernetesUtil {
             logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
         }
     }*/
+=======
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
     public static void getServiceYamlToFile(String serviceName, String namespace, Path targetFile) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(List.of("kubectl", "get", "svc", serviceName, "-n", namespace, "-o", "yaml"));
         ProcessBuilder builder = new ProcessBuilder(command);
@@ -433,4 +471,28 @@ public class KubernetesUtil {
 
         Files.writeString(targetFile, output.toString());
     }
+<<<<<<< HEAD
+=======
+
+    public static void getDeploymentYamlToFile(String deployName, String namespace, Path targetFile) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>(List.of("kubectl", "get", "deployment", deployName, "-n", namespace, "-o", "yaml"));
+        ProcessBuilder builder = new ProcessBuilder(command);
+        Process process = builder.start();
+
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Failed to get deployment YAML for " + deployName + ", exit code: " + exitCode);
+        }
+
+        Files.writeString(targetFile, output.toString());
+    }
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 }

@@ -21,6 +21,7 @@ public class CacheAsideGenerator implements PatternGenerator {
     private final List<String> tempServicePaths = new ArrayList<>();
 
     @Override
+<<<<<<< HEAD
     public void generatePattern(String filePath,Map<String, String> parameters) {
         generatePattern(null,List.of(parameters));
     }
@@ -52,6 +53,37 @@ public class CacheAsideGenerator implements PatternGenerator {
             for (Map<String, String> entry : configs) {
                 String service = entry.get("BACKEND_SERVICE"); //+ ".user.svc.cluster.local";
                 //String service = entry.get("BACKEND_SERVICE");
+=======
+    public void generatePattern(Map<String, String> parameters) {
+        generatePattern(List.of(parameters));
+    }
+
+    @Override
+    public void generatePattern(List<Map<String, String>> configs) {
+        // Clear old files
+        tempDeploymentPaths.clear();
+        tempServicePaths.clear();
+
+        try {
+            buildDockerImage("src/main/resources/Patterns/CacheAside/httpcache/Dockerfile.proxy", "cache-proxy-async:1.0");
+            loadImageMinikube("cache-proxy-async:1.0");
+
+            if (!configs.isEmpty()) {
+                Map<String, String> firstConfig = configs.get(0);
+                redisReplicaCount = firstConfig.getOrDefault("REDIS_REPLICAS", redisReplicaCount);
+                redisClusterNodes = firstConfig.getOrDefault("REDIS_NODES", redisClusterNodes);
+            }
+
+
+            // Rename each backend service
+            for (Map<String, String> entry : configs) {
+                String backendName = entry.get("BACKEND_NAME");
+                renameBackendService(backendName);
+            }
+
+            for (Map<String, String> entry : configs) {
+                String service = entry.get("BACKEND_SERVICE");
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
                 String port = entry.get("BACKEND_PORT");
                 String endpoints = entry.get("CACHED_ENDPOINTS");
                 String maxConnections = entry.get("MAX_CONNECTIONS");
@@ -63,8 +95,12 @@ public class CacheAsideGenerator implements PatternGenerator {
                         .replace("${BACKEND_PORT}", port)
                         .replace("${CACHE_TTL}", ttl)
                         .replace("${MAX_CONNECTIONS}", maxConnections)
+<<<<<<< HEAD
                         .replace("${CACHED_ENDPOINTS}", endpoints)
                         .replace("${NAMESPACE}", NAMESPACE);
+=======
+                        .replace("${CACHED_ENDPOINTS}", endpoints);
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 
                 Path tempProxyFile = Files.createTempFile("proxy-deployment-" + service + "-", ".yml");
                 Files.writeString(tempProxyFile, proxyYaml);
@@ -73,15 +109,23 @@ public class CacheAsideGenerator implements PatternGenerator {
                 // Generate Proxy Service YAML for each backend
                 String proxyServiceYaml = Files.readString(Paths.get(PROXY_SERVICE))
                         .replace("${SERVICE_NAME}", service)
+<<<<<<< HEAD
                         .replace("${SERVICE_PORT}", port)
                         .replace("${NAMESPACE}", NAMESPACE);
+=======
+                        .replace("${SERVICE_PORT}", port);
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 
                 Path tempProxyService = Files.createTempFile("proxy-service-" + service, ".yml");
                 Files.writeString(tempProxyService, proxyServiceYaml);
                 tempServicePaths.add(tempProxyService.toString());
             }
 
+<<<<<<< HEAD
         } catch (IOException e /*| InterruptedException e*/) {
+=======
+        } catch (IOException | InterruptedException e) {
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
             logger.log(Level.SEVERE, "Failed to generate Cache-Aside pattern config", e);
         }
     }
@@ -128,11 +172,14 @@ public class CacheAsideGenerator implements PatternGenerator {
         }
     }
 
+<<<<<<< HEAD
     @Override
     public String getYamlFilePath() {
         return null;
     }
 
+=======
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
     private void buildDockerImage(String dockerfilePath, String imageName) {
         try {
             Path dockerfile = Paths.get(dockerfilePath);
@@ -193,9 +240,13 @@ public class CacheAsideGenerator implements PatternGenerator {
 
         // Apply updated YAML
         KubernetesUtil.executeCommand("kubectl", "apply", "-f", svcPath.toString());
+<<<<<<< HEAD
 
 
     }
 
 
+=======
+    }
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 }

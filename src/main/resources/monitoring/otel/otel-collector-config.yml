@@ -69,6 +69,11 @@ data:
             - set(attributes["namespace"], resource.attributes["k8s.namespace.name"])
             - set(attributes["container"], resource.attributes["k8s.container.name"])
             - set(attributes["pod"], resource.attributes["k8s.pod.name"])
+      filter/envoy-sidecar-filter:
+        error_mode: ignore
+        traces:
+          span:
+            - 'resource.attributes["service.name"] == "envoy-sidecar"'
     exporters:
       prometheus:
         endpoint: "0.0.0.0:9464"
@@ -92,4 +97,8 @@ data:
         metrics/spanmetrics:
           receivers: [spanmetrics]
           processors: [transform, batch]
+          exporters: [prometheus]
+        metrics/envoy-sidecar:
+          receivers: [spanmetrics]
+          processors: [filter/envoy-sidecar-filter, transform, batch]
           exporters: [prometheus]

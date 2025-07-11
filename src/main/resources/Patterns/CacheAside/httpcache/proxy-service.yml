@@ -4,11 +4,19 @@ metadata:
   labels:
     app: pattern
   name: ${SERVICE_NAME}
+<<<<<<< HEAD
   namespace: ${NAMESPACE}
+=======
+  namespace: user
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 spec:
   selector:
     app: cache-proxy-async
   ports:
     - protocol: TCP
+<<<<<<< HEAD
       port: ${SERVICE_PORT}
+=======
+      port: ${SERVICE_NAME}
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
       targetPort: 80
