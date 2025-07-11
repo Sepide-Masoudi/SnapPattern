@@ -13,12 +13,13 @@ Snap Pattern is a repository designed to prototype and implement various microse
 2. **Setup**:
    - Clone the repository.
    - Install dependencies listed in `requirements.txt` for Python.
+   - Download and extract Apache JMeter from their website. Place it into the root of the repository
+   - Alternaively just run the installation script `bash ./install.sh`
+   
+   <script src="https://asciinema.org/a/DDCwOsDPutcVX7FEAneFoGD9u.js" id="asciicast-DDCwOsDPutcVX7FEAneFoGD9u" async="true"></script>
+
+3. **Run the Application**:
    - Start Minikube using the UI or CLI.
-
-3. **Install Apache JMeter**:
-   - Download Apache JMeter from their website
-
-4. **Run the Application**:
    - Execute the `Main.java` file to launch the JavaFX application.
    - Use the UI to deploy patterns, monitor services, and analyze metrics.
 
