@@ -156,12 +156,12 @@ async def startup_event():
 
     pool = aioredis.ConnectionPool.from_url(
         redis_url,
-        max_connections=REDIS_POOL_LIMIT,
+        max_connections=REDIS_POOL_SIZE,
         encoding="utf-8",
         decode_responses=True
     )
 
     redis = aioredis.Redis(connection_pool=pool)
-    logger.info(f"Connected to Redis with pool size {REDIS_POOL_LIMIT}")
+    logger.info(f"Connected to Redis with pool size {REDIS_POOL_SIZE}")
 
     asyncio.create_task(batch_processor())
