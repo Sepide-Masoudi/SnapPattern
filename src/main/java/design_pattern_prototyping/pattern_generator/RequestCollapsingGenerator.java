@@ -82,7 +82,7 @@ public class RequestCollapsingGenerator implements PatternGenerator {
     }
 
     @Override
-    public void deployPattern() throws InterruptedException {
+    public void deployPattern() {
         try {
             // Install Redis via Helm
             KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
