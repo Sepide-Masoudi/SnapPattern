@@ -3,14 +3,21 @@ package design_pattern_prototyping.controller;
 import design_pattern_prototyping.Monitoring.*;
 import design_pattern_prototyping.util.UILogger;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import java.io.File;
-import java.util.Map;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +27,7 @@ public class MetricsController {
     public UILogger uiLogger;
 
     @FXML private TextArea logTextArea;
-    @FXML public Button exposeServicesButton;
+    @FXML public Button exportMetricsButton;
     @FXML public Button getMetricsButton;
     @FXML public Button viewPlotsButton;
     @FXML public Button deployMetricsButton;
@@ -47,14 +54,6 @@ public class MetricsController {
         queryMetrics.setLogger(uiLogger);
         metricsExporter.setLogger(uiLogger);
         logger.info("MetricsController initialized.");
-    }
-
-    @FXML
-    private void exposeMonitoringServices() {
-        logger.info("Starting port forwarding for monitoring services...");
-        //PrometheusClient.startPortForwarding();
-        GrafanaClient.startPortForwarding();
-        JaegerClient.startPortForwarding();
     }
 
     @FXML
@@ -140,39 +139,115 @@ public class MetricsController {
     private void viewPlots() {
         logger.info("Opening plots...");
         uiLogger.info("Opening plots...");
+
         Stage plotViewerStage = new Stage();
         plotViewerStage.setTitle("Metric Plots");
 
-        VBox plotLayout = new VBox(10);
-        plotLayout.setStyle("-fx-padding: 10; -fx-alignment: center; -fx-background-color: #f0f0f0;");
-
-        File folder = new File("Python/results");
-
+        File folder = new File("Python/results/plots");
         File[] plotFiles = folder.listFiles((dir, name) -> name.endsWith(".png"));
 
-        if (plotFiles != null && plotFiles.length > 0) {
-            for (File plotFile : plotFiles) {
-                Image image = new Image(plotFile.toURI().toString());
-                ImageView imageView = new ImageView(image);
-                imageView.setFitWidth(600);
-                imageView.setPreserveRatio(true);
-                plotLayout.getChildren().add(imageView);
-            }
-            logger.info("Plots loaded successfully. Total plots: " + plotFiles.length);
-            uiLogger.info("Plots loaded successfully. Total plots: " + plotFiles.length);
-        } else {
-            Label noPlotsLabel = new Label("No plots found in the results folder.");
-            plotLayout.getChildren().add(noPlotsLabel);
+        if (plotFiles == null || plotFiles.length == 0) {
+            showAlert("No Plots Found", "There are no plot files in the results folder. Please generate metrics to view plots.", Alert.AlertType.INFORMATION);
             logger.warning("No plot files were found in results folder.");
             uiLogger.warning("No plot files were found in results folder.");
-            showAlert("No Plots Found", "There are no plot files in the results folder. Please generate metrics to view plots.", Alert.AlertType.INFORMATION);
+            return;
         }
 
-        ScrollPane scrollPane = new ScrollPane(plotLayout);
-        scrollPane.setFitToWidth(true);
-        Scene plotScene = new Scene(scrollPane, 800, 600);
-        plotViewerStage.setScene(plotScene);
+        // Group by type (basic heuristic)
+        Map<String, List<File>> groupedPlots = new HashMap<>();
+        for (File file : plotFiles) {
+            String key = file.getName().toLowerCase().contains("boxplot") ? "Boxplots" :
+                    file.getName().toLowerCase().contains("timeseries") ? "Time Series" : "Other";
+            groupedPlots.computeIfAbsent(key, k -> new ArrayList<>()).add(file);
+        }
+
+        TabPane tabPane = new TabPane();
+
+        for (Map.Entry<String, List<File>> entry : groupedPlots.entrySet()) {
+            String category = entry.getKey();
+            List<File> files = entry.getValue();
+            files.sort(Comparator.comparing(File::getName));
+
+            GridPane grid = new GridPane();
+            grid.setHgap(15);
+            grid.setVgap(15);
+            grid.setPadding(new Insets(15));
+            int cols = 2;
+            for (int i = 0; i < files.size(); i++) {
+                File plotFile = files.get(i);
+                Image image = new Image(plotFile.toURI().toString());
+                ImageView imageView = new ImageView(image);
+                imageView.setFitWidth(700);
+                imageView.setPreserveRatio(true);
+
+                Tooltip tooltip = new Tooltip(plotFile.getName());
+                Tooltip.install(imageView, tooltip);
+
+                imageView.setOnMouseClicked(event -> openImageInModal(plotFile));
+
+                int row = i / cols;
+                int col = i % cols;
+                grid.add(imageView, col, row);
+            }
+
+            ScrollPane scrollPane = new ScrollPane(grid);
+            scrollPane.setFitToWidth(true);
+            Tab tab = new Tab(category, scrollPane);
+            tabPane.getTabs().add(tab);
+        }
+
+        Scene scene = new Scene(tabPane, 1400, 1000);
+        plotViewerStage.setScene(scene);
         plotViewerStage.show();
+
+        logger.info("Plots loaded and displayed in grouped view.");
+        uiLogger.info("Plots loaded and displayed in grouped view.");
+    }
+
+    private void openImageInModal(File imageFile) {
+        Stage modalStage = new Stage();
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.setTitle("Plot Viewer: " + imageFile.getName());
+
+        Image image = new Image(imageFile.toURI().toString());
+        ImageView imageView = new ImageView(image);
+        imageView.setPreserveRatio(true);
+        imageView.setFitWidth(1200);
+
+        ScrollPane scrollPane = new ScrollPane(imageView);
+        scrollPane.setFitToWidth(true);
+
+        Scene scene = new Scene(scrollPane, 1400, 1000);
+        modalStage.setScene(scene);
+        modalStage.show();
+    }
+
+    @FXML
+    private void exportMetrics() {
+        File sourceFile = new File("Python/results/metrics_data.xlsx");
+
+        if (!sourceFile.exists()) {
+            showAlert("Export Metrics", "Metrics file not found. Please run the metrics analysis first.", Alert.AlertType.ERROR);
+            logger.warning("metrics_data.xlsx not found at expected path.");
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Metrics Data");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx"));
+        fileChooser.setInitialFileName("metrics_data.xlsx");
+
+        File destinationFile = fileChooser.showSaveDialog(exportMetricsButton.getScene().getWindow());
+        if (destinationFile != null) {
+            try {
+                Files.copy(sourceFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                showAlert("Export Metrics", "Metrics exported successfully to:\n" + destinationFile.getAbsolutePath(), Alert.AlertType.INFORMATION);
+                logger.info("Metrics exported to: " + destinationFile.getAbsolutePath());
+            } catch (IOException e) {
+                showAlert("Export Metrics", "Failed to export metrics:\n" + e.getMessage(), Alert.AlertType.ERROR);
+                logger.log(Level.SEVERE, "Failed to export metrics", e);
+            }
+        }
     }
 
     private void showAlert(String title, String message, Alert.AlertType alertType) {

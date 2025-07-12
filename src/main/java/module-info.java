@@ -13,6 +13,7 @@ module com.example.design_pattern_prototyping {
     requires org.apache.poi.ooxml;
     requires org.bouncycastle.pkix;
     requires annotations;
+    requires com.google.gson;
 
     opens design_pattern_prototyping to javafx.fxml;
     exports design_pattern_prototyping;

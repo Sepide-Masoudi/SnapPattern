@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cache-proxy-async
-  namespace: ${NAMESPACE}
+  name: cache-proxy-${BACKEND_SERVICE}
+  namespace: pattern
   labels:
     app: pattern
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
-      app: cache-proxy-async
+      app: cache-proxy-${BACKEND_SERVICE}
   template:
     metadata:
       labels:
-        app: cache-proxy-async
-        pattern-managed: "true"
-        pattern-type: "cache-aside"
+        app: cache-proxy-${BACKEND_SERVICE}
+      annotations:
+        instrumentation.opentelemetry.io/inject-python: "otel/otel-operator-instrumentation"
     spec:
       containers:
         - name: cache-proxy
@@ -30,9 +30,31 @@ spec:
               value: "${BACKEND_PORT}"
             - name: CACHED_ENDPOINTS
               value: "${CACHED_ENDPOINTS}"
-            - name: REDIS_URL
-              value: "redis://redis-cache.pattern.svc.cluster.local:6379"
+            - name: REDIS_CLUSTER_HOST
+              value: "redis-cache-redis-cluster-headless.pattern.svc.cluster.local"
             - name: CACHE_TTL
               value: "${CACHE_TTL}"
             - name: MAX_CONNECTIONS
               value: "${MAX_CONNECTIONS}"
+
+#---
+#
+#apiVersion: autoscaling/v2
+#kind: HorizontalPodAutoscaler
+#metadata:
+#  name: cache-proxy-${BACKEND_SERVICE}-hpa
+#  namespace: pattern
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: Deployment
+#    name: cache-proxy-${BACKEND_SERVICE}
+#  minReplicas: 1
+#  maxReplicas: 10
+#  metrics:
+#    - type: Resource
+#      resource:
+#        name: cpu
+#        target:
+#          type: Utilization
+#          averageUtilization: 70

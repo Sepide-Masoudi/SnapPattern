@@ -6,7 +6,7 @@ metadata:
   labels:
     app: proxysql
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: proxysql
@@ -36,26 +36,3 @@ spec:
         - name: proxysql-config
           configMap:
             name: proxysql-configmap
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: teastore-db
-  namespace: user
-  labels:
-    app: proxysql
-    tier: frontend
-spec:
-  type: NodePort
-  ports:
-    - nodePort: 30036
-      port: 3306
-      targetPort: 3306
-      name: proxysql-mysql
-    - nodePort: 30032
-      port: 6032
-      targetPort: 6032
-      name: proxysql-admin
-  selector:
-    app: proxysql
-    tier: frontend

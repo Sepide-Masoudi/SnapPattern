@@ -149,44 +149,42 @@ def generate_energy_timeseries_plot(df):
         # Group by Pattern, Workload, StepIndex
         grouped = df.groupby(['Pattern', 'Workload', 'StepIndex'])['Energy (Joules)'].mean().reset_index()
 
-        patterns = [p for p in grouped['Pattern'].unique() if p != 'Baseline']
+        patterns = grouped['Pattern'].unique()
         workload_order = ['Low', 'Medium', 'High']
 
-        for pattern in patterns:
-            plt.figure(figsize=(16, 5))
-            for i, workload in enumerate(workload_order):
-                ax = plt.subplot(1, len(workload_order), i + 1)
+        # Set up the plotting canvas with subplots per workload
+        fig, axes = plt.subplots(1, len(workload_order), figsize=(18, 5), sharey=True)
 
-                # Subsets
-                baseline_df = grouped[(grouped['Pattern'] == 'Baseline') & (grouped['Workload'] == workload)]
-                pattern_df = grouped[(grouped['Pattern'] == pattern) & (grouped['Workload'] == workload)]
-
-                if not baseline_df.empty:
-                    ax.plot(baseline_df['StepIndex'], baseline_df['Energy (Joules)'],
-                            label='Baseline', linestyle='--', color='red')
-
-                if not pattern_df.empty:
-                    ax.plot(pattern_df['StepIndex'], pattern_df['Energy (Joules)'],
-                            label=pattern, linestyle='-', marker='o')
-
-                ax.set_title(f"{workload} Workload")
-                ax.set_xlabel("Time")
+        for i, workload in enumerate(workload_order):
+            ax = axes[i]
+            for pattern in patterns:
+                data = grouped[(grouped['Pattern'] == pattern) & (grouped['Workload'] == workload)]
+                if not data.empty:
+                    linestyle = '--' if pattern == 'Baseline' else '-'
+                    ax.plot(data['StepIndex'], data['Energy (Joules)'],
+                            label=pattern, linestyle=linestyle, marker='o' if pattern != 'Baseline' else '')
+            ax.set_title(f"{workload} Workload")
+            ax.set_xlabel("Time Step")
+            if i == 0:
                 ax.set_ylabel("Energy (Joules)")
-                ax.grid(True, linestyle='--', alpha=0.5)
-                ax.legend()
+            ax.grid(True, linestyle='--', alpha=0.5)
 
-            plt.suptitle(f"Energy Time Series - Pattern: {pattern}", fontsize=16)
-            plt.tight_layout(rect=[0, 0, 1, 0.93])
+        # Create shared legend above
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', ncol=len(patterns), bbox_to_anchor=(0.5, 1.15))
 
-            filename = f"energy_timeseries_{pattern}.png"
-            plot_path = os.path.join(RESULTS_FOLDER, filename)
-            plt.savefig(plot_path)
-            plt.close()
+        plt.suptitle("Energy Time Series - All Patterns", fontsize=16, y=1.25)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
 
-            print(f"Saved time series plot for pattern '{pattern}' at {plot_path}")
+        filename = "energy_timeseries.png"
+        plot_path = os.path.join(RESULTS_FOLDER, filename)
+        plt.savefig(plot_path, bbox_inches='tight')
+        plt.close()
+
+        print(f"Saved energy time series plot at {plot_path}")
 
     except Exception as e:
-        print("Error generating time series plot:", e)
+        print("Error generating energy time series plot:", e)
         traceback.print_exc()
 
 

@@ -1,5 +1,6 @@
 package design_pattern_prototyping.pattern_generator;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -10,10 +11,5 @@ public interface PatternGenerator {
         throw new UnsupportedOperationException("Not implemented for this pattern.");
     }
 
-<<<<<<< HEAD
-    void deployPattern() throws InterruptedException;
-    String getYamlFilePath();
-=======
-    void deployPattern();
->>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
+    void deployPattern() throws IOException;
 }

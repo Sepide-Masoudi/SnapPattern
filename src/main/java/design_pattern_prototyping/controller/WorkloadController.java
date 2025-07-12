@@ -1,9 +1,14 @@
 package design_pattern_prototyping.controller;
 
+import design_pattern_prototyping.Kubernetes.KubernetesClientAPI;
 import design_pattern_prototyping.util.UILogger;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.util.Config;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -12,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.*;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -25,13 +31,17 @@ public class WorkloadController {
 
     private static final Logger logger = Logger.getLogger(WorkloadController.class.getName());
     private UILogger uiLogger;
+    private KubernetesClientAPI kubeClientAPI;
 
     @FXML private TextArea logTextArea;
     @FXML private ComboBox<String> fileDropdown;
     @FXML private ComboBox<String> workloadLevelComboBox;
     @FXML private TextField hostnameField;
     @FXML private TextField portField;
+    @FXML private ComboBox userServiceDropdown;
+    private String selectedUserService = null;
     @FXML private Button abortButton;
+    @FXML private TextField maxDurationField;
     private Process currentProcess = null;
     private final AtomicBoolean isAborted = new AtomicBoolean(false);
     private final AtomicBoolean timeoutTriggered = new AtomicBoolean(false);
@@ -65,9 +75,38 @@ public class WorkloadController {
         }
         abortButton.setDisable(true);
 
+        userServiceDropdown.setOnMouseClicked(event -> {
+            if (userServiceDropdown.getItems().isEmpty()) {
+                try {
+                    ApiClient client = Config.defaultClient();
+                    kubeClientAPI = new KubernetesClientAPI(client);
+                    List<String> services = kubeClientAPI.getServicesInNamespace("user");
+
+                    userServiceDropdown.setItems(FXCollections.observableArrayList(services));
+
+                    if (services.isEmpty()) {
+                        logger.warning("No services found in 'user' namespace.");
+                        uiLogger.warning("No services found in 'user' namespace.");
+                    }
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to load services from namespace 'user'", e);
+                    uiLogger.warning("Could not fetch services from 'user' namespace: " + e.getMessage());
+                }
+            }
+        });
+
+        userServiceDropdown.setOnAction(event -> {
+            selectedUserService = userServiceDropdown.getValue().toString();
+            logger.info("User changed selection to: " + selectedUserService);
+        });
+
         Logger logger = Logger.getLogger("WorkloadLogger");
         uiLogger = new UILogger(logTextArea, logger);
         logger.info("WorkloadController initialized.");
+    }
+
+    public String getSelectedUserService() {
+        return selectedUserService;
     }
 
     @FXML
@@ -129,7 +168,7 @@ public class WorkloadController {
                 int numUsers, rampUp;
                 switch (workloadLevel) {
                     case "High":
-                        numUsers = 500;
+                        numUsers = 250;
                         rampUp = 120;
                         break;
                     case "Medium":
@@ -192,6 +231,17 @@ public class WorkloadController {
                 processBuilder.redirectErrorStream(true);
                 currentProcess = processBuilder.start();
 
+                int maxDuration = 5;
+                try {
+                    String durationInput = maxDurationField.getText();
+                    if (durationInput != null && !durationInput.isBlank()) {
+                        maxDuration = Integer.parseInt(durationInput.trim());
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warning("Invalid max duration input. Using default of 7 minutes.");
+                }
+
+                int finalMaxDuration = maxDuration;
                 timeoutTask = scheduler.schedule(() -> {
                     if (currentProcess != null && currentProcess.isAlive()) {
                         timeoutTriggered.set(true);
@@ -218,7 +268,7 @@ public class WorkloadController {
                         }
                         abortButton.setDisable(true);
                     }
-                }, 7, TimeUnit.MINUTES);
+                }, finalMaxDuration, TimeUnit.MINUTES);
 
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
                     String line;
@@ -305,6 +355,72 @@ public class WorkloadController {
 
     public String getSelectedWorkloadLevel() {
         return workloadLevelComboBox.getValue();
+    }
+
+    @FXML
+    public void configureWorkloadLevels() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Configure Workload Levels");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setStyle("-fx-padding: 20;");
+
+        String[] levels = { "Low", "Medium", "High" };
+        TextField[] userFields = new TextField[3];
+        TextField[] rampFields = new TextField[3];
+
+        for (int i = 0; i < levels.length; i++) {
+            grid.add(new Label(levels[i] + " Users:"), 0, i);
+            userFields[i] = new TextField();
+            grid.add(userFields[i], 1, i);
+
+            grid.add(new Label(levels[i] + " Ramp-up:"), 2, i);
+            rampFields[i] = new TextField();
+            grid.add(rampFields[i], 3, i);
+        }
+
+        // Pre-fill current values from JSON
+        Path configPath = Paths.get("src/main/resources/workloads/workload_levels.json");
+        if (Files.exists(configPath)) {
+            try {
+                String json = Files.readString(configPath);
+                var map = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+                for (int i = 0; i < levels.length; i++) {
+                    var node = map.get(levels[i]);
+                    if (node != null) {
+                        userFields[i].setText(node.get("numUsers").asText());
+                        rampFields[i].setText(node.get("rampUp").asText());
+                    }
+                }
+            } catch (IOException e) {
+                logger.warning("Could not load existing workload config: " + e.getMessage());
+            }
+        }
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                try {
+                    StringBuilder jsonBuilder = new StringBuilder("{\n");
+                    for (int i = 0; i < levels.length; i++) {
+                        int users = Integer.parseInt(userFields[i].getText());
+                        int ramp = Integer.parseInt(rampFields[i].getText());
+                        jsonBuilder.append(String.format("  \"%s\": {\"numUsers\": %d, \"rampUp\": %d}%s\n",
+                                levels[i], users, ramp, i < 2 ? "," : ""));
+                    }
+                    jsonBuilder.append("}");
+
+                    Files.writeString(configPath, jsonBuilder.toString(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    showAlert("Success", "Workload levels updated successfully!", Alert.AlertType.INFORMATION);
+                } catch (IOException | NumberFormatException ex) {
+                    showAlert("Error", "Failed to save configuration: " + ex.getMessage(), Alert.AlertType.ERROR);
+                }
+            }
+        });
     }
 
     private void showAlert(String title, String message, Alert.AlertType alertType) {

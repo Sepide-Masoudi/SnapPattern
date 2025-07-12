@@ -214,9 +214,10 @@ public class CircuitBreakerGenerator implements PatternGenerator {
                 String backendPort = serviceConfigs.get(0).get("PORT");
 
                 // Fetch and inject Envoy sidecar
-                Path deployPath = Paths.get("deploy-" + service + ".yaml");
-                KubernetesUtil.getDeploymentYamlToFile(service, NAMESPACE, deployPath);
-                injectEnvoySidecar(deployPath, "envoy-config-" + service, ENVOY_IMAGE);
+                Path tempDeployFile = Files.createTempFile("deployment-" + service + "-", ".yml");
+                KubernetesUtil.getDeploymentYamlToFile(service, "user", tempDeployFile);
+                injectEnvoySidecar(tempDeployFile, "envoy-config-" + service, ENVOY_IMAGE);
+                Files.deleteIfExists(tempDeployFile);
 
                 // Generate ConfigMap for Envoy with circuit breaker logic
                 Path envoyConfig = generateEnvoyConfigMap(service, serviceConfigs);
@@ -267,10 +268,17 @@ public class CircuitBreakerGenerator implements PatternGenerator {
         for (Path file : tempFiles) {
             try {
                 KubernetesUtil.applyYaml(file.toString());
-                logger.info("Applied: " + file);
+                logger.info("Successfully applied: " + file);
+            } catch (IOException | InterruptedException e) {
+                logger.log(Level.SEVERE, "Failed to apply YAML file: " + file, e);
+                continue; // Skip delete if apply failed
+            }
+
+            try {
                 Files.deleteIfExists(file);
+                logger.info("Deleted temp file: " + file);
             } catch (IOException e) {
-                logger.log(Level.SEVERE, "Failed to apply or delete: " + file, e);
+                logger.log(Level.WARNING, "Failed to delete temporary file: " + file, e);
             }
         }
     }
@@ -312,14 +320,12 @@ public class CircuitBreakerGenerator implements PatternGenerator {
         List<Map<String, Object>> clusters = new ArrayList<>();
         List<Map<String, Object>> routes = new ArrayList<>();
 
-        String defaultBackendService = backendName + "." + NAMESPACE + ".svc.cluster.local";
         int defaultPort = 8080;
 
         for (Map<String, String> cfg : configs) {
             String service = cfg.get("SERVICE_NAME");
             String routePrefix = cfg.get("ROUTE_PREFIX");
             String cluster = service + routePrefix.replace("/", "-");
-            String address = service + "." + NAMESPACE + ".svc.cluster.local";
 
             Map<String, Object> clusterDef = Map.of(
                     "name", cluster,

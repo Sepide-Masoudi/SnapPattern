@@ -43,11 +43,9 @@ public class DeployMonitoringStack {
             uiLogger.info("Installing Cert-Manager...");
             KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml");
 
-            //waitForDeploymentReady("cert-manager", "cert-manager");
-            //waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
-            //waitForDeploymentReady("cert-manager-webhook", "cert-manager");
-
-            Thread.sleep(15000);
+            waitForDeploymentReady("cert-manager", "cert-manager");
+            waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
+            waitForDeploymentReady("cert-manager-webhook", "cert-manager");
 
             // Sleep briefly to ensure webhook and certs are established
             Thread.sleep(10000);
@@ -93,7 +91,7 @@ public class DeployMonitoringStack {
             uiLogger.info("Monitoring stack deployed successfully.");
             return true;
 
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error deploying the monitoring stack", e);
             uiLogger.error("Error deploying the monitoring stack: " + e.getMessage());
             return false;
@@ -118,42 +116,6 @@ public class DeployMonitoringStack {
         logger.info("Labeling the ConfigMap as a Grafana dashboard...");
         uiLogger.info("Labeling the ConfigMap as a Grafana dashboard...");
         KubernetesUtil.executeCommand("kubectl", "label", "configmap", "grafana-dashboard-config", "-n", MONITOR_NAMESPACE, "grafana_dashboard=1", "--overwrite");
-    }
-
-    private void executeCommand(String... command) throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    logger.info("[stdout] " + line);
-                    uiLogger.info("[stdout] " + line);
-                }
-            } catch (IOException e) {
-                logger.log(Level.WARNING, "Error reading stdout of process", e);
-                uiLogger.warning("Error reading stdout of process: " + e.getMessage());
-            }
-        }).start();
-
-        new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    logger.warning("[stderr] " + line);
-                    uiLogger.warning("[stderr] " + line);
-                }
-            } catch (IOException e) {
-                logger.log(Level.WARNING, "Error reading stderr of process", e);
-                uiLogger.warning("Error reading stderr of process: " + e.getMessage());
-            }
-        }).start();
-
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new IOException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
-        }
     }
 
     private void waitForDeploymentReady(String deploymentName, String namespace) throws IOException, InterruptedException {

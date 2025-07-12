@@ -50,8 +50,8 @@ public class ControllerMediatorImpl implements ControllerMediator {
 
     @Override
     public String getSelectedUserService() {
-        if (patternController != null) {
-            return patternController.getSelectedUserService();
+        if (workloadController != null) {
+            return workloadController.getSelectedUserService();
         }
         return null;
     }
