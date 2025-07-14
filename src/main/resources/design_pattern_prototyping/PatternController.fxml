@@ -199,47 +199,47 @@
                                 <!-- Left column: Pattern parameters -->
                                 <Label text="Backend Service" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                 <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1"
-                                           text="teastore-persistence"/>
+                                           text="data-product-service"/>
 
                                 <Label text="Backend Port" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                 <TextField fx:id="rc_backendPort" GridPane.rowIndex="1" GridPane.columnIndex="1"
-                                           text="8080"/>
+                                           text="8089"/>
 
                                 <Label text="Endpoint Path" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                                 <TextField fx:id="rc_endpointPath" GridPane.rowIndex="2" GridPane.columnIndex="1"
-                                           text="/tools.descartes.teastore.persistence/product"/>
+                                           text="/data-json"/>
 
                                 <Label text="Query Parameter" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
                                 <TextField fx:id="rc_queryParam" GridPane.rowIndex="3" GridPane.columnIndex="1"
-                                           text="id"/>
+                                           text=""/>
 
                                 <Label text="ID Field" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                                <TextField fx:id="rc_idField" GridPane.rowIndex="4" GridPane.columnIndex="1" text="id"/>
+                                <TextField fx:id="rc_idField" GridPane.rowIndex="4" GridPane.columnIndex="1" text=""/>
 
                                 <Label text="Batch Query" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
                                 <TextField fx:id="rc_batchQuery" GridPane.rowIndex="5" GridPane.columnIndex="1"
-                                           text="SELECT ID, NAME, DESCRIPTION, LISTPRICEINCENTS, CATEGORY_ID FROM PERSISTENCEPRODUCT WHERE ID IN (%s)"/>
+                                           text="^/data\\-json$"/>
 
                                 <!-- Right column: DB connection parameters -->
                                 <Label text="DB Host" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
                                 <TextField fx:id="rc_dbHost" GridPane.rowIndex="0" GridPane.columnIndex="3"
-                                           text="teastore-db.user.svc.cluster.local"/>
+                                           text="data-product-service.user.svc.cluster.local"/>
 
                                 <Label text="DB Port" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
                                 <TextField fx:id="rc_dbPort" GridPane.rowIndex="1" GridPane.columnIndex="3"
-                                           text="3306"/>
+                                           text="8089"/>
 
                                 <Label text="DB Name" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
                                 <TextField fx:id="rc_dbName" GridPane.rowIndex="2" GridPane.columnIndex="3"
-                                           text="teadb"/>
+                                           text=""/>
 
                                 <Label text="DB Username" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
                                 <TextField fx:id="rc_dbUser" GridPane.rowIndex="3" GridPane.columnIndex="3"
-                                           text="teauser"/>
+                                           text=""/>
 
                                 <Label text="DB Password" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
                                 <TextField fx:id="rc_dbPass" GridPane.rowIndex="4" GridPane.columnIndex="3"
-                                           text="teapassword"/>
+                                           text=""/>
 
                             </GridPane>
                         </VBox>
