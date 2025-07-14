@@ -131,7 +131,7 @@
                                 <!-- MySQL Backend Target -->
                                 <Label text="DB Service Name:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
                                 <TextField fx:id="sqlDbServiceName"
-                                           promptText="teastore-db" GridPane.rowIndex="5"
+                                           promptText="db-service" GridPane.rowIndex="5"
                                            GridPane.columnIndex="1"/>
 
                                 <Label text="DB Port:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
