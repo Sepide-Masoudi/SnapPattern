@@ -14,6 +14,7 @@ Snap Pattern is a repository designed to prototype and implement various microse
    - Clone the repository.
    - Install dependencies listed in `requirements.txt` for Python.
    - Download and extract Apache JMeter from their website. Place it into the root of the repository
+   - Update the `java17Path` variable in [`WorkloadController.java`](src/main/java/design_pattern_prototyping/controller/WorkloadController.java) to match your local Java path
    - Alternaively just run the installation script `bash ./install.sh`
 
    ```
