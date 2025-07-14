@@ -1,43 +1,49 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: envoy-circuitbreaker
+  name: envoy-${BACKEND_SERVICE}
+  namespace: user
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: envoy-circuitbreaker
+      app: envoy-${BACKEND_SERVICE}
+      run: ${BACKEND_SERVICE}
   template:
     metadata:
       labels:
-        app: envoy-circuitbreaker
+        app: envoy-${BACKEND_SERVICE}
+        run: ${BACKEND_SERVICE}
     spec:
       containers:
         - name: envoy
-          image: envoyproxy/envoy:v1.30-latest
-          args:
-            - "-c"
-            - "/etc/envoy/envoy.yaml"
-          ports:
-            - containerPort: 8080
+          image: envoyproxy/envoy:v1.28-latest
+          args: ["-c", "/etc/envoy/envoy.yaml"]
           volumeMounts:
-            - name: config
+            - name: envoy-config
               mountPath: /etc/envoy
-              readOnly: true
+          ports:
+            - containerPort: ${BACKEND_PORT}
+              name: envoy-port
       volumes:
-        - name: config
+        - name: envoy-config
           configMap:
+<<<<<<< HEAD
             name:  envoy-circuitbreaker-config #envoy-config
+=======
+            name: envoy-config-${BACKEND_SERVICE}
+>>>>>>> 6d246dd86bd8744473a8666ed60ed311e98d9c38
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: envoy-circuitbreaker
+  name: ${BACKEND_SERVICE}
+  namespace: user
+  labels:
+    app: envoy
 spec:
-  selector:
-    app: envoy-circuitbreaker
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: ClusterIP
+    - port: ${BACKEND_PORT}
+      targetPort: ${BACKEND_PORT}
+  selector:
+    app: envoy-${BACKEND_SERVICE}
