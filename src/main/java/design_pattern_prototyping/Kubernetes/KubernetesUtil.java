@@ -334,13 +334,13 @@ public class KubernetesUtil {
         logger.info("Configuration applied successfully.");
     }
 
-    public static void applyYaml(String file) throws IOException, InterruptedException {
-        logger.info("Applying YAML: " + file);
-        ExecResult res = exec("kubectl", "apply", "-f", file);
-        if (res.exitCode != 0) {
-            throw new IOException("'kubectl apply' failed: res.stderr " );
-        }
-    }
+    //public static void applyYaml(String file) throws IOException, InterruptedException {
+    //    logger.info("Applying YAML: " + file);
+    //    ExecResult res = exec("kubectl", "apply", "-f", file);
+    //    if (res.exitCode != 0) {
+    //        throw new IOException("'kubectl apply' failed: res.stderr " );
+    //    }
+    //}
 
     public static void executeCommand(String... command) throws IOException, InterruptedException {
         List<String> commandList = new ArrayList<>(Arrays.asList(command));

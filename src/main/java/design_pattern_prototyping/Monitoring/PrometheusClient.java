@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 public class PrometheusClient {
 
     //TODO SEPIDEH
-    private static final String baseUrl = "http://192.168.94.2:30090";//"http://192.168.49.2:30090";//"http://192.168.85.2:30090";//"http://192.168.76.2:30090";//"http://192.168.67.2:30090";//"http://192.168.58.2:30090";
+    private static final String baseUrl = "http://192.168.121.2:30090";//"http://192.168.49.2:30090";//"http://192.168.85.2:30090";//"http://192.168.76.2:30090";//"http://192.168.67.2:30090";//"http://192.168.58.2:30090";
     private static final Logger logger = Logger.getLogger(PrometheusClient.class.getName());
 
     /**
