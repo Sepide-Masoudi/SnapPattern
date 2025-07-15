@@ -20,7 +20,7 @@ public class CacheAsideGenerator implements PatternGenerator {
     private static final String PROXY_TEMPLATE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-deployment.yml";
     private static final String PROXY_NAMESPACE = "pattern";   // namespace for proxies & Redis
     private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
-    private static final int ENVOY_PORT = 8091;
+    private static final int ENVOY_PORT = 8089;
 
     private String redisReplicaCount = "2";
     private String redisClusterNodes = "6";
@@ -209,7 +209,7 @@ public class CacheAsideGenerator implements PatternGenerator {
                                         "endpoint", Map.of(
                                                 "address", Map.of(
                                                         "socket_address", Map.of(
-                                                                "address", "127.0.0.1",
+                                                                "address", backendName + "." + "user" + ".svc.cluster.local",
                                                                 "port_value", Integer.parseInt(backendPort)
                                                         )
                                                 )
@@ -379,17 +379,20 @@ public class CacheAsideGenerator implements PatternGenerator {
         }
         Map<String, Object> spec = (Map<String, Object>) data.get("spec");
         List<Map<String, Object>> ports = new ArrayList<>();
+        // Cache-aside port (8089 → Envoy)
         Map<String, Object> envoyPort = new LinkedHashMap<>();
         envoyPort.put("name", "http-cache");
         envoyPort.put("protocol", "TCP");
-        envoyPort.put("port", 8089);
-        envoyPort.put("targetPort", envoyTargetPort);
+        envoyPort.put("port", 8089);          // External port 8089
+        envoyPort.put("targetPort", ENVOY_PORT);  // Forward to Envoy (8089)
         ports.add(envoyPort);
+
+        // Direct-access port (8092 → backend)
         Map<String, Object> backendP = new LinkedHashMap<>();
         backendP.put("name", "http-backend");
         backendP.put("protocol", "TCP");
-        backendP.put("port", 8092);
-        backendP.put("targetPort", backendPort);
+        backendP.put("port", 8092);           // External port 8092
+        backendP.put("targetPort", backendPort);  // Forward to backend (e.g., 8080)
         ports.add(backendP);
         spec.put("ports", ports);
         DumperOptions dumpOpts = new DumperOptions();
