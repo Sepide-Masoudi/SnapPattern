@@ -20,7 +20,7 @@ public class CacheAsideGenerator implements PatternGenerator {
     private static final String PROXY_TEMPLATE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-deployment.yml";
     private static final String NAMESPACE = "pattern";
     private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
-    private static final int ENVOY_PORT = 8081;
+    private static final int ENVOY_PORT = 8091;
     private String redisReplicaCount = "2";
     private String redisClusterNodes = "6";
 
@@ -82,6 +82,23 @@ public class CacheAsideGenerator implements PatternGenerator {
 
                 Path tempProxyFile = Files.createTempFile("proxy-deployment-" + serviceName + "-", ".yml");
                 Files.writeString(tempProxyFile, proxyYaml);
+                logger.info("=== proxy-deployment for " + serviceName + " ===\n" + proxyYaml);
+                Process dry = new ProcessBuilder(
+                        "kubectl","apply","--dry-run=client","-f", tempProxyFile.toString()
+                ).redirectErrorStream(true).start();
+
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(dry.getInputStream()))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        logger.warning("[dry-run] " + line);
+                    }
+                }
+                int dryCode = dry.waitFor();
+                if (dryCode != 0) {
+                    throw new IOException("Invalid proxy-deployment YAML for " + serviceName);
+                }
+
+
                 tempDeploymentPaths.add(tempProxyFile.toString());
 
                 // Generate Proxy Service YAML for each backend
@@ -453,7 +470,7 @@ public class CacheAsideGenerator implements PatternGenerator {
             // Envoy port
             Map<String, Object> envoyPort = new LinkedHashMap<>();
             envoyPort.put("name", "envoy");
-            envoyPort.put("port", 8080);
+            envoyPort.put("port", 8089);
             envoyPort.put("protocol", "TCP");
             envoyPort.put("targetPort", envoyTargetPort);
             ports.add(envoyPort);
@@ -461,7 +478,7 @@ public class CacheAsideGenerator implements PatternGenerator {
             // App Port
             Map<String, Object> backendPort = new LinkedHashMap<>();
             backendPort.put("name", "backend");
-            backendPort.put("port", 8082);
+            backendPort.put("port", 8092);
             backendPort.put("protocol", "TCP");
             backendPort.put("targetPort", backendTargetPort);
             ports.add(backendPort);
