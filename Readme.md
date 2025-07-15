@@ -37,10 +37,64 @@ Snap Pattern is a repository designed to prototype and implement various microse
    - Use the UI to deploy patterns, monitor services, and analyze metrics.
 
     [![tutorial](https://i.vimeocdn.com/video/2035940635-0e042383ac58489aa8a40d99d5b64a0e291315d6bce7ece9a540b1effd366f3f-d_640x360?&region=us)](https://vimeo.com/1100669519)
-  
-## User Guide
 
-### Deploy the monitoring Stack
+## Evaluation Configuration Parameters
+
+### Baseline
+For our baseline, we deploy a the deployment.yaml file without an added pattern.
+
+### Async Request Reply
+
+| Service Name          | Endpoint Path |
+|-----------------------|----------------|
+| filter-service        | /              |
+| formatting-service    | /              |
+| aggregation-service   | /              |
+| anonymization-service | /              |
+  
+### Circuit Breaker
+| Service Name          | Route Path | Port | Max Conn | Max Pend | Max Req | Retries | Timeout |
+|-----------------------|------------|------|----------|----------|---------|---------|---------|
+| filter-service        | /          | 8081 | 100      | 20       | 1       | 2       | 1s      |
+| formatting-service    | /          | 8084 | 100      | 20       | 1       | 2       | 1s      |
+| aggregation-service   | /          | 8082 | 100      | 20       | 1       | 2       | 1s      |
+| anonymization-service | /          | 8083 | 100      | 20       | 1       | 2       | 1s      |
+
+### Gateway Offloading
+
+Workload is run through the gateway ingress instead of the coordinator service
+
+| Field             | Value         |
+|------------------|---------------|
+| **Service Name** | coordinator   |
+| **Service Port** | 8080          |
+| **Service Endpoint** | /         |
+
+### Cache Aside
+
+| Field                        | Value               |
+|-----------------------------|---------------------|
+| Backend Service             | data-product-service|
+| Backend Port                | 8089                |
+| Cached Endpoints            | /                   |
+| Cache TTL (seconds)         | 60                  |
+| Max Connections             | 100                 |
+
+### Request Collapsing
+
+| Field               | Value                     |
+| ------------------- | ------------------------- |
+| **Backend Service** | data-product-service      |
+| **Backend Port**    | 8089                      |
+| **Endpoint Path**   | /data-json                |
+| **Query Parameter** | *(empty)*                 |
+| **ID Field**        | *(empty)*                 |
+| **Batch Query**     | ^/data\\-json\$           |
+| **DB Host**         | data-product-service.user |
+| **DB Port**         | 8089                      |
+| **DB Name**         | *(empty)*                 |
+| **DB Username**     | *(empty)*                 |
+| **DB Password**     | *(empty)*                 |
 
 
 ## File Structure

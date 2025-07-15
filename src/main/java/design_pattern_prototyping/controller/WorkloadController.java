@@ -215,7 +215,7 @@ public class WorkloadController {
                                      int numUsers, int rampUp, int durationSec, String workloadLevel) {
 
         String java17Path = "/usr/lib/jvm/java-17-openjdk-amd64/bin/java";
-        String resultsPath = "python/results/jmeter/results.jtl";
+        String resultsPath = "Python/results/jmeter/results.jtl";
         new Thread(() -> {
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder(
