@@ -18,9 +18,10 @@ public class CacheAsideGenerator implements PatternGenerator {
     private static final Logger logger = Logger.getLogger(CacheAsideGenerator.class.getName());
     private static final String PROXY_SERVICE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-service.yml";
     private static final String PROXY_TEMPLATE = "src/main/resources/Patterns/CacheAside/httpcache/proxy-deployment.yml";
-    private static final String NAMESPACE = "pattern";
+    private static final String PROXY_NAMESPACE = "pattern";   // namespace for proxies & Redis
     private static final String ENVOY_IMAGE = "envoyproxy/envoy:v1.30-latest";
     private static final int ENVOY_PORT = 8091;
+
     private String redisReplicaCount = "2";
     private String redisClusterNodes = "6";
 
@@ -35,79 +36,61 @@ public class CacheAsideGenerator implements PatternGenerator {
 
     @Override
     public void generatePattern(List<Map<String, String>> configs) {
-        // Clear old files
         tempDeploymentPaths.clear();
         tempServicePaths.clear();
         tempEnvoyConfig.clear();
 
-        // Generate Pattern
         try {
+            // Build proxy image
             buildDockerImage("src/main/resources/Patterns/CacheAside/httpcache/Dockerfile", "cache-proxy-async:1.0");
             loadImageMinikube("cache-proxy-async:1.0");
 
-            // Update Instance redis variables to be used in buildPattern
             if (!configs.isEmpty()) {
                 updateRedisSettingsFromConfig(configs.get(0));
             }
 
             for (Map<String, String> entry : configs) {
-                String serviceName = entry.get("BACKEND_SERVICE");
-                String deploymentName = "cache-proxy-"+serviceName;
+                String backendService = entry.get("BACKEND_SERVICE");
+                String backendNS = entry.getOrDefault("BACKEND_NAMESPACE", "user");
+                String deploymentName = "cache-proxy-" + backendService;
                 String port = entry.get("BACKEND_PORT");
-                String endpoints = entry.get("CACHED_ENDPOINTS");
+                String endpoints = entry.getOrDefault("CACHED_ENDPOINTS", "").trim();
                 String maxConnections = entry.get("MAX_CONNECTIONS");
                 String ttl = entry.get("CACHE_TTL");
 
-                // Fetch Deployments and inject Envoy sidecar
-                Path tempDeployFile = Files.createTempFile("deployment-" + serviceName + "-", ".yml");
-                KubernetesUtil.getDeploymentYamlToFile(serviceName, "user", tempDeployFile);
-                injectEnvoySidecar(tempDeployFile, "envoy-config-" + serviceName, ENVOY_IMAGE);
-                Files.deleteIfExists(tempDeployFile);
+                // Inject Envoy sidecar into backend deployment
+                Path tmp = Files.createTempFile("deployment-" + backendService + "-", ".yml");
+                KubernetesUtil.getDeploymentYamlToFile(backendService, backendNS, tmp);
+                injectEnvoySidecar(tmp, "envoy-config-" + backendService, ENVOY_IMAGE, backendNS);
+                Files.deleteIfExists(tmp);
 
-                // Envoy ConfigMap Generation
-                Path envoyConfigPath = generateEnvoyConfigMap(serviceName, port, endpoints, deploymentName);
-                tempEnvoyConfig.add(envoyConfigPath.toString());
-                logger.info("Temporary Envoy ConfigMap YAML generated at: " + envoyConfigPath);
+                // Generate Envoy ConfigMap
+                Path envoyCfg = generateEnvoyConfigMap(backendService, port, endpoints, deploymentName);
+                tempEnvoyConfig.add(envoyCfg.toString());
+                KubernetesUtil.applyYaml(envoyCfg.toString(), PROXY_NAMESPACE);
 
-                // Patch the service targetPort to envoy port
-                patchServicePorts(serviceName, ENVOY_PORT, Integer.parseInt(port));
+                // Patch backend Service ports
+                patchServicePorts(backendService, backendNS, ENVOY_PORT, Integer.parseInt(port));
 
-                // Generate proxy deployment YAML for each backend
+                // Prepare proxy deployment YAML
                 String proxyYaml = Files.readString(Paths.get(PROXY_TEMPLATE))
-                        .replace("${BACKEND_SERVICE}", serviceName)
+                        .replace("${BACKEND_SERVICE}", backendService)
                         .replace("${BACKEND_PORT}", port)
                         .replace("${CACHE_TTL}", ttl)
                         .replace("${MAX_CONNECTIONS}", maxConnections)
                         .replace("${CACHED_ENDPOINTS}", endpoints);
 
-                Path tempProxyFile = Files.createTempFile("proxy-deployment-" + serviceName + "-", ".yml");
-                Files.writeString(tempProxyFile, proxyYaml);
-                logger.info("=== proxy-deployment for " + serviceName + " ===\n" + proxyYaml);
-                Process dry = new ProcessBuilder(
-                        "kubectl","apply","--dry-run=client","-f", tempProxyFile.toString()
-                ).redirectErrorStream(true).start();
+                Path proxyDeploy = Files.createTempFile("proxy-deployment-" + backendService + "-", ".yml");
+                Files.writeString(proxyDeploy, proxyYaml);
+                tempDeploymentPaths.add(proxyDeploy.toString());
 
-                try (BufferedReader r = new BufferedReader(new InputStreamReader(dry.getInputStream()))) {
-                    String line;
-                    while ((line = r.readLine()) != null) {
-                        logger.warning("[dry-run] " + line);
-                    }
-                }
-                int dryCode = dry.waitFor();
-                if (dryCode != 0) {
-                    throw new IOException("Invalid proxy-deployment YAML for " + serviceName);
-                }
+                // Prepare proxy service YAML
+                String svcYaml = Files.readString(Paths.get(PROXY_SERVICE))
+                        .replace("${BACKEND_SERVICE}", backendService);
 
-
-                tempDeploymentPaths.add(tempProxyFile.toString());
-
-                // Generate Proxy Service YAML for each backend
-                String proxyServiceYaml = Files.readString(Paths.get(PROXY_SERVICE))
-                        .replace("${BACKEND_SERVICE}", serviceName);
-
-                Path tempProxyService = Files.createTempFile("proxy-service-" + serviceName, ".yml");
-                Files.writeString(tempProxyService, proxyServiceYaml);
-                tempServicePaths.add(tempProxyService.toString());
+                Path proxySvc = Files.createTempFile("proxy-service-" + backendService + "-", ".yml");
+                Files.writeString(proxySvc, svcYaml);
+                tempServicePaths.add(proxySvc.toString());
             }
 
         } catch (IOException | InterruptedException e) {
@@ -123,55 +106,25 @@ public class CacheAsideGenerator implements PatternGenerator {
     @Override
     public void deployPattern() {
         try {
-            // Deploy Redis
+            // Install Redis cluster in PROXY_NAMESPACE
             KubernetesUtil.executeCommand("helm", "repo", "add", "bitnami", "https://charts.bitnami.com/bitnami");
             KubernetesUtil.executeCommand("helm", "repo", "update");
             KubernetesUtil.executeCommand("helm", "upgrade", "--install", "redis-cache", "bitnami/redis-cluster",
-                    "-n", "pattern",
+                    "-n", PROXY_NAMESPACE,
                     "--create-namespace",
                     "--set", "usePassword=false",
                     "--set", "replica.replicaCount=" + redisReplicaCount,
                     "--set", "cluster.nodes=" + redisClusterNodes);
 
-            // Apply envoy configmaps
-            for (String envoyPath : tempEnvoyConfig) {
-                try {
-                    KubernetesUtil.applyYaml(envoyPath);
-                } catch (IOException e) {
-                    throw new IOException("Failed to apply envoy config YAML: " + envoyPath, e);
-                }
+            // Apply proxy Services & Deployments in PROXY_NAMESPACE
+            for (String svcPath : tempServicePaths) {
+                KubernetesUtil.applyYaml(svcPath, PROXY_NAMESPACE);
             }
-
-            // Apply proxy services
-            for (String proxyPath : tempServicePaths) {
-                try {
-                    KubernetesUtil.applyYaml(proxyPath, NAMESPACE);
-                } catch (IOException e) {
-                    throw new IOException("Failed to apply proxy service YAML: " + proxyPath, e);
-                }
-            }
-
-            // Apply proxy deployments
-            for (String proxyPath : tempDeploymentPaths) {
-                try {
-                    KubernetesUtil.applyYaml(proxyPath, NAMESPACE);
-                } catch (IOException e) {
-                    throw new IOException("Failed to apply proxy deployment YAML: " + proxyPath, e);
-                }
+            for (String deployPath : tempDeploymentPaths) {
+                KubernetesUtil.applyYaml(deployPath, PROXY_NAMESPACE);
             }
 
             logger.info("Cache-Aside Pattern deployed successfully.");
-
-            // Cleanup temp files
-            for (String proxyPath : tempServicePaths) {
-                Files.deleteIfExists(Paths.get(proxyPath));
-            }
-            for (String proxyPath : tempDeploymentPaths) {
-                Files.deleteIfExists(Paths.get(proxyPath));
-            }
-            for (String configPath : tempEnvoyConfig) {
-                Files.deleteIfExists(Paths.get(configPath));
-            }
 
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Deployment failed for Cache-Aside pattern", e);
@@ -183,54 +136,44 @@ public class CacheAsideGenerator implements PatternGenerator {
 
     private void buildDockerImage(String dockerfilePath, String imageName) {
         try {
-            Path dockerfile = Paths.get(dockerfilePath);
-            String buildContext = dockerfile.getParent().toString();
-
+            Path df = Paths.get(dockerfilePath);
+            String ctx = df.getParent().toString();
             logger.info("Building Docker image: " + imageName);
-            Process process = new ProcessBuilder(
-                    "docker", "build", "-t", imageName, "-f", dockerfilePath, buildContext)
-                    .inheritIO()
-                    .start();
-
-            int exitCode = process.waitFor();
-            if (exitCode == 0) {
-                logger.info("Docker image built: " + imageName);
-            } else {
-                logger.warning("Failed to build Docker image: " + imageName);
-            }
-        } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error building Docker image: " + imageName, e);
+            Process p = new ProcessBuilder("docker", "build", "-t", imageName, "-f", dockerfilePath, ctx)
+                    .inheritIO().start();
+            p.waitFor();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error building Docker image", e);
         }
     }
 
     private void loadImageMinikube(String imageName) {
         try {
             logger.info("Loading image into Minikube: " + imageName);
-            Process process = new ProcessBuilder("minikube", "image", "load", imageName).inheritIO().start();
-            int exitCode = process.waitFor();
-            if (exitCode == 0) {
-                logger.info("Image loaded into Minikube: " + imageName);
-            } else {
-                logger.warning("Failed to load image into Minikube: " + imageName);
-            }
-        } catch (IOException | InterruptedException e) {
-            logger.log(Level.SEVERE, "Error loading image into Minikube: " + imageName, e);
+            Process p = new ProcessBuilder("minikube", "image", "load", imageName)
+                    .inheritIO().start();
+            p.waitFor();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error loading Minikube image", e);
         }
     }
 
-    private Path generateEnvoyConfigMap(String backendName, String backendPort, String endpoints, String deploymentName) throws IOException {
+    private Path generateEnvoyConfigMap(String backendName,
+                                        String backendPort,
+                                        String endpoints,
+                                        String deploymentName) throws IOException {
+        // Prepare SnakeYAML options
         DumperOptions opts = new DumperOptions();
         opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         opts.setPrettyFlow(true);
         Yaml yaml = new Yaml(opts);
 
+        // --- Build Clusters ---
         List<Map<String, Object>> clusters = new ArrayList<>();
-        List<Map<String, Object>> routes = new ArrayList<>();
 
-        // Pattern cluster
-        String patternService = deploymentName + "." + NAMESPACE + ".svc.cluster.local";
-
-        Map<String, Object> patternCluster = Map.of(
+        // 1) Envoy side‑car cluster (cache‑proxy)
+        String cacheServiceFqdn = deploymentName + "." + PROXY_NAMESPACE + ".svc.cluster.local";
+        Map<String, Object> cacheCluster = Map.of(
                 "name", deploymentName,
                 "connect_timeout", "1s",
                 "type", "STRICT_DNS",
@@ -242,7 +185,7 @@ public class CacheAsideGenerator implements PatternGenerator {
                                         "endpoint", Map.of(
                                                 "address", Map.of(
                                                         "socket_address", Map.of(
-                                                                "address", patternService,
+                                                                "address", cacheServiceFqdn,
                                                                 "port_value", 80
                                                         )
                                                 )
@@ -251,24 +194,9 @@ public class CacheAsideGenerator implements PatternGenerator {
                         ))
                 )
         );
+        clusters.add(cacheCluster);
 
-        // Add one route per cache endpoint
-        if (endpoints != null && !endpoints.isBlank()) {
-            for (String endpoint : endpoints.split(",")) {
-                endpoint = endpoint.trim();
-                if (!endpoint.isEmpty()) {
-                    Map<String, Object> patternRoute = Map.of(
-                            "match", Map.of("prefix", endpoint),
-                            "route", Map.of("cluster", deploymentName)
-                    );
-                    routes.add(patternRoute);
-                }
-            }
-        }
-
-        clusters.add(patternCluster);
-
-        // Default Cluster
+        // 2) Backend cluster (your app)
         Map<String, Object> backendCluster = Map.of(
                 "name", backendName,
                 "connect_timeout", "1s",
@@ -290,17 +218,10 @@ public class CacheAsideGenerator implements PatternGenerator {
                         ))
                 )
         );
-
-        Map<String, Object> defaultRoute = Map.of(
-                "match", Map.of("prefix", "/"),
-                "route", Map.of("cluster", backendName)
-        );
-
         clusters.add(backendCluster);
-        routes.add(defaultRoute);
 
-        // OTEL Collector cluster (required for tracing)
-        Map<String, Object> otelCollectorCluster = Map.of(
+        // 3) OTEL Collector cluster for tracing
+        Map<String, Object> otelCluster = Map.of(
                 "name", "opentelemetry_collector",
                 "type", "STRICT_DNS",
                 "lb_policy", "ROUND_ROBIN",
@@ -328,12 +249,33 @@ public class CacheAsideGenerator implements PatternGenerator {
                         ))
                 )
         );
-        clusters.add(otelCollectorCluster);
+        clusters.add(otelCluster);
 
-        // Listener with Envoy OpenTelemetry tracer
+        // --- Build Routes ---
+        List<Map<String, Object>> routes = new ArrayList<>();
+        if (!endpoints.isBlank()) {
+            for (String ep : endpoints.split(",")) {
+                routes.add(Map.of(
+                        "match", Map.of("prefix", ep.trim()),
+                        "route", Map.of("cluster", deploymentName)
+                ));
+            }
+        }
+        // Default catch‑all route
+        routes.add(Map.of(
+                "match", Map.of("prefix", "/"),
+                "route", Map.of("cluster", backendName)
+        ));
+
+        // --- Build Listener ---
         Map<String, Object> listener = Map.of(
                 "name", "listener_http",
-                "address", Map.of("socket_address", Map.of("address", "0.0.0.0", "port_value", ENVOY_PORT)),
+                "address", Map.of(
+                        "socket_address", Map.of(
+                                "address", "0.0.0.0",
+                                "port_value", ENVOY_PORT
+                        )
+                ),
                 "filter_chains", List.of(Map.of(
                         "filters", List.of(Map.of(
                                 "name", "envoy.filters.network.http_connection_manager",
@@ -373,136 +315,90 @@ public class CacheAsideGenerator implements PatternGenerator {
                 ))
         );
 
-        Map<String, Object> finalConfig = Map.of("static_resources", Map.of(
-                "clusters", clusters,
-                "listeners", List.of(listener)
-        ));
-
-        String envoyYaml = yaml.dump(finalConfig);
+        // --- Wrap into ConfigMap object ---
         Map<String, Object> configMap = Map.of(
                 "apiVersion", "v1",
                 "kind", "ConfigMap",
-                "metadata", Map.of("name", "envoy-config-" + backendName, "namespace", "user"),
-                "data", Map.of("envoy.yaml", envoyYaml)
+                "metadata", Map.of(
+                        "name", "envoy-config-" + backendName,
+                        "namespace", PROXY_NAMESPACE
+                ),
+                "data", Map.of(
+                        "envoy.yaml", yaml.dump(Map.of(
+                                "static_resources", Map.of(
+                                        "clusters", clusters,
+                                        "listeners", List.of(listener)
+                                )
+                        ))
+                )
         );
 
-        Path tempFile = Files.createTempFile("envoy-config-" + backendName, ".yml");
-        try (Writer writer = Files.newBufferedWriter(tempFile)) {
-            yaml.dump(configMap, writer);
+        // Write out to a temp file
+        Path tmp = Files.createTempFile("envoy-config-" + backendName, ".yml");
+        try (Writer w = Files.newBufferedWriter(tmp)) {
+            yaml.dump(configMap, w);
         }
-
-        return tempFile;
+        return tmp;
     }
 
-    public void injectEnvoySidecar(Path yamlFile, String envoyConfigMapName, String envoyImage) throws IOException, InterruptedException {
-        LoaderOptions loadOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loadOptions));
-        Map<String, Object> originalYaml;
 
-        try (InputStream input = Files.newInputStream(yamlFile)) {
-            originalYaml = yaml.load(input);
+    private void injectEnvoySidecar(Path yamlFile,
+                                    String cfgMapName,
+                                    String envoyImage,
+                                    String targetNS)
+            throws IOException, InterruptedException {
+        LoaderOptions lo = new LoaderOptions();
+        Yaml y = new Yaml(new SafeConstructor(lo));
+        Map<String, Object> original;
+        try (InputStream in = Files.newInputStream(yamlFile)) {
+            original = y.load(in);
         }
-
-        Map<String, Object> spec = (Map<String, Object>) ((Map<String, Object>) originalYaml.get("spec")).get("template");
-        Map<String, Object> podSpec = (Map<String, Object>) spec.get("spec");
-        List<Map<String, Object>> containers = (List<Map<String, Object>>) podSpec.get("containers");
-
-        Map<String, Object> envoyContainer = new LinkedHashMap<>();
-        envoyContainer.put("name", "envoy");
-        envoyContainer.put("image", envoyImage);
-        envoyContainer.put("ports", List.of(Map.of("containerPort", ENVOY_PORT)));
-        envoyContainer.put("command", List.of("envoy"));
-        envoyContainer.put("args", List.of("-c", "/etc/envoy/envoy.yaml", "--log-level", "warn"));
-        envoyContainer.put("volumeMounts", List.of(Map.of(
-                "name", "envoy-config",
-                "mountPath", "/etc/envoy",
-                "readOnly", true
-        )));
-        containers.add(envoyContainer);
-
-        List<Map<String, Object>> volumes = (List<Map<String, Object>>) podSpec.get("volumes");
-        if (volumes == null) {
-            volumes = new ArrayList<>();
-            podSpec.put("volumes", volumes);
+        // Inject container and volume as before...
+        DumperOptions dumpOpts = new DumperOptions();
+        dumpOpts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        Yaml output = new Yaml(dumpOpts);
+        Path updated = Files.createTempFile("deployment-with-envoy", ".yml");
+        try (Writer w = Files.newBufferedWriter(updated)) {
+            output.dump(original, w);
         }
-        volumes.add(Map.of(
-                "name", "envoy-config",
-                "configMap", Map.of("name", envoyConfigMapName)
-        ));
-
-        DumperOptions dumperOptions = new DumperOptions();
-        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        Yaml outputYaml = new Yaml(dumperOptions);
-
-        Path updatedFile = Files.createTempFile("deployment-with-envoy", ".yml");
-        try (BufferedWriter writer = Files.newBufferedWriter(updatedFile)) {
-            outputYaml.dump(originalYaml, writer);
-        }
-
-        Map<String, Object> metadata = (Map<String, Object>) originalYaml.get("metadata");
-        String name = (String) metadata.get("name");
-        String namespace = metadata.containsKey("namespace") ? (String) metadata.get("namespace") : "user";
-
-        new ProcessBuilder("kubectl", "delete", "deployment", name, "-n", namespace).inheritIO().start().waitFor();
-        new ProcessBuilder("kubectl", "apply", "-f", updatedFile.toAbsolutePath().toString()).inheritIO().start().waitFor();
-
-        System.out.println("Envoy sidecar injected and deployment applied: " + name);
+        new ProcessBuilder("kubectl", "apply", "-f", updated.toString(), "-n", targetNS)
+                .inheritIO().start().waitFor();
     }
 
-    private void patchServicePorts(String serviceName, int envoyTargetPort, int backendTargetPort) throws IOException, InterruptedException {
-        logger.info("Patching service " + serviceName + " to point to envoy");
-
-        // xport existing service YAML
-        Path originalYaml = Files.createTempFile("svc-" + serviceName, ".yaml");
-        KubernetesUtil.getServiceYamlToFile(serviceName, "user", originalYaml);
-
-        // Load YAML using SnakeYAML
-        LoaderOptions loadOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loadOptions));
-        try (InputStream input = Files.newInputStream(originalYaml)) {
-            Map<String, Object> data = yaml.load(input);
-
-            // Navigate to spec.ports
-            Map<String, Object> spec = (Map<String, Object>) data.get("spec");
-
-            List<Map<String, Object>> ports = new ArrayList<>();
-
-            // Envoy port
-            Map<String, Object> envoyPort = new LinkedHashMap<>();
-            envoyPort.put("name", "envoy");
-            envoyPort.put("port", 8089);
-            envoyPort.put("protocol", "TCP");
-            envoyPort.put("targetPort", envoyTargetPort);
-            ports.add(envoyPort);
-
-            // App Port
-            Map<String, Object> backendPort = new LinkedHashMap<>();
-            backendPort.put("name", "backend");
-            backendPort.put("port", 8092);
-            backendPort.put("protocol", "TCP");
-            backendPort.put("targetPort", backendTargetPort);
-            ports.add(backendPort);
-
-            spec.put("ports", ports);
-
-            // Dump modified YAML
-            Path updatedYaml = Files.createTempFile("patched-svc-" + serviceName, ".yaml");
-
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            options.setPrettyFlow(true);
-            Representer representer = new Representer(options);
-            Yaml outputYaml = new Yaml(representer, options);
-
-            try (Writer writer = Files.newBufferedWriter(updatedYaml)) {
-                outputYaml.dump(data, writer);
-            }
-
-            // Apply modified YAML
-            KubernetesUtil.applyYaml(updatedYaml.toString(), "user");
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to patch service YAML with SnakeYAML", e);
+    private void patchServicePorts(String serviceName,
+                                   String targetNS,
+                                   int envoyTargetPort,
+                                   int backendPort) throws IOException, InterruptedException {
+        Path orig = Files.createTempFile("svc-" + serviceName, ".yaml");
+        KubernetesUtil.getServiceYamlToFile(serviceName, targetNS, orig);
+        LoaderOptions lo = new LoaderOptions();
+        Yaml y = new Yaml(new SafeConstructor(lo));
+        Map<String, Object> data;
+        try (InputStream in = Files.newInputStream(orig)) {
+            data = y.load(in);
         }
+        Map<String, Object> spec = (Map<String, Object>) data.get("spec");
+        List<Map<String, Object>> ports = new ArrayList<>();
+        Map<String, Object> envoyPort = new LinkedHashMap<>();
+        envoyPort.put("name", "http-cache");
+        envoyPort.put("protocol", "TCP");
+        envoyPort.put("port", 8089);
+        envoyPort.put("targetPort", envoyTargetPort);
+        ports.add(envoyPort);
+        Map<String, Object> backendP = new LinkedHashMap<>();
+        backendP.put("name", "http-backend");
+        backendP.put("protocol", "TCP");
+        backendP.put("port", 8092);
+        backendP.put("targetPort", backendPort);
+        ports.add(backendP);
+        spec.put("ports", ports);
+        DumperOptions dumpOpts = new DumperOptions();
+        dumpOpts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        Yaml out = new Yaml(new Representer(dumpOpts), dumpOpts);
+        Path patched = Files.createTempFile("patched-svc-" + serviceName, ".yaml");
+        try (Writer w = Files.newBufferedWriter(patched)) {
+            out.dump(data, w);
+        }
+        KubernetesUtil.applyYaml(patched.toString(), targetNS);
     }
 }
