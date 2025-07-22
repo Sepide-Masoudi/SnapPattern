@@ -39,10 +39,10 @@ Snap Pattern is a repository designed to prototype and implement various microse
 
     [![tutorial](https://i.vimeocdn.com/video/2035940635-0e042383ac58489aa8a40d99d5b64a0e291315d6bce7ece9a540b1effd366f3f-d_640x360?&region=us)](https://vimeo.com/1100669519)
 
-## Evaluation Configuration Parameters for Reproducibility Experiments
+## Evaluation Configuration Parameters(Reproducibility of Experiments)
 
 ### Reproducibility of Plots 
-For regenerating the Plots, you can run the [`main.py`](Python/main.ipynb) , which would use the metrics in the [`mertics.csv`](Python/results/metrics_data.xlsx) file for generating the plots. However you need to copy Energy related metrics to the [`sub_metrics_file`](Python/results/metrics_data_5min_updated.csv)]file before running the program. 
+To regenerate the plots, you can run [`main.py`](Python/main.ipynb), which uses the metrics in the [`mertics.csv`](Python/results/metrics_data.xlsx) file to generate the plots. However, you need to copy the energy-related metrics to the [`sub_metrics_file`](Python/results/metrics_data_5min_updated.csv)] before running the program. 
 ### Baseline
 For our baseline, we deploy a the deployment.yaml file without an added pattern.
 
