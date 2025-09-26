@@ -35,6 +35,8 @@ Snap Pattern is a repository designed to prototype and implement various microse
 3. **Run the Application**:
    - Start Minikube using the UI or CLI.
    - Execute the `Main.java` file to launch the JavaFX application.
+   - For deployment of the data piplines as system under the test use the deployment files with docker images for both [`Apple Silicon (arm64)`](examples/data-sharing-deployment.yaml) and [`Intel/AMD (amd64)`](examples/data-sharing-deployment-linux.yaml)
+   - For the workload script, you can our sample [`Jmeter script`](src/main/resources/workloads/data-pipeline.jmx)
    - Use the UI to deploy patterns, monitor services, and analyze metrics.
 
     [![tutorial](https://i.vimeocdn.com/video/2035940635-0e042383ac58489aa8a40d99d5b64a0e291315d6bce7ece9a540b1effd366f3f-d_640x360?&region=us)](https://vimeo.com/1100669519)
