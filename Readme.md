@@ -7,9 +7,9 @@ Snap Pattern is a repository designed to prototype and implement various microse
 ## Getting Started
 1. **Prerequisites**:
    - Java 17.
-   - Minikube installed and configured.
+   - Apache Jmeter installed and configured.
    - Python 3.11 with required dependencies.
-   - Deployment yaml file of your system under the test. The sample deployment Yaml file of the data-sharing pipelines with docker images for both [`Apple Silicon (arm64)`](examples/data-sharing-deployment.yaml) and [`Intel/AMD (amd64)`](examples/data-sharing-deployment-linux.yaml) 
+   - Deployment yaml file of your system under the test. The sample deployment Yaml file of the data-sharing pipelines with docker images for both [`Apple Silicon (arm64)`](examples/data-sharing-deployment.yaml) and [`Intel/AMD (amd64)`](examples/data-sharing-deployment-linux.yaml) is available.
 
 2. **Setup**:
    - Clone the repository.
