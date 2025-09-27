@@ -157,3 +157,6 @@ This file provides an overview of the repository and its structure.
 
 ## Contributing
 Contributions are welcome! Please follow the repository's coding standards and submit pull requests for review.
+
+## License
+This project is licensed under the MIT License. 
