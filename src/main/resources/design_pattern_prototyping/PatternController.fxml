@@ -6,156 +6,270 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.PatternController">
     <top>
-        <Label text="Deployment Dashboard" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
+        <Label text="Pattern Generator " style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
     </top>
 
     <center>
-        <VBox spacing="20.0" style="-fx-padding: 20.0;">
-            <!-- Step 1: Upload YAML -->
-            <Label text="Service Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-            <VBox spacing="10.0">
+        <ScrollPane fitToWidth="true" fitToHeight="true" pannable="true">
+            <VBox spacing="20.0" style="-fx-padding: 20.0;">
+
+                <!-- Step 1: Upload YAML -->
+                <Label text="Service Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <VBox spacing="10.0">
+                    <HBox spacing="10.0">
+                        <Label text="Upload YAML Configuration File:"/>
+                        <Button text="Choose File" onAction="#handleFileUpload"/>
+                    </HBox>
+                    <HBox spacing="10.0">
+                        <Label text="Select instrumentation language:"/>
+                        <Button text="Setup Instrumentation" onAction="#openInstrumentationModal"/>
+                        <Label text=" (Configure before deployment)"/>
+                    </HBox>
+                    <HBox spacing="10.0">
+                        <Button text="Deploy Microservice" onAction="#deployApplication"/>
+                        <Button text="Delete Microservice" onAction="#deleteApplication"/>
+                    </HBox>
+                </VBox>
+
+                <Separator orientation="HORIZONTAL"/>
+
+                <!-- Step 2: Select Design Pattern -->
+                <Label text="Pattern Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
                 <HBox spacing="10.0">
-                    <Label text="Upload YAML Configuration File:" />
-                    <Button text="Choose File" onAction="#handleFileUpload"/>
+                    <Label text="Select Design Pattern"/>
+                    <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
+                        <items>
+                            <FXCollections fx:factory="observableArrayList">
+                                <String fx:value="Baseline"/>
+                                <String fx:value="Async Request Reply"/>
+                                <String fx:value="Gateway Offloading"/>
+                                <String fx:value="Request Collapsing"/>
+                                <String fx:value="Cache Aside"/>
+                                <String fx:value="Cache Aside (MySQL Proxy)"/>
+                                <String fx:value="Circuit Breaker"/>
+                            </FXCollections>
+                        </items>
+                    </ComboBox>
+                    <Button text="Delete Pattern" onAction="#deletePattern"/>
+                    <Button fx:id="buildPatternButton" text="Build Pattern" onAction="#buildPattern" disable="true"/>
                 </HBox>
-                <HBox spacing="10.0">
-                    <Label text="Select instrumentation language:" />
-                    <Button text="Setup Instrumentation" onAction="#openInstrumentationModal"/>
-                    <Label text=" (Configure before deployment)" />
-                </HBox>
-                <HBox spacing="10.0">
-                    <Button text="Deploy Microservice" onAction="#deployApplication"/>
-                    <Button text="Delete Microservice" onAction="#deleteApplication"/>
-                </HBox>
+
+                <!-- Step 3: Pattern-Specific Config -->
+                <VBox spacing="10.0" fx:id="patternFieldsBox" visible="false">
+                    <Label text="Configure Pattern"/>
+
+                    <!-- StackPane to layer pattern-specific fields -->
+                    <StackPane>
+                        <!-- Async Request Reply Config -->
+                        <VBox spacing="10.0" fx:id="asyncRequestReplyFields" visible="false">
+                            <Label text="Async Request Reply Configuration" style="-fx-font-weight: bold;"/>
+
+                            <TableView fx:id="asyncTable" prefHeight="200">
+                                <columns>
+                                    <TableColumn fx:id="backendNameColumn" text="Consumer Service Name"
+                                                 prefWidth="200"/>
+                                    <TableColumn fx:id="backendPortColumn" text="Consumer Service Port"
+                                                 prefWidth="200"/>
+                                    <TableColumn fx:id="endpointPathColumn" text="Endpoint Path" prefWidth="200"/>
+                                </columns>
+                            </TableView>
+
+                            <HBox spacing="10.0">
+                                <Button text="Add Entry" onAction="#handleAsyncAddRow"/>
+                                <Button text="Edit Entry" onAction="#handleAsyncEditRow"/>
+                                <Button text="Delete Entry" onAction="#handleAsyncDeleteRow"/>
+                            </HBox>
+                        </VBox>
+
+                        <!-- Gateway Offloading Config -->
+                        <VBox spacing="10.0" fx:id="gatewayOffloadingFields" visible="false">
+                            <Label text="Gateway Offloading Configuration" style="-fx-font-weight: bold;"/>
+                            <GridPane hgap="10.0" vgap="10.0">
+                                <Label text="Service Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <TextField fx:id="go_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                <Label text="Service Name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <TextField fx:id="go_serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                <Label text="Service Port" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <TextField fx:id="go_servicePort" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                            </GridPane>
+                        </VBox>
+
+                        <!-- Cache Aside Config -->
+                        <VBox spacing="10.0" fx:id="cacheAsideFields" visible="false">
+                            <Label text="Cache Aside Configuration" style="-fx-font-weight: bold;"/>
+
+                            <TableView fx:id="cacheAsideTable" prefHeight="200">
+                                <columns>
+                                    <TableColumn fx:id="ca_backendService" text="Backend Service" prefWidth="200"/>
+                                    <TableColumn fx:id="ca_backendPort" text="Backend Port" prefWidth="200"/>
+                                    <TableColumn fx:id="ca_cachedEndpoints" text="Cached Endpoints" prefWidth="300"/>
+                                    <TableColumn fx:id="ca_cacheTTL" text="Cache TTL (sec)" prefWidth="200"/>
+                                    <TableColumn fx:id="ca_maxConnections" text="Max Redis Connections"
+                                                 prefWidth="200"/>
+                                </columns>
+                            </TableView>
+
+                            <HBox spacing="10.0">
+                                <Label text="Redis Replicas:"/>
+                                <TextField fx:id="ca_redisReplicas" promptText="2"/>
+                                <Label text="Redis Nodes:"/>
+                                <TextField fx:id="ca_redisNodes" promptText="6"/>
+                            </HBox>
+
+                            <HBox spacing="10.0">
+                                <Button text="Add Entry" onAction="#handleCacheAsideAddRow"/>
+                                <Button text="Edit Entry" onAction="#handleCacheAsideEditRow"/>
+                                <Button text="Delete Entry" onAction="#handleCacheAsideDeleteRow"/>
+                            </HBox>
+                        </VBox>
+
+                        <!-- Cache Aside MySQL Proxy -->
+                        <VBox spacing="10.0" fx:id="cacheAsideSQLFields" visible="false">
+                            <Label text="Cache Aside (MySQL Proxy) Configuration" style="-fx-font-weight: bold;"/>
+
+                            <GridPane hgap="10.0" vgap="10.0">
+                                <!-- MySQL Backend Target -->
+                                <Label text="DB Service Name:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlDbServiceName"
+                                           promptText="db-service" GridPane.rowIndex="5"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="DB Port:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlDbServicePort" promptText="3306" GridPane.rowIndex="6"
+                                           GridPane.columnIndex="1"/>
+
+                                <!-- ProxySQL Variables -->
+                                <Label text="ProxySQL Threads:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlProxyThreads" promptText="4" GridPane.rowIndex="0"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="Max Connections:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlProxyMaxConnections" promptText="2048" GridPane.rowIndex="1"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="Monitor Username:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlProxyMonitorUser" promptText="root" GridPane.rowIndex="2"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="Monitor Password:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlProxyMonitorPass" promptText="rootpassword" GridPane.rowIndex="3"
+                                           GridPane.columnIndex="1"/>
+
+                                <Label text="Query Cache Size (MB):" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                <TextField fx:id="sqlQueryCacheSize" promptText="256" GridPane.rowIndex="4"
+                                           GridPane.columnIndex="1"/>
+                            </GridPane>
+
+                            <!-- MySQL Users Table -->
+                            <HBox spacing="10.0">
+                                <Button text="Configure MySQL Users" onAction="#handleAddSQLUser"/>
+                                <Button text="Edit Entry" onAction="#handleEditSQLUser"/>
+                                <Button text="Delete Entry" onAction="#handleDeleteSQLUser"/>
+                            </HBox>
+
+                            <Label text="Configured MySQL Users:" style="-fx-font-weight: bold;"/>
+                            <TableView fx:id="proxySQLUsersTable" prefHeight="150">
+                                <columns>
+                                    <TableColumn fx:id="proxySQL_user" text="Username" prefWidth="150"/>
+                                    <TableColumn fx:id="proxySQL_password" text="Password" prefWidth="150"/>
+                                </columns>
+                            </TableView>
+
+                            <!-- Query Rules Table -->
+                            <HBox spacing="10.0">
+                                <Button text="Configure Query Rules" onAction="#handleAddSQLRule"/>
+                                <Button text="Edit Entry" onAction="#handleEditSQLRule"/>
+                                <Button text="Delete Entry" onAction="#handleDeleteSQLRule"/>
+                            </HBox>
+
+                            <Label text="Configured Query Rules:" style="-fx-font-weight: bold;"/>
+                            <TableView fx:id="proxySQLRulesTable" prefHeight="150">
+                                <columns>
+                                    <TableColumn fx:id="proxySQL_QueryRegex" text="Regex Pattern" prefWidth="300"/>
+                                    <TableColumn fx:id="proxySQL_ttl" text="Cache TTL (ms)" prefWidth="150"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+
+                        <!-- Request Collapsing Config -->
+                        <VBox spacing="10.0" fx:id="requestCollapsingFields" visible="false">
+                            <Label text="Request Collapsing Configuration" style="-fx-font-weight: bold;"/>
+                            <GridPane hgap="20.0" vgap="10.0">
+
+                                <!-- Left column: Pattern parameters -->
+                                <Label text="Backend Service" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1"
+                                           text="data-product-service"/>
+
+                                <Label text="Backend Port" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_backendPort" GridPane.rowIndex="1" GridPane.columnIndex="1"
+                                           text="8089"/>
+
+                                <Label text="Endpoint Path" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_endpointPath" GridPane.rowIndex="2" GridPane.columnIndex="1"
+                                           text="/data-json"/>
+
+                                <Label text="Query Parameter" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_queryParam" GridPane.rowIndex="3" GridPane.columnIndex="1"
+                                           text=""/>
+
+                                <Label text="ID Field" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_idField" GridPane.rowIndex="4" GridPane.columnIndex="1" text=""/>
+
+                                <Label text="Batch Query" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                <TextField fx:id="rc_batchQuery" GridPane.rowIndex="5" GridPane.columnIndex="1"
+                                           text="^/data\\-json$"/>
+
+                                <!-- Right column: DB connection parameters -->
+                                <Label text="DB Host" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                <TextField fx:id="rc_dbHost" GridPane.rowIndex="0" GridPane.columnIndex="3"
+                                           text="data-product-service.user.svc.cluster.local"/>
+
+                                <Label text="DB Port" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                <TextField fx:id="rc_dbPort" GridPane.rowIndex="1" GridPane.columnIndex="3"
+                                           text="8089"/>
+
+                                <Label text="DB Name" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                <TextField fx:id="rc_dbName" GridPane.rowIndex="2" GridPane.columnIndex="3"
+                                           text=""/>
+
+                                <Label text="DB Username" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                                <TextField fx:id="rc_dbUser" GridPane.rowIndex="3" GridPane.columnIndex="3"
+                                           text=""/>
+
+                                <Label text="DB Password" GridPane.rowIndex="4" GridPane.columnIndex="2"/>
+                                <TextField fx:id="rc_dbPass" GridPane.rowIndex="4" GridPane.columnIndex="3"
+                                           text=""/>
+
+                            </GridPane>
+                        </VBox>
+
+                        <!-- Circuit Breaker Config -->
+                        <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="false">
+                            <Label text="Circuit Breaker Configuration" style="-fx-font-weight: bold;"/>
+                            <TableView fx:id="circuitBreakerTable" prefHeight="250">
+                                <columns>
+                                    <TableColumn fx:id="cbColService" text="Service Name"/>
+                                    <TableColumn fx:id="cbColRoute" text="Route Prefix"/>
+                                    <TableColumn fx:id="cbColPort" text="Port"/>
+                                    <TableColumn fx:id="cbColMaxConn" text="Max Conn"/>
+                                    <TableColumn fx:id="cbColMaxPend" text="Max Pend"/>
+                                    <TableColumn fx:id="cbColMaxReq" text="Max Req"/>
+                                    <TableColumn fx:id="cbColRetry" text="Retries"/>
+                                    <TableColumn fx:id="cbColTimeout" text="Timeout"/>
+                                </columns>
+                            </TableView>
+                            <HBox spacing="10.0">
+                                <Button text="Add Entry" onAction="#handleCircuitBreakerAddRow"/>
+                                <Button text="Edit Entry" onAction="#handleCircuitBreakerEditRow"/>
+                                <Button text="Delete Entry" onAction="#handleCircuitBreakerDeleteRow"/>
+                            </HBox>
+                        </VBox>
+
+                    </StackPane>
+                </VBox>
             </VBox>
-
-            <Separator orientation="HORIZONTAL" />
-
-            <!-- Step 2: Select Design Pattern -->
-            <Label text="Pattern Deployment" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-            <HBox spacing="10.0">
-                <Label text="Select Design Pattern" />
-                <ComboBox fx:id="patternDropdown" onAction="#handlePatternSelection">
-                    <items>
-                        <FXCollections fx:factory="observableArrayList">
-                            <String fx:value="Baseline"/>
-                            <String fx:value="Async Request Reply"/>
-                            <String fx:value="Gateway Offloading"/>
-                            <String fx:value="Gateway Aggregation"/>
-                            <String fx:value="Request Collapsing"/>
-                            <String fx:value="Cache Aside"/>
-                            <String fx:value="Circuit Breaker"/>
-                        </FXCollections>
-                    </items>
-                </ComboBox>
-                <Button text="Delete Pattern" onAction="#deletePattern"/>
-                <Button fx:id="buildPatternButton" text="Build Pattern" onAction="#buildPattern" disable="true"/>
-            </HBox>
-
-            <!-- Step 3: Pattern-Specific Config -->
-            <VBox spacing="10.0" fx:id="patternFieldsBox" visible="false">
-                <Label text="Configure Pattern" />
-
-                <!-- StackPane to layer pattern-specific fields -->
-                <StackPane>
-                    <!-- Async Request Reply Config -->
-                    <VBox spacing="10.0" fx:id="asyncRequestReplyFields" visible="false">
-                        <Label text="Async Request Reply Configuration" style="-fx-font-weight: bold;"/>
-
-                        <TableView fx:id="asyncTable" prefHeight="200">
-                            <columns>
-                                <TableColumn fx:id="serviceNameColumn" text="Service Name" prefWidth="150"/>
-                                <TableColumn fx:id="endpointPathColumn" text="Endpoint Path" prefWidth="200"/>
-                            </columns>
-                        </TableView>
-
-                        <HBox spacing="10.0">
-                            <Button text="Add Entry" onAction="#handleAsyncAddRow"/>
-                            <Button text="Edit Entry" onAction="#handleAsyncEditRow"/>
-                            <Button text="Delete Entry" onAction="#handleAsyncDeleteRow"/>
-                        </HBox>
-                    </VBox>
-
-                    <!-- Gateway Offloading Config -->
-                    <VBox spacing="10.0" fx:id="gatewayOffloadingFields" visible="false">
-                        <Label text="Gateway Offloading Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Service Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="go_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label text="Service Name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="go_serviceName" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                            <Label text="Service Port" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="go_servicePort" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
-
-                    <!-- Cache Aside Config -->
-                    <VBox spacing="10.0" fx:id="cacheAsideFields" visible="false">
-                        <Label text="Cache Aside Configuration" style="-fx-font-weight: bold;" />
-
-                        <TableView fx:id="cacheAsideTable" prefHeight="200">
-                            <columns>
-                                <TableColumn fx:id="backendService" text="Backend Service" prefWidth="200"/>
-                                <TableColumn fx:id="cachedEndpoints" text="Cached Endpoints" prefWidth="300"/>
-                            </columns>
-                        </TableView>
-
-                        <HBox spacing="10.0">
-                            <Button text="Add Entry" onAction="#handleCacheAsideAddRow"/>
-                            <Button text="Edit Entry" onAction="#handleCacheAsideEditRow"/>
-                            <Button text="Delete Entry" onAction="#handleCacheAsideDeleteRow"/>
-                        </HBox>
-                    </VBox>
-
-                    <!-- Gateway Aggregation Config -->
-                    <VBox spacing="10.0" fx:id="gatewayAggregationFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Service - Name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceName" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                            <Label text="Service - Endpoint" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceEndpoint" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                            <Label text="Service - Host" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_serviceHost" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                            <Label text="Service - Port" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                            <TextField fx:id="ga_servicePort" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
-
-                    <!-- Request Collapsing Config -->
-                    <VBox spacing="10.0" fx:id="requestCollapsingFields" visible="false">
-                        <Label text="Gateway Aggregation Configuration" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="10.0" vgap="10.0">
-                            <Label text="Backend Service" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <TextField fx:id="rc_backendService" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
-
-                    <!-- Circuit Breaker Config -->
-                    <VBox spacing="10.0" fx:id="circuitBreakerFields" visible="true">
-                        <Label text="Circuit Breaker Configuration" style="-fx-font-weight: bold;" />
-                        <TableView fx:id="circuitBreakerTable" prefHeight="250">
-                            <columns>
-                                <TableColumn fx:id="cbColService" text="Service Name" />
-                                <TableColumn fx:id="cbColRoute" text="Route Prefix" />
-                                <TableColumn fx:id="cbColPort" text="Port" />
-                                <TableColumn fx:id="cbColMaxConn" text="Max Conn" />
-                                <TableColumn fx:id="cbColMaxPend" text="Max Pend" />
-                                <TableColumn fx:id="cbColMaxReq" text="Max Req" />
-                                <TableColumn fx:id="cbColRetry" text="Retries" />
-                                <TableColumn fx:id="cbColTimeout" text="Timeout" />
-                            </columns>
-                        </TableView>
-                        <HBox spacing="10.0">
-                            <Button text="Add Entry" onAction="#handleCircuitBreakerAddRow"/>
-                            <Button text="Edit Entry" onAction="#handleCircuitBreakerEditRow"/>
-                            <Button text="Delete Entry" onAction="#handleCircuitBreakerDeleteRow"/>
-                        </HBox>
-                    </VBox>
-
-                </StackPane>
-            </VBox>
-        </VBox>
+        </ScrollPane>
     </center>
 
     <bottom>

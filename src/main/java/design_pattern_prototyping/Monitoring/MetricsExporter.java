@@ -104,7 +104,7 @@ public class MetricsExporter {
                 headerRow.createCell(6).setCellValue("ContainerCpuCyclesAvg");
                 headerRow.createCell(7).setCellValue("ContainerCpuInstructionsAvg");
                 headerRow.createCell(8).setCellValue("PPW");
-                headerRow.createCell(9).setCellValue("PPJ");
+                headerRow.createCell(9).setCellValue("RW");
                 headerRow.createCell(10).setCellValue("IPC");
                 headerRow.createCell(11).setCellValue("MeanLatency");
                 headerRow.createCell(12).setCellValue("95PercentileLatency");
@@ -147,27 +147,25 @@ public class MetricsExporter {
             double watts = parseMetrics("ContainerPowerWattsAvg", flatMetrics);
             double cycles = parseMetrics("ContainerCpuCyclesAvg", flatMetrics);
             double instructions = parseMetrics("ContainerCpuInstructionsAvg", flatMetrics);
-            double instructionsTotal = parseMetrics("ContainerCpuInstructionsTotal", flatMetrics);
-            double joules = parseMetrics("ContainerJoulesTotal", flatMetrics);
             double spans = parseMetrics("TotalSpans", flatMetrics);
             double requests = parseMetrics("TotalRequests", flatMetrics);
 
             // PPW: instructions per watt
             String ppw = (!Double.isNaN(watts) && watts != 0) ? String.valueOf(instructions / watts) : "NULL";
-            // PPJ: instructions per joule
-            String ppj = (!Double.isNaN(joules) && joules != 0) ? String.valueOf(instructionsTotal / joules) : "NULL";
+            // RW: Requests per Watts
+            String rw = (!Double.isNaN(watts) && watts != 0) ? String.valueOf(requests / watts) : "NULL";
             // IPC: instructions per cycle
             String ipc = (!Double.isNaN(cycles) && cycles != 0) ? String.valueOf(instructions / cycles) : "NULL";
             // Spans per request
             String spansReq = (!Double.isNaN(requests) && requests != 0) ? String.valueOf(spans / requests) : "NULL";
 
             flatMetrics.put("PPW", ppw);
-            flatMetrics.put("PPJ", ppj);
+            flatMetrics.put("RW", rw);
             flatMetrics.put("IPC", ipc);
             flatMetrics.put("SpansPerRequest", spansReq);
 
             logger.info("Computed PPW (instructions per watt): " + ppw);
-            logger.info("Computed PPJ (instructions per joule): " + ppj);
+            logger.info("Computed PPJ (instructions per joule): " + rw);
             logger.info("Computed IPC (instructions per cycle): " + ipc);
             logger.info("Computed Spans per Request: " + spansReq);
 
@@ -183,7 +181,7 @@ public class MetricsExporter {
             valuesRow.createCell(6).setCellValue(flatMetrics.getOrDefault("ContainerCpuCyclesAvg", "NULL"));
             valuesRow.createCell(7).setCellValue(flatMetrics.getOrDefault("ContainerCpuInstructionsAvg", "NULL"));
             valuesRow.createCell(8).setCellValue(flatMetrics.getOrDefault("PPW", "NULL"));
-            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("PPJ", "NULL"));
+            valuesRow.createCell(9).setCellValue(flatMetrics.getOrDefault("RW", "NULL"));
             valuesRow.createCell(10).setCellValue(flatMetrics.getOrDefault("IPC", "NULL"));
             valuesRow.createCell(11).setCellValue(flatMetrics.getOrDefault("MeanLatency", "NULL"));
             valuesRow.createCell(12).setCellValue(flatMetrics.getOrDefault("95PercentileLatency", "NULL"));

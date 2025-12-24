@@ -17,7 +17,7 @@ public class Main extends Application {
     public void start(Stage primaryStage) throws Exception {
         // Load the JavaFX UI
         Parent root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("Main.fxml")));
-        primaryStage.setTitle("Local Kubernetes Microservice Design Pattern Prototype");
+        primaryStage.setTitle("Kubernetes Microservice Design Pattern Prototyping Tool");
         primaryStage.setScene(new Scene(root, 1000, 800));
         primaryStage.show();
 
@@ -41,8 +41,8 @@ public class Main extends Application {
     private static void startMetricsService() {
         try {
             // Path to Python executable and Python service file
-            //String pythonPath =  "Python/.venv/bin/python3.12";
-            String pythonPath = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3";
+            String pythonPath =  "Python/env/bin/python3.11";
+            //String pythonPath = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3";
             String flaskAppPath = "Python/Metrics_Service.py";
 
             // Start the metrics service using ProcessBuilder

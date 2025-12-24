@@ -98,7 +98,7 @@ public class KubernetesUtil {
                 return true;
             }
             logger.info("Starting Minikube...");
-            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker", "--cpus=7", "--memory=12288", "--disk-size=40g");
+            ProcessBuilder startBuilder = new ProcessBuilder("minikube", "start", "--driver=docker");
             Process startProcess = startBuilder.start();
 
             Thread outputThread = new Thread(() -> {
@@ -244,8 +244,31 @@ public class KubernetesUtil {
         }
     }
 
-    public static void deletePatternNamespace() {
+    public static void deletePattern() {
         String[] namespaces = {"pattern", "proxy"};
+
+        try {
+            logger.info("Deleting all resources with label app=pattern...");
+            List<String> deleteLabeledResources = new ArrayList<>(List.of(
+                    "kubectl", "delete", "all,svc,cm,secret,deploy,pod", "-l", "app=pattern", "--all-namespaces"
+            ));
+            injectContext(deleteLabeledResources);
+
+            ProcessBuilder deleteResourcesProcess = new ProcessBuilder(deleteLabeledResources);
+            Process process = deleteResourcesProcess.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.info("[INFO] " + line);
+                }
+            }
+
+            process.waitFor();
+            logger.info("Labeled resources deleted.");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error deleting labeled resources.", e);
+        }
 
         for (String namespace : namespaces) {
             try {
@@ -281,66 +304,43 @@ public class KubernetesUtil {
         }
     }
 
-    public static void applyYaml(String file, String namespace) throws IOException, InterruptedException {
-        logger.info("Applying YAML: " + file + " -> ns=" + namespace);
-        ExecResult res = exec("kubectl", "apply", "-f", file, "-n", namespace);
-        if (res.exitCode != 0) {
-            throw new IOException("'kubectl apply' failed: res.stderr " );
+    public static void applyYaml(String filePath) throws IOException, InterruptedException {
+        applyYaml(filePath, null);
+    }
+
+    public static void applyYaml(String filePath, String namespace) throws IOException, InterruptedException {
+        logger.info("Applying configuration from file: " + filePath);
+
+        List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
+        if (namespace != null && !namespace.isBlank()) {
+            command.add("-n");
+            command.add(namespace);
         }
-    }
+        injectContext(command);
 
-    /* ---------------------------------------------------------------------- */
-    /* 3. Convenience wrappers                                                */
-    /* ---------------------------------------------------------------------- */
-    public static ExecResult exec(String... cmd) throws IOException, InterruptedException {
-        logger.info(" " + String.join(" ", cmd));
-        Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-        var out = new String(p.getInputStream().readAllBytes());
-        int exit = p.waitFor();
-        if (exit != 0) logger.warning("Command failed (" + exit + "): " + out);
-        return new ExecResult(exit, out);
-    }
+        ProcessBuilder apply = new ProcessBuilder(command);
+        apply.redirectErrorStream(true);
+        Process process = apply.start();
 
-    public static String execAndCapture(String... cmd) throws IOException, InterruptedException {
-        return exec(cmd).stdout;
-    }
-
-    public record ExecResult(int exitCode, String stdout) {
-        public String stderr() {
-            return stdout;
-        }    }
-
-   /* public static void applyYaml(String filePath, String namespace) {
-        try {
-            logger.info("Applying configuration from file: " + filePath);
-
-            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath, "-n", namespace));
-            injectContext(command);
-
-            ProcessBuilder apply = new ProcessBuilder(command);
-            apply.redirectErrorStream(true);
-            Process process = apply.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                reader.lines().forEach(line -> logger.info("[kubectl] " + line));
-            }
-
-            int exit = process.waitFor();
-            if (exit == 0) {
-                logger.info("Configuration applied successfully.");
-            } else {
-                logger.warning("kubectl apply exited with code " + exit);
-            }
-
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "IO error while applying YAML file: " + filePath, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.log(Level.SEVERE, "Process was interrupted while applying YAML.", e);
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            reader.lines().forEach(line -> logger.info("[kubectl] " + line));
         }
-    }*/
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("kubectl apply failed (exit code " + exitCode + ") for file: " + filePath);
+        }
+
+        logger.info("Configuration applied successfully.");
+    }
+
+    //public static void applyYaml(String file) throws IOException, InterruptedException {
+    //    logger.info("Applying YAML: " + file);
+    //    ExecResult res = exec("kubectl", "apply", "-f", file);
+    //    if (res.exitCode != 0) {
+    //        throw new IOException("'kubectl apply' failed: res.stderr " );
+    //    }
+    //}
 
     public static void executeCommand(String... command) throws IOException, InterruptedException {
         List<String> commandList = new ArrayList<>(Arrays.asList(command));
@@ -381,38 +381,6 @@ public class KubernetesUtil {
         }
     }
 
-
-    /*public static void applyYaml(String filePath) {
-        try {
-            logger.info("Applying configuration from file: " + filePath);
-
-            List<String> command = new ArrayList<>(List.of("kubectl", "apply", "-f", filePath));
-            injectContext(command);
-
-            ProcessBuilder apply = new ProcessBuilder(command);
-            apply.redirectErrorStream(true);
-            Process process = apply.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                reader.lines().forEach(line -> logger.info("[kubectl] " + line));
-            }
-
-            int exit = process.waitFor();
-            if (exit == 0) {
-                logger.info("Configuration applied successfully.");
-            } else {
-                logger.warning("kubectl apply exited with code " + exit);
-            }
-
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "IO error while applying YAML file: " + filePath, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.log(Level.SEVERE, "Process was interrupted while applying YAML.", e);
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Unexpected error while applying configuration.", e);
-        }
-    }*/
     public static void getServiceYamlToFile(String serviceName, String namespace, Path targetFile) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(List.of("kubectl", "get", "svc", serviceName, "-n", namespace, "-o", "yaml"));
         ProcessBuilder builder = new ProcessBuilder(command);
@@ -429,6 +397,27 @@ public class KubernetesUtil {
         int exitCode = process.waitFor();
         if (exitCode != 0) {
             throw new IOException("Failed to get service YAML for " + serviceName + ", exit code: " + exitCode);
+        }
+
+        Files.writeString(targetFile, output.toString());
+    }
+
+    public static void getDeploymentYamlToFile(String deployName, String namespace, Path targetFile) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>(List.of("kubectl", "get", "deployment", deployName, "-n", namespace, "-o", "yaml"));
+        ProcessBuilder builder = new ProcessBuilder(command);
+        Process process = builder.start();
+
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("Failed to get deployment YAML for " + deployName + ", exit code: " + exitCode);
         }
 
         Files.writeString(targetFile, output.toString());

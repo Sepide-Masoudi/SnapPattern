@@ -1,0 +1,5 @@
+{
+  "Low": {"numUsers": 10, "rampUp": 30},
+  "Medium": {"numUsers": 50, "rampUp": 60},
+  "High": {"numUsers": 250, "rampUp": 120}
+}

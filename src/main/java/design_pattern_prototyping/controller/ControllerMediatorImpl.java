@@ -49,6 +49,14 @@ public class ControllerMediatorImpl implements ControllerMediator {
     }
 
     @Override
+    public String getSelectedUserService() {
+        if (workloadController != null) {
+            return workloadController.getSelectedUserService();
+        }
+        return null;
+    }
+
+    @Override
     public MetricsController getMetricsController() {
         return metricsController;
     }

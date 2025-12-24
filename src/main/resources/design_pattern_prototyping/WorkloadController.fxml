@@ -4,7 +4,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="design_pattern_prototyping.controller.WorkloadController">
     <top>
-        <Label text="Workload Dashboard" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
+        <Label text="Workload Generator" style="-fx-font-size: 18px; -fx-padding: 10 10 10 20;"/>
     </top>
 
     <center>
@@ -19,17 +19,25 @@
                 <Label text="Select Workload File:"/>
                 <ComboBox fx:id="fileDropdown"/>
             </HBox>
-            <!-- Set WebUI Hostname -->
+            <!-- Set Frontend Hostname -->
             <HBox spacing="10.0">
                 <Label text="Hostnamme (IP):"/>
-                <TextField fx:id="hostnameField" text="192.168.49.2" promptText="192.168.49.2"/>
+                <TextField fx:id="hostnameField" text="127.0.0.1" promptText="127.0.0.1"/>
                 <Label text="Port:"/>
                 <TextField fx:id="portField" text="30080" promptText="30080"/>
+                <Label text="Set Frontend Service:"/>
+                <ComboBox fx:id="userServiceDropdown" promptText="(none selected)"/>
             </HBox>
-            <!-- Set Workload intensity -->
+            <!-- Set Workload level and duration -->
             <HBox spacing="10.0">
                 <Label text="Select Workload Level:"/>
                 <ComboBox fx:id="workloadLevelComboBox"/>
+                <Button text="Configure Workload Levels" onAction="#configureWorkloadLevels"/>
+            </HBox>
+            <!-- Set Max Duration -->
+            <HBox spacing="10.0">
+                <Label text="Max Duration (minutes):"/>
+                <TextField fx:id="maxDurationField" promptText="5"/>
             </HBox>
             <!-- Run workload -->
             <HBox spacing="10.0">

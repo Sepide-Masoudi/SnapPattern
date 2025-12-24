@@ -1,0 +1,65 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: request-collapser
+  namespace: pattern
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: request-collapser
+  template:
+    metadata:
+      labels:
+        app: request-collapser
+      annotations:
+        instrumentation.opentelemetry.io/inject-python: "otel/otel-operator-instrumentation"
+    spec:
+      containers:
+        - name: request-collapser
+          image: request-collapser:1.0
+          ports:
+            - containerPort: 80
+          env:
+              - name: ENDPOINT_PATH
+                value: "${ENDPOINT_PATH}"
+              - name: DB_HOST
+                value: "${DB_HOST}"     # teastore-db.user.svc.cluster.local
+              - name: DB_PORT
+                value: "${DB_PORT}"     # 3306
+              - name: DB_NAME
+                value: "${DB_NAME}"     # teadb
+              - name: DB_USER
+                value: "${DB_USER}"     # teauser
+              - name: DB_PASS
+                value: "${DB_PASS}"     # teapassword
+              - name: BATCH_QUERY
+                value: "${BATCH_QUERY}" # SELECT id, name, description FROM Product WHERE id IN (%s)
+              - name: QUERY_PARAM
+                value: "${QUERY_PARAM}"
+              - name: REDIS_HOST
+                value: redis-master.pattern.svc.cluster.local
+              - name: REDIS_PORT
+                value: "6379"
+              - name: REDIS_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: redis
+                    key: redis-password
+              - name: CACHE_TTL
+                value: "300"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: request-collapser
+  namespace: pattern
+spec:
+  selector:
+    app: request-collapser
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

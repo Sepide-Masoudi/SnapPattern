@@ -1,0 +1,5 @@
+Service:        teastore-persistence
+Port:           8080
+Endpoints:      /tools.descartes.teastore.persistence/rest/products,/tools.descartes.teastore.persistence/rest/categories
+TTL:            300
+Max Connections: 1000

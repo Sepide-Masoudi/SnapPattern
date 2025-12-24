@@ -3,7 +3,9 @@ package design_pattern_prototyping.Monitoring;
 import design_pattern_prototyping.Kubernetes.KubernetesUtil;
 import design_pattern_prototyping.util.UILogger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,20 +41,18 @@ public class DeployMonitoringStack {
 
             logger.info("Installing Cert-Manager...");
             uiLogger.info("Installing Cert-Manager...");
-            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml", "cert-manager");
+            KubernetesUtil.applyYaml("https://github.com/cert-manager/cert-manager/releases/download/v1.18.0/cert-manager.yaml");
 
             waitForDeploymentReady("cert-manager", "cert-manager");
             waitForDeploymentReady("cert-manager-cainjector", "cert-manager");
             waitForDeploymentReady("cert-manager-webhook", "cert-manager");
-
-            Thread.sleep(15000);
 
             // Sleep briefly to ensure webhook and certs are established
             Thread.sleep(10000);
 
             logger.info("Installing OpenTelemetry Operator...");
             uiLogger.info("Installing OpenTelemetry Operator...");
-            KubernetesUtil.applyYaml("https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml", "opentelemetry-operator-system");
+            KubernetesUtil.applyYaml("https://github.com/open-telemetry/opentelemetry-operator/releases/download/v0.126.0/opentelemetry-operator.yaml", "opentelemetry-operator-system");
 
             waitForDeploymentReady("opentelemetry-operator-controller-manager", "opentelemetry-operator-system");
             KubernetesUtil.applyYaml("src/main/resources/monitoring/otel/otel-operator-instrumentation.yml", OTEL_NAMESPACE);
@@ -80,11 +80,18 @@ public class DeployMonitoringStack {
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=prometheus");
 
+            /**
+            System.out.println("Installing Jaeger...");
+            KubernetesUtil.executeCommand("helm", "upgrade", "-install", "jaeger", "jaegertracing/jaeger",
+                    "--namespace", "monitoring",
+                    "-f", "src/main/resources/monitoring/jaeger-values.yaml");
+            **/
+
             logger.info("Monitoring stack deployed successfully.");
             uiLogger.info("Monitoring stack deployed successfully.");
             return true;
 
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             logger.log(Level.SEVERE, "Error deploying the monitoring stack", e);
             uiLogger.error("Error deploying the monitoring stack: " + e.getMessage());
             return false;

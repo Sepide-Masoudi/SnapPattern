@@ -38,3 +38,4 @@ build/
 .DS_StorePython/results/jmeter/
 apache-jmeter-5.6.3/
 src/main/resources/monitoring/otel/configmap
+Python/results/jmeter/results.jtl

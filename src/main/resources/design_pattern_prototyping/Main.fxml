@@ -49,15 +49,15 @@
                 <fx:include source="ResourceController.fxml"/>
             </Tab>
             <!-- Pattern Builder Tab -->
-            <Tab text="Pattern Dashboard" closable="false">
+            <Tab text="Pattern Generator" closable="false">
                 <fx:include source="PatternController.fxml"/>
             </Tab>
             <!-- Workload Manager Tab -->
-            <Tab text="Workload Dashboard" closable="false">
+            <Tab text="Workload Generator" closable="false">
                 <fx:include source="WorkloadController.fxml"/>
             </Tab>
             <!-- Monitoring Tab -->
-            <Tab text="Monitoring Dashboard" closable="false">
+            <Tab text="Metrics Collector" closable="false">
                 <fx:include source="MetricsController.fxml"/>
             </Tab>
         </TabPane>

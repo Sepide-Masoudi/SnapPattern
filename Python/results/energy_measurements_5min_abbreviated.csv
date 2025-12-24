@@ -1,0 +1,4 @@
+Pattern,Workload Level,EC,W,CM,CC,CI,PPW,PPJ,IPC,ARD,P95,RPS,TotalRequests,TotalSpans,SpansPerRequest,ER
+Baseline,High,5.7K,18.9,671.3M,1.2B,2.6B,135.7M,135.7M,2.1,738.8,4.6K,5.7,4.1K,1.4K,0.3,1.4
+Cache Aside,High,4.4K,14.5,574.8M,968.1M,2.3B,155.8M,25.2,2.3,,,1.2,366.2,6.0K,16.3,11.9
+Request Collapsing,High,5.0K,16.6,626.0M,1.0B,2.4B,146.8M,,2.3,,,,,7.2K,,

@@ -1,0 +1,271 @@
+# Docker image for arm 64 (linux)
+# filter-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filter-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: filter-service
+  template:
+    metadata:
+      labels:
+        app: filter-service
+    spec:
+      containers:
+        - name: filter-service
+          image: anonymous4science/filter-service:linux
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          env:
+            - name: AUTH_URL
+              value: http://auth-service:8085/auth/validate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: filter-service
+spec:
+  selector:
+    app: filter-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+  type: ClusterIP
+
+# aggregation-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggregation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aggregation-service
+  template:
+    metadata:
+      labels:
+        app: aggregation-service
+    spec:
+      containers:
+        - name: aggregation-service
+          image: anonymous4science/aggregation-service:linux
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          env:
+            - name: AUTH_URL
+              value: http://auth-service:8085/auth/validate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aggregation-service
+spec:
+  selector:
+    app: aggregation-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP
+
+# anonymization-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anonymization-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anonymization-service
+  template:
+    metadata:
+      labels:
+        app: anonymization-service
+    spec:
+      containers:
+        - name: anonymization-service
+          image: anonymous4science/anonymization-service:linux
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+          env:
+            - name: AUTH_URL
+              value: http://auth-service:8085/auth/validate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: anonymization-service
+spec:
+  selector:
+    app: anonymization-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+  type: ClusterIP
+
+# formatting-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: formatting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: formatting-service
+  template:
+    metadata:
+      labels:
+        app: formatting-service
+    spec:
+      containers:
+        - name: formatting-service
+          image: anonymous4science/formatting-service:linux
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          env:
+            - name: AUTH_URL
+              value: http://auth-service:8085/auth/validate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: formatting-service
+spec:
+  selector:
+    app: formatting-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+  type: ClusterIP
+
+# auth-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: anonymous4science/authentication-service:linux
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8085
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 8085
+      targetPort: 8085
+  type: ClusterIP
+
+# data-product-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-product-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-product-service
+  template:
+    metadata:
+      labels:
+        app: data-product-service
+    spec:
+      containers:
+        - name: data-product-service
+          image: sepidmas/data-product-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8089
+          env:
+            - name: AUTH_URL
+              value: http://auth-service:8085/auth/validate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-product-service
+spec:
+  selector:
+    app: data-product-service
+  ports:
+    - port: 8089
+      targetPort: 8089
+  type: ClusterIP
+  
+# coordinator-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coordinator-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coordinator-service
+  template:
+    metadata:
+      labels:
+        app: coordinator-service
+    spec:
+      containers:
+        - name: coordinator-service
+          image: sepidmas/coordinator-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FILTER_URL
+              value: http://filter-service:8081
+            - name: AGGREGATION_URL
+              value: http://aggregation-service:8082
+            - name: ANONYMIZATION_URL
+              value: http://anonymization-service:8083
+            - name: FORMATTING_URL
+              value: http://formatting-service:8084
+            - name: DATA_PRODUCT_URL
+              value: http://data-product-service:8089
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator-service
+spec:
+  selector:
+    app: coordinator-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
